@@ -51,7 +51,6 @@ This repository implements the Application Registry actor described in the Inter
     - Use OpenZeppelin's ERC20Snapshot for token balances requiring historical lookups.
     - Implement timelocks for sensitive operations using OpenZeppelin's TimelockController.
     - Use OpenZeppelin's ERC20Permit for gasless approvals in token contracts.
-    - Implement proper slippage protection for DEX-like functionalities.
     - Use OpenZeppelin's ERC20Votes for governance token implementations.
     - Implement effective storage patterns to optimize gas costs (e.g., packing variables).
     - Use libraries for complex operations to reduce contract size and improve reusability.

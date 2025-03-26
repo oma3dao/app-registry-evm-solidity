@@ -1,0 +1,26 @@
+{
+  "name": "app-registry",
+  "version": "1.0.0",
+  "description": "OMA3 Application Registry Solidity",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oma3dao/app-registry.git"
+  },
+  "author": "Alfred Tom - Wivity",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/oma3dao/app-registry/issues"
+  },
+  "homepage": "https://github.com/oma3dao/app-registry#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.19"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.2.0"
+  }
+}
