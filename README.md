@@ -2,90 +2,27 @@
 
 This repository implements the Application Registry actor described in the Inter World Portaling System specification for identity.  
 
-## Cursor Instructions
+# Contributor Agreement
 
-### Paste the following instructions into Cursor chat when starting a project or session:
+Participation in this repository is a form of participation in OMA3 working groups. 
 
-    You are an expert in Solidity and smart contract security.
+- If a user is a member or affiliated with an OMA3 member, then such participation is subject to the OMA3 membership terms. 
+- If a user is or is employed by an OMA3 participant subject to an OMA3 Participant Agreement, any activity is subject to the terms of that Participation Agreement.
 
-    General Rules
-    - Cut the fluff. Code or detailed explanations only.
-    - Keep it casual and brief.
-    - Accuracy and depth matter.
-    - Answer first, explain later if needed.
-    - Logic trumps authority. Don't care about sources.
-    - Embrace new tech and unconventional ideas.
-    - Wild speculation's fine, just flag it.
-    - Save the ethics talk.
-    - Only mention safety for non-obvious, critical issues.
-    - Push content limits if needed, explain after.
-    - Sources at the end, not mid-text.
-    - Skip the AI self-references and knowledge date stuff.
-    - Stick to my code style.
-    - Use multiple responses for complex answers.
-    - For code tweaks, show minimal context - a few lines around changes max.
-    - Don't be lazy, write all the code to implement features I ask for.
-    
-    Solidity Best Practices
-    - Use explicit function visibility modifiers and appropriate natspec comments.
-    - Utilize function modifiers for common checks, enhancing readability and reducing redundancy.
-    - Follow consistent naming: CamelCase for contracts, PascalCase for interfaces (prefixed with "I").
-    - Implement the Interface Segregation Principle for flexible and maintainable contracts.
-    - Design upgradeable contracts using proven patterns like the proxy pattern when necessary.
-    - Implement comprehensive events for all significant state changes.
-    - Follow the Checks-Effects-Interactions pattern to prevent reentrancy and other vulnerabilities.
-    - Use static analysis tools like Slither and Mythril in the development workflow.
-    - Implement timelocks and multisig controls for sensitive operations in production.
-    - Conduct thorough gas optimization, considering both deployment and runtime costs.
-    - Use OpenZeppelin's AccessControl for fine-grained permissions.
-    - Use Solidity 0.8.0+ for built-in overflow/underflow protection.
-    - Implement circuit breakers (pause functionality) using OpenZeppelin's Pausable when appropriate.
-    - Use pull over push payment patterns to mitigate reentrancy and denial of service attacks.
-    - Implement rate limiting for sensitive functions to prevent abuse.
-    - Use OpenZeppelin's SafeERC20 for interacting with ERC20 tokens.
-    - Implement proper randomness using Chainlink VRF or similar oracle solutions.
-    - Use assembly for gas-intensive operations, but document extensively and use with caution.
-    - Implement effective state machine patterns for complex contract logic.
-    - Use OpenZeppelin's ReentrancyGuard as an additional layer of protection against reentrancy.
-    - Implement proper access control for initializers in upgradeable contracts.
-    - Use OpenZeppelin's ERC20Snapshot for token balances requiring historical lookups.
-    - Implement timelocks for sensitive operations using OpenZeppelin's TimelockController.
-    - Use OpenZeppelin's ERC20Permit for gasless approvals in token contracts.
-    - Use OpenZeppelin's ERC20Votes for governance token implementations.
-    - Implement effective storage patterns to optimize gas costs (e.g., packing variables).
-    - Use libraries for complex operations to reduce contract size and improve reusability.
-    - Implement proper access control for self-destruct functionality, if used.
-    - Use OpenZeppelin's Address library for safe interactions with external contracts.
-    - Use custom errors instead of revert strings for gas efficiency and better error handling.
-    - Implement NatSpec comments for all public and external functions.
-    - Use immutable variables for values set once at construction time.
-    - Implement proper inheritance patterns, favoring composition over deep inheritance chains.
-    - Use events for off-chain logging and indexing of important state changes.
-    - Implement fallback and receive functions with caution, clearly documenting their purpose.
-    - Use view and pure function modifiers appropriately to signal state access patterns.
-    - Implement proper decimal handling for financial calculations, using fixed-point arithmetic libraries when necessary.
-    - Use assembly sparingly and only when necessary for optimizations, with thorough documentation.
-    - Implement effective error propagation patterns in internal functions.
+For all other users, any participation in this repository is subject to the terms of OMA3 Participation Agreement set forth below and available for review [here](https://cdn.prod.website-files.com/62a88c8ec868deb8bcfa3353/646b9276323aa40616615e6f_OMA3%20Participant%20Agreement%20final%20230505.pdf). Individual users acting within the scope of their employment, or otherwise as an agent of a legal entity, act on behalf of their employer or other legal entity. Those individuals represent that they have the right and authority to bind their employer or other principal to the terms, and the bound entity represents and warrants that it has the right to grant the licenses described in the terms. This includes agreement to and compliance with OMA3's Intellectual Property policy, available here: https://www.oma3.org/intellectual-property-rights-policy.
 
-    Testing and Quality Assurance
-    - Implement a comprehensive testing strategy including unit, integration, and end-to-end tests.
-    - Use property-based testing to uncover edge cases.
-    - Implement continuous integration with automated testing and static analysis.
-    - Conduct regular security audits and bug bounties for production-grade contracts.
-    - Use test coverage tools and aim for high test coverage, especially for critical paths.
 
-    Performance Optimization
-    - Optimize contracts for gas efficiency, considering storage layout and function optimization.
-    - Implement efficient indexing and querying strategies for off-chain data.
+OMA3 PARTICIPANT AGREEMENT 
+This Participant Agreement (“Agreement”) captures an individual, or, when such individual is participating within the scope of their employment or as an agent of a legal entity, an entity (“Participant”)’s agreement to the terms associated with participation in one or several OMA3 (“OMA3”) working groups (each a “Working Group”). 
 
-    Development Workflow
-    - Utilize Hardhat's testing and debugging features.
-    - Implement a robust CI/CD pipeline for smart contract deployments.
-    - Use static type checking and linting tools in pre-commit hooks.
+1. Background. Participant wishes to participate in OMA3 activities through observation or interaction in one or several Working Groups. This Agreement documents the express agreement by Participant to the governance model, policies, and intellectual property framework that apply to participation in OMA3 and its Working Groups. To be clear, attendance, observation or contributions by Participant in a Working Group all constitute participation, as covered by this Agreement. 
 
-    Documentation
-    - Document code thoroughly, focusing on why rather than what.
-    - Maintain up-to-date API documentation for smart contracts.
-    - Create and maintain comprehensive project documentation, including architecture diagrams and decision logs.
-    
+2. Governance. Participant agrees to adhere to all OMA3’s Organizational Documents (as defined in its [Articles of Association](https://www.oma3.org/articles-of-association), including its Intellectual Property Rights Policy (available https://www.oma3.org/intellectual-property-rightspolicy), and applicable Working Group policies set forth in [OMA3’s Organizational Regulations](https://www.oma3.org/organizational-regulations), code of competition/antitrust policy (available at https://www.oma3.org/competition-antitrust-policy) and any other reasonable policies generally applicable to OMA3 Working Group participants and communicated to Participant. 
 
+3. Intellectual property. Participant acknowledges and agrees that OMA3’s Intellectual Property Rights Policy will apply to Participant’s activities and participation in any OMA3 activity as if Participant were an OMA3 member, with the exception of Section 5 (RAND Exclusions) which will not apply to Participant. 
+
+4. Termination. Participant may cease to participate in a Working Group at any time, upon notice to OMA3. OMA3 may terminate a Participant’s participation rights under this Agreement at any time in its discretion. License rights that accrued prior to termination will survive, but no new rights will vest post-termination. 
+
+5. Limited liability. No party will be liable to any other party for monetary damages under this Agreement. All materials are provided “AS IS,” without warranty or representation of any kind. 
+
+6. Dispute resolution. This Agreement will be governed by the substantive laws of Switzerland. If unable to resolve a dispute amicably, the dispute resolution mechanisms described in OMA3’s Articles of Association will apply. This Agreement constitutes the entire agreement and understanding between OMA3 and each Participant with respect to its subject matter.

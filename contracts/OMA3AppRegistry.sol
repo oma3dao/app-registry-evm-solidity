@@ -56,14 +56,16 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     // - String fields: 1152 bytes (128 + 256 + 256 + 256 + 256)
     // Total per App: ~1241 bytes
     // Safe limit: ~100KB / 1241 bytes ≈ 100 Apps
-    uint256 private constant MAX_APPS_PER_PAGE = 2; //100;
+    uint256 private constant MAX_APPS_PER_PAGE = 100;
+    //uint256 private constant MAX_APPS_PER_PAGE = 2; //100;
 
     // Maximum number of DIDs to return per page
     // Each DID in array takes: 32 bytes (length) + 128 bytes (content) = 160 bytes
     // Solidity return size limit: 2^24 - 1 bytes (16,777,215 bytes)
     // Safe limit: 16,777,215 / 160 ≈ 100,000 DIDs
     // Using 50,000 as a conservative limit for gas efficiency
-    uint256 private constant MAX_DIDS_PER_PAGE = 5; //50000;
+    uint256 private constant MAX_DIDS_PER_PAGE = 50000;
+    //uint256 private constant MAX_DIDS_PER_PAGE = 5; //50000;
 
     // Maximum length for URLs and DIDs
     uint256 private constant MAX_URL_LENGTH = 256;
