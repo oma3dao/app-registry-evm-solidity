@@ -3,6 +3,17 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import hre from "hardhat";
 
+// Keep these in sync with the constants in the contract
+const ERROR_PREFIX = "AppRegistry Contract Error: ";
+
+// Common error messages
+const ERRORS = {
+  APP_NOT_FOUND: "Application does not exist",
+  NOT_MINTER: "Not the minter",
+  CANNOT_REACTIVATE: "Cannot reactivate replaced application",
+  SOULBOUND: "Apps are soulbound and cannot be transferred or burned"
+};
+
 describe("OMA3AppRegistry", function () {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
@@ -28,7 +39,7 @@ describe("OMA3AppRegistry", function () {
     const apps = [];
     for (let i = 1; i <= numApps; i++) {
       const did = `did:oma3:test${i}`;
-      const name = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i}`));
+      const name = hre.ethers.encodeBytes32String(`Test App ${i}`);
       const dataUrl = `https://data.example.com/app${i}`;
       const iwpsPortalUri = `https://portal.example.com/app${i}`;
       const agentApiUri = `https://api.example.com/app${i}`;
@@ -37,9 +48,7 @@ describe("OMA3AppRegistry", function () {
       await registry.connect(minter1).mint(
         did,
         name,
-        1, // major version
-        0, // minor version
-        0, // patch version
+        hre.ethers.encodeBytes32String("1.0.0"), // version as bytes32
         dataUrl,
         iwpsPortalUri,
         agentApiUri,
@@ -67,28 +76,32 @@ describe("OMA3AppRegistry", function () {
       expect(await config.registry.getTotalApps()).to.equal(0);
     });
 
-    it("getApps should revert when getting apps with no apps registered", async function () {
+    it("getApps should return empty array when getting apps with no apps registered", async function () {
       const config = await loadFixture(deployFixture);
 
-      await expect(config.registry.getApps(1))
-        .to.be.revertedWith("Start token ID out of bounds");
+      const [apps, nextTokenId] = await config.registry.getApps(1);
+      expect(apps).to.be.an('array').that.is.empty;
+      expect(nextTokenId).to.equal(0);
     });
 
-    it("getApps should revert when getting apps with invalid start token ID", async function () {
+    it("getApps should return empty array when getting apps with invalid start token ID", async function () {
       const config = await loadFixture(deployFixture);
 
-      await expect(config.registry.getApps(0))
-        .to.be.revertedWith("Start token ID out of bounds");
+      const [apps1, nextTokenId1] = await config.registry.getApps(0);
+      expect(apps1).to.be.an('array').that.is.empty;
+      expect(nextTokenId1).to.equal(0);
       
-      await expect(config.registry.getApps(2))
-        .to.be.revertedWith("Start token ID out of bounds");
+      const [apps2, nextTokenId2] = await config.registry.getApps(2);
+      expect(apps2).to.be.an('array').that.is.empty;
+      expect(nextTokenId2).to.equal(0);
     });
 
     it("getAppsByStatus should return empty array when getting apps by status with no apps registered", async function () {
       const config = await loadFixture(deployFixture);
 
-      await expect(config.registry.getAppsByStatus(1, 0))
-        .to.be.revertedWith("Start token ID out of bounds");
+      const [apps, nextTokenId] = await config.registry.getAppsByStatus(1, 0);
+      expect(apps).to.be.an('array').that.is.empty;
+      expect(nextTokenId).to.equal(0);
     });
 
     it("getAppsByMinter should return empty array when getting apps by minter with no apps registered", async function () {
@@ -102,14 +115,14 @@ describe("OMA3AppRegistry", function () {
       const config = await loadFixture(deployFixture);
 
       await expect(config.registry.getApp("non-existent-did"))
-        .to.be.revertedWith("Application does not exist");
+        .to.be.revertedWith(ERROR_PREFIX + ERRORS.APP_NOT_FOUND);
     });
 
     it("getDIDDocument should revert when getting DID document with non-existent app", async function () {
       const config = await loadFixture(deployFixture);
 
       await expect(config.registry.getDIDDocument("non-existent-did"))
-        .to.be.revertedWith("Application does not exist");
+        .to.be.revertedWith(ERROR_PREFIX + ERRORS.APP_NOT_FOUND);
     });
   });
 
@@ -191,12 +204,23 @@ describe("OMA3AppRegistry", function () {
       expect(app.did).to.equal(config.apps[0].did);
     });
 
-    it("getDIDDocument should return the DID document when getting DID document", async function () {
+    it("getDIDDocument should include name, version, status and minter in the DID document", async function () {
       const config = await loadFixture(deployFixtureOneApp);
 
       const didDoc = await config.registry.getDIDDocument(config.apps[0].did);
       expect(didDoc).to.be.a('string');
-      expect(didDoc.length).to.be.greaterThan(0);
+      
+      // Parse the DID document
+      const parsedDoc = JSON.parse(didDoc);
+      
+      // Check that the document includes the required fields
+      expect(parsedDoc).to.have.property('id').that.equals(config.apps[0].did);
+      expect(parsedDoc).to.have.property('name').that.is.a('string');
+      expect(parsedDoc).to.have.property('version').that.equals('1.0.0');
+      expect(parsedDoc).to.have.property('status').that.equals(0); // ACTIVE = 0
+      expect(parsedDoc).to.have.property('minter').that.equals(config.minter1.address.toLowerCase());
+      expect(parsedDoc).to.have.property('service').that.is.an('array');
+      expect(parsedDoc.service).to.have.lengthOf(3); // data, iwpsPortal, agentApi
     });
 
     it("updateStatus should allow minter to update app status", async function () {
@@ -211,7 +235,7 @@ describe("OMA3AppRegistry", function () {
       const config = await loadFixture(deployFixtureOneApp);
 
       await expect(config.registry.connect(config.minter2).updateStatus(config.apps[0].did, 1))
-        .to.be.revertedWith("Not the minter");
+        .to.be.revertedWith(ERROR_PREFIX + ERRORS.NOT_MINTER);
     });
 
     it("updateStatus should not allow reactivating replaced app", async function () {
@@ -223,7 +247,7 @@ describe("OMA3AppRegistry", function () {
       await config.registry.connect(config.minter1).updateStatus(config.apps[0].did, 2); // REPLACED
       // Try to reactivate it
       await expect(config.registry.connect(config.minter1).updateStatus(config.apps[0].did, 0))
-        .to.be.revertedWith("Cannot reactivate replaced application");
+        .to.be.revertedWith(ERROR_PREFIX + ERRORS.CANNOT_REACTIVATE);
     });
 
     it("getAppsByStatus should return array with correct size when getting apps by status", async function () {

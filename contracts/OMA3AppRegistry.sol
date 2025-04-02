@@ -4,12 +4,15 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title OMA3AppRegistry
  * @dev Registry for OMA3 applications using ERC721 tokens
  */
 contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
+    using Strings for uint256;
+    using Strings for address;
 
     // Application status enum
     enum AppStatus {
@@ -18,23 +21,16 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         REPLACED
     }
 
-    // Version struct for semantic versioning
-    struct Version {
-        uint8 major;
-        uint8 minor;
-        uint8 patch;
-    }
-
     // App struct to store all fields
     struct App {
         bytes32 name;        // 32 bytes - Application name
+        bytes32 version;      // Version string in format x.y.z or x.y
         string did;          // 32 bytes - Decentralized Identifier
         string dataUrl;      // 32 bytes - General data URL
         string iwpsPortalUri; // 32 bytes - IWPS Portal URI
         string agentApiUri;   // 32 bytes - Agent API URI
         string contractAddress; // 32 bytes - Optional CAIP-2 compatible contract address
         address minter;      // 20 bytes - Address that minted the application
-        Version version;     // 3 bytes - Application version
         AppStatus status;    // 1 byte - Current status (active/deprecated/replaced)
         bool hasContract;    // 1 byte - Flag to indicate if contractAddress is set
         // 7 bytes padding at the end for future upgrades
@@ -57,7 +53,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     // Total per App: ~1241 bytes
     // Safe limit: ~100KB / 1241 bytes ≈ 100 Apps
     uint256 private constant MAX_APPS_PER_PAGE = 100;
-    //uint256 private constant MAX_APPS_PER_PAGE = 2; //100;
+    //uint256 private constant MAX_APPS_PER_PAGE = 2;
 
     // Maximum number of DIDs to return per page
     // Each DID in array takes: 32 bytes (length) + 128 bytes (content) = 160 bytes
@@ -65,11 +61,14 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     // Safe limit: 16,777,215 / 160 ≈ 100,000 DIDs
     // Using 50,000 as a conservative limit for gas efficiency
     uint256 private constant MAX_DIDS_PER_PAGE = 50000;
-    //uint256 private constant MAX_DIDS_PER_PAGE = 5; //50000;
+    //uint256 private constant MAX_DIDS_PER_PAGE = 5;
 
     // Maximum length for URLs and DIDs
     uint256 private constant MAX_URL_LENGTH = 256;
     uint256 private constant MAX_DID_LENGTH = 128;
+    
+    // Error message prefix
+    string private constant ERROR_PREFIX = "AppRegistry Contract Error: ";
 
     // Token ID configuration - using 1-based token IDs
     uint256 private _totalTokens; // Total number of tokens minted (also used as the next token ID)
@@ -87,9 +86,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      * @dev Public function to mint a new application token
      * @param did The DID of the application
      * @param name The name of the application
-     * @param major Major version number
-     * @param minor Minor version number
-     * @param patch Patch version number
+     * @param version The version string in format "x.y.z" or "x.y" (as bytes32)
      * @param dataUrl General data URL
      * @param iwpsPortalUri IWPS Portal URI
      * @param agentApiUri Agent API URI
@@ -99,21 +96,20 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     function mint(
         string memory did,
         bytes32 name,
-        uint8 major,
-        uint8 minor,
-        uint8 patch,
+        bytes32 version,
         string memory dataUrl,
         string memory iwpsPortalUri,
         string memory agentApiUri,
         string memory contractAddress
     ) public nonReentrant returns (uint256) {
-        require(_didToTokenId[did] == 0, "DID already exists");
-        require(name != bytes32(0), "Name cannot be empty");
-        require(bytes(did).length <= MAX_DID_LENGTH, "DID too long");
-        require(bytes(dataUrl).length <= MAX_URL_LENGTH, "Data URL too long");
-        require(bytes(iwpsPortalUri).length <= MAX_URL_LENGTH, "IWPS Portal URI too long");
-        require(bytes(agentApiUri).length <= MAX_URL_LENGTH, "Agent API URI too long");
-        require(bytes(contractAddress).length <= MAX_URL_LENGTH, "Contract address too long");
+        require(_didToTokenId[did] == 0, string(abi.encodePacked(ERROR_PREFIX, "DID already exists")));
+        require(name != bytes32(0), string(abi.encodePacked(ERROR_PREFIX, "Name cannot be empty")));
+        require(bytes(did).length <= MAX_DID_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "DID too long")));
+        require(bytes(dataUrl).length <= MAX_URL_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "Data URL too long")));
+        require(bytes(iwpsPortalUri).length <= MAX_URL_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "IWPS Portal URI too long")));
+        require(bytes(agentApiUri).length <= MAX_URL_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "Agent API URI too long")));
+        require(bytes(contractAddress).length <= MAX_URL_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "Contract address too long")));
+        require(version != bytes32(0), string(abi.encodePacked(ERROR_PREFIX, "Version cannot be empty")));
         
         _totalTokens++;
         uint256 newTokenId = _totalTokens;
@@ -121,16 +117,16 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         _mint(msg.sender, newTokenId);
 
         _apps[newTokenId] = App({
-            did: did,
             name: name,
-            version: Version(major, minor, patch),
-            status: AppStatus.ACTIVE,
+            version: version,
+            did: did,
             dataUrl: dataUrl,
             iwpsPortalUri: iwpsPortalUri,
             agentApiUri: agentApiUri,
+            contractAddress: contractAddress,
             minter: msg.sender,
-            hasContract: bytes(contractAddress).length > 0,
-            contractAddress: contractAddress
+            status: AppStatus.ACTIVE,
+            hasContract: bytes(contractAddress).length > 0
         });
 
         _didToTokenId[did] = newTokenId;
@@ -147,9 +143,10 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      */
     function updateStatus(string memory did, AppStatus newStatus) public {
         uint256 tokenId = _didToTokenId[did];
-        require(tokenId != 0, "Application does not exist");
-        require(_apps[tokenId].minter == msg.sender, "Not the minter");
-        require(newStatus != AppStatus.ACTIVE || _apps[tokenId].status != AppStatus.REPLACED, "Cannot reactivate replaced application");
+        require(tokenId != 0, string(abi.encodePacked(ERROR_PREFIX, "Application does not exist")));
+        require(_apps[tokenId].minter == msg.sender, string(abi.encodePacked(ERROR_PREFIX, "Not the minter")));
+        require(newStatus != AppStatus.ACTIVE || _apps[tokenId].status != AppStatus.REPLACED, 
+            string(abi.encodePacked(ERROR_PREFIX, "Cannot reactivate replaced application")));
         
         _apps[tokenId].status = newStatus;
         emit ApplicationStatusUpdated(tokenId, newStatus);
@@ -172,7 +169,10 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      * @return nextTokenId The next token ID to use for the next call (0 if no more apps)
      */
     function getAppsByStatus(uint256 startFromTokenId, AppStatus status) public view returns (App[] memory apps, uint256 nextTokenId) {
-        require(startFromTokenId > 0 && startFromTokenId <= _totalTokens, "Start token ID out of bounds");
+        // Return empty array if no tokens exist or start token ID is out of bounds
+        if (_totalTokens == 0 || startFromTokenId == 0 || startFromTokenId > _totalTokens) {
+            return (new App[](0), 0);
+        }
         
         App[] memory tempApps = new App[](MAX_APPS_PER_PAGE);
         uint256 returnIndex = 0;
@@ -219,6 +219,11 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      * @return nextTokenId The next token ID to use for the next call (0 if no more apps)
      */
     function getAppDIDsByStatus(uint256 startFromTokenId, AppStatus status) public view returns (string[] memory dids, uint256 nextTokenId) {
+        // Return empty array if no tokens exist or start token ID is out of bounds
+        if (_totalTokens == 0 || startFromTokenId == 0 || startFromTokenId > _totalTokens) {
+            return (new string[](0), 0);
+        }
+        
         string[] memory tempDIDs = new string[](MAX_DIDS_PER_PAGE);
         uint256 returnIndex = 0;
         uint256 currentTokenId = startFromTokenId;
@@ -286,7 +291,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      */
     function getApp(string memory did) public view returns (App memory) {
         uint256 tokenId = _didToTokenId[did];
-        require(tokenId != 0, "Application does not exist");
+        require(tokenId != 0, string(abi.encodePacked(ERROR_PREFIX, "Application does not exist")));
         return _apps[tokenId];
     }
 
@@ -306,29 +311,80 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      * @return The DID Document as a JSON string
      */
     function formatDIDDocument(App memory app) internal pure returns (string memory) {
-        // Construct DID Document
-        string memory verificationMethod = "";
+        // Start with basic properties
+        string memory document = string(abi.encodePacked(
+            '{"@context":"https://www.w3.org/ns/did/v1"',
+            ',"id":"', app.did, '"',
+            ',"name":"', bytes32ToString(app.name), '"',
+            ',"version":"', bytes32ToString(app.version), '"',
+            ',"status":', uint256(app.status).toString(),
+            ',"minter":"', toLowerHexString(app.minter), '"'
+        ));
+        
+        // Add service endpoints
+        document = string(abi.encodePacked(
+            document,
+            ',"service":[',
+            '{"id":"#data","type":"URL","serviceEndpoint":"', app.dataUrl, '"}',
+            ',{"id":"#iwpsPortal","type":"URL","serviceEndpoint":"', app.iwpsPortalUri, '"}',
+            ',{"id":"#agentApi","type":"URL","serviceEndpoint":"', app.agentApiUri, '"}',
+            ']'
+        ));
+        
+        // Add verification method if contract exists
         if (app.hasContract) {
-            verificationMethod = string(abi.encodePacked(
-                '{"id": "', app.did, '#contract",',
-                '"type": "EcdsaSecp256k1VerificationKey2019",',
-                '"controller": "', app.did, '",',
-                '"publicKeyMultibase": "', app.contractAddress, '"',
-                '}'
+            document = string(abi.encodePacked(
+                document,
+                ',"verificationMethod":[',
+                '{"id":"', app.did, '#contract"',
+                ',"type":"EcdsaSecp256k1VerificationKey2019"',
+                ',"controller":"', app.did, '"',
+                ',"publicKeyMultibase":"', app.contractAddress, '"}',
+                ']'
             ));
         }
+        
+        // Close the JSON object
+        document = string(abi.encodePacked(document, '}'));
+        
+        return document;
+    }
 
-        return string(abi.encodePacked(
-            '{"@context": "https://www.w3.org/ns/did/v1",',
-            '"id": "', app.did, '",',
-            '"service": [',
-            '{"id": "#data", "type": "URL", "serviceEndpoint": "', app.dataUrl, '"}',
-            ',{"id": "#iwpsPortal", "type": "URL", "serviceEndpoint": "', app.iwpsPortalUri, '"}',
-            ',{"id": "#agentApi", "type": "URL", "serviceEndpoint": "', app.agentApiUri, '"}',
-            ']',
-            app.hasContract ? string(abi.encodePacked(',"verificationMethod": [', verificationMethod, ']')) : '',
-            '}'
-        ));
+    /**
+     * @dev Convert bytes32 to string using OpenZeppelin's approach
+     * @param _bytes32 The bytes32 to convert
+     * @return The string representation
+     */
+    function bytes32ToString(bytes32 _bytes32) internal pure returns (string memory) {
+        // If the bytes32 value is empty, return an empty string
+        if (_bytes32 == bytes32(0)) {
+            return "";
+        }
+        
+        // Convert to bytes and find the length (first null byte)
+        bytes memory bytesValue = abi.encodePacked(_bytes32);
+        uint256 length = 0;
+        
+        // Find string length (position of first 0 byte)
+        for (uint256 i = 0; i < 32; i++) {
+            if (bytesValue[i] == 0) {
+                length = i;
+                break;
+            }
+            if (i == 31) {
+                length = 32; // No null terminator found
+            }
+        }
+        
+        // Create a properly sized bytes array
+        bytes memory resultBytes = new bytes(length);
+        
+        // Copy only the valid bytes
+        for (uint256 i = 0; i < length; i++) {
+            resultBytes[i] = bytesValue[i];
+        }
+        
+        return string(resultBytes);
     }
 
     /**
@@ -340,8 +396,18 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         address auth
     ) internal virtual override returns (address) {
         // Only allow minting (auth == address(0))
-        require(auth == address(0), "Apps are soulbound and cannot be transferred or burned");
+        require(auth == address(0), string(abi.encodePacked(ERROR_PREFIX, "Apps are soulbound and cannot be transferred or burned")));
         return super._update(to, tokenId, auth);
+    }
+
+    /**
+     * @dev Convert address to lowercase hexadecimal string
+     * @param addr The address to convert
+     * @return The lowercase hexadecimal string representation (0x prefix + 40 lowercase chars)
+     */
+    function toLowerHexString(address addr) internal pure returns (string memory) {
+        // OpenZeppelin's toHexString already produces lowercase output
+        return Strings.toHexString(uint256(uint160(addr)), 20);
     }
 
 }
