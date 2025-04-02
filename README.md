@@ -53,6 +53,26 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
 # Or manually open the file and copy the "abi" array
 ```
 
+## Testing the Contract
+
+1. Change the MAX_APPS_PER_PAGE and MAX_DIDS_PER_PAGE to more testable numbers by changing the line comments appropriately
+
+2. Compile
+   ```bash
+   npx hardhat compile
+   ```
+
+3. Run scripts
+   ```bash
+   npx hardhat test
+   ```
+4. Change the MAX_APPS_PER_PAGE and MAX_DIDS_PER_PAGE back to production values
+
+5. Compile again
+   ```bash
+   npx hardhat compile
+   ```
+
 ## Deploying the Contract
 
 1. **Setup environment**:
@@ -73,6 +93,7 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
    ```bash
    npx hardhat verify --network celoAlfajores <CONTRACT_ADDRESS>
    ```
+4. Make note of the new contract address and update other projects accordingly
 
 ## Interacting with the Contract
 
