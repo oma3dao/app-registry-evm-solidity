@@ -1,21 +1,21 @@
 {
-  "name": "app-registry",
+  "name": "app-registry-evm-solidity",
   "version": "1.0.0",
-  "description": "OMA3 Application Registry Solidity",
+  "description": "OMA3 Application Registry (EVM/Solidity)",
   "main": "index.js",
   "scripts": {
     "test": "test"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oma3dao/app-registry.git"
+    "url": "git+https://github.com/oma3dao/app-registry-evm-solidity.git"
   },
   "author": "Alfred Tom - Wivity",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/oma3dao/app-registry/issues"
+    "url": "https://github.com/oma3dao/app-registry-evm-solidity/issues"
   },
-  "homepage": "https://github.com/oma3dao/app-registry#readme",
+  "homepage": "https://github.com/oma3dao/app-registry-evm-solidity#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.22.19"
