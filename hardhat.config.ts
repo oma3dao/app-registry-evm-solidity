@@ -4,6 +4,14 @@ import { config as dotenvConfig } from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Load environment variables from .env file
+dotenvConfig();
+
+// Import task files
+require('./tasks/getApp');
+require('./tasks/getAppsByMinter');
+require('./tasks/getApps');
+
 // Load deployment key from SSH directory
 const deploymentKeyPath = path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
 if (fs.existsSync(deploymentKeyPath)) {
