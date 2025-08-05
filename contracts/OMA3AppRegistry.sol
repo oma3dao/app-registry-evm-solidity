@@ -4,411 +4,697 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+
 
 /**
  * @title OMA3AppRegistry
  * @dev Registry for OMA3 applications using ERC721 tokens
  */
 contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
-    using Strings for uint256;
-    using Strings for address;
 
-    // Application status enum
-    enum AppStatus {
-        ACTIVE,
-        DEPRECATED,
-        REPLACED
+    // Version struct for efficient storage and comparison
+    struct Version {
+        uint8 major;
+        uint8 minor;
+        uint8 patch;
     }
 
-    // App struct to store all fields
+    // App struct optimized for gas efficiency
+    // Immutable fields: minter, versionMajor, did, fungibleTokenId, contractId
+    // Mutable fields: interfaces, status, dataHashAlgorithm, dataHash, dataUrl, versionHistory, keywordHashes
     struct App {
-        bytes32 name;        // 32 bytes - Application name
-        bytes32 version;      // Version string in format x.y.z or x.y
-        string did;          // 32 bytes - Decentralized Identifier
-        string dataUrl;      // 32 bytes - General data URL
-        string iwpsPortalUri; // 32 bytes - IWPS Portal URI
-        string agentApiUri;   // 32 bytes - Agent API URI
-        string contractAddress; // 32 bytes - Optional CAIP-2 compatible contract address
-        address minter;      // 20 bytes - Address that minted the application
-        AppStatus status;    // 1 byte - Current status (active/deprecated/replaced)
-        bool hasContract;    // 1 byte - Flag to indicate if contractAddress is set
-        // 7 bytes padding at the end for future upgrades
+        // Slot 1 (32 bytes)
+        address minter;                // 20 bytes - Original creator/minter (immutable)
+        uint16 interfaces;             // 2 bytes - Interface bitmap (1=human, 2=api, 4=mcp. Can combine: 5=human+mcp) (mutable)
+        uint8 versionMajor;            // 1 byte - Major version number of this NFT (immutable)
+        uint8 status;                  // 1 byte - Status (0=active, 1=deprecated, 2=replaced)
+        uint8 dataHashAlgorithm;       // 1 byte - Hash algorithm (0=keccak256, 1=sha256)
+        // 7 bytes padding
+        
+        bytes32 dataHash;              // 32 bytes - Hash of JSON data
+        
+        // Dynamic fields (separate slots)
+        string did;                    // DID as string (immutable)
+        string fungibleTokenId;        // CAIP-19 token ID (immutable)
+        string contractId;             // CAIP-10 contract address (immutable)
+        string dataUrl;                // URL to off-chain data
+        Version[] versionHistory;      // Array of version structs
+        bytes32[] keywordHashes;       // Array of keyword hashes
     }
 
-    // Mapping from token ID to App
-    mapping(uint256 => App) private _apps;
-    
-    // Mapping from DID to token ID
-    mapping(string => uint256) private _didToTokenId;
-    
-    // Mapping from minter to array of token IDs
-    mapping(address => uint256[]) private _minterToTokenIds;
-    
-    // Maximum number of apps to return per page
-    // Limited to 100 for developer convenience while staying within reasonable limits
-    // Each App struct contains:
-    // - Fixed size fields: 89 bytes
-    // - String fields: 1152 bytes (128 + 256 + 256 + 256 + 256)
-    // Total per App: ~1241 bytes
-    // Safe limit: ~100KB / 1241 bytes ≈ 100 Apps
-    uint256 private constant MAX_APPS_PER_PAGE = 100;
-    //uint256 private constant MAX_APPS_PER_PAGE = 2;
+    // Custom errors for gas efficiency
+    error DIDCannotBeEmpty();                      // DID string cannot be empty
+    error DIDTooLong(uint256 length);             // DID exceeds MAX_DID_LENGTH
+    error InvalidDataHashAlgorithm(uint8 algorithm); // Unsupported hash algorithm value
+    error InterfacesCannotBeEmpty();              // Interface bitmap cannot be 0
+    error DataUrlTooLong(uint256 length);         // Data URL exceeds MAX_URL_LENGTH
+    error DataUrlCannotBeEmpty();                 // Data URL cannot be empty
+    error FungibleTokenIdTooLong(uint256 length); // Fungible token ID exceeds MAX_URL_LENGTH
+    error ContractIdTooLong(uint256 length);      // Contract ID exceeds MAX_URL_LENGTH
+    error TooManyKeywords(uint256 count);         // Keyword array exceeds MAX_KEYWORDS limit
+    error AppNotFound(string did, uint8 major);   // No app found for the given DID and major version
+    error NotAppOwner(string did, uint8 major);   // Caller is not the owner of this app version
+    error InvalidVersion(uint8 major, uint8 minor, uint8 patch); // Attempted to add a version that is not higher than the last
+    error MajorVersionChangeRequiresNewMint(string did, uint8 currentMajor, uint8 attemptedMajor); // Major version changes require minting a new NFT
+    error DIDMajorAlreadyExists(string did, uint8 major); // This (DID, major) tuple already exists
+    error NewDIDRequired(string reason);         // Need new DID for this change
+    error MinorIncrementRequired(uint8 currentMinor, uint8 attemptedMinor); // Interface changes require minor version increment
+    error PatchIncrementRequired(uint8 currentPatch, uint8 attemptedPatch); // Data changes require patch version increment (unless minor++)
+    error InterfaceRemovalNotAllowed(uint16 current, uint16 attempted); // Interface changes must be additive only
+    error NoChangesSpecified();                  // No changes detected in update call
+    error DIDHashNotFound(bytes32 didHash);     // No app found for the given DID hash
+    error DataHashRequiredForKeywordChange();   // New data hash required when updating keywords
 
-    // Maximum number of DIDs to return per page
-    // Each DID in array takes: 32 bytes (length) + 128 bytes (content) = 160 bytes
-    // Solidity return size limit: 2^24 - 1 bytes (16,777,215 bytes)
-    // Safe limit: 16,777,215 / 160 ≈ 100,000 DIDs
-    // Using 50,000 as a conservative limit for gas efficiency
-    uint256 private constant MAX_DIDS_PER_PAGE = 50000;
-    //uint256 private constant MAX_DIDS_PER_PAGE = 5;
 
-    // Maximum length for URLs and DIDs
-    uint256 private constant MAX_URL_LENGTH = 256;
+    // Storage
+    // Inherited ERC721 storage:
+    // - mapping(uint256 => address) _owners;              // tokenId => current owner
+    // - mapping(address => uint256) _balances;            // owner => token count  
+    // - mapping(uint256 => address) _tokenApprovals;      // tokenId => approved address
+    // - mapping(address => mapping(address => bool)) _operatorApprovals; // owner => operator approvals
+    
+    // Our custom storage:
+    mapping(uint256 => App) private _apps; // tokenId => App data
+    mapping(bytes32 => mapping(uint8 => uint256)) private _didMajorToToken; // DID hash + major version => token ID
+    mapping(bytes32 => string) private _didToFungibleTokenId; // DID hash => fungible token ID (for consistency validation)
+    mapping(bytes32 => uint8) private _didToLatestMajor; // DID hash => highest major version (for O(1) lookup)
+    mapping(bytes32 => bool) private _didExists; // DID hash => exists flag (to handle version 0.x.x)
+    mapping(address => uint256[]) private _ownerToTokenIds; // Owner to token IDs
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+    // STORAGE MAPPINGS FOR EFFICIENT QUERIES
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+    
+    // Active app indexing for efficient queries (optimizes the common case)
+    uint256[] private _activeTokenIds; // Array of active app token IDs
+    mapping(uint256 => uint256) private _activeTokenIdToIndex; // tokenId => index in _activeTokenIds array
+
+    // Registration tracking for bounded event log queries
+    mapping(bytes32 => uint256) public registrationBlock; // DID hash => block number when first registered
+    mapping(bytes32 => uint256) public registrationTimestamp; // DID hash => timestamp when first registered
+
+
+    // Constants
     uint256 private constant MAX_DID_LENGTH = 128;
-    
-    // Error message prefix
-    string private constant ERROR_PREFIX = "AppRegistry Contract Error: ";
+    uint256 private constant MAX_URL_LENGTH = 256;
+    uint256 private constant MAX_KEYWORDS = 20;
+    uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
 
-    // Token ID configuration - using 1-based token IDs
-    uint256 private _totalTokens; // Total number of tokens minted (also used as the next token ID)
+    // Token ID counter
+    // Note: OpenZeppelin ERC721 does not include totalSupply tracking
+    // (ERC721Enumerable extension would add this but with higher gas costs)
+    uint256 private _totalTokens; // Our custom counter for sequential token IDs and total supply
 
-    // Events
-    event ApplicationMinted(uint256 indexed tokenId, string indexed did, address indexed minter);
-    event ApplicationStatusUpdated(uint256 indexed tokenId, AppStatus status);
+    // Events (indexed by didHash + major + tokenId for both DID-based and NFT ecosystem compatibility)
+    // Note: For cross-chain DID resolution, use the canonical OMA3 deduplicator on OMAChain
+    event AppMinted(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, address minter, uint16 interfaces, uint256 registrationBlock, uint256 registrationTimestamp);
+    event StatusUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 newStatus, uint256 timestamp);
+    event DataUrlUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, string newDataUrl, bytes32 newDataHash, uint8 dataHashAlgorithm);
+    event VersionAdded(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 minor, uint8 patch);
+    event KeywordsUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, bytes32[] newKeywordHashes);
+    event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint16 newInterfaces);
 
-    constructor() ERC721("OMA3 App Registry", "OMA3APP") Ownable(msg.sender) {
-        // TODO: Set base URI when we have the correct URL
-        // _baseURI = "https://api.example.com/metadata/"; // Example URL
-    }
+    constructor() ERC721("OMA3 App Registry", "OMA3APP") Ownable(msg.sender) {}
 
-     /**
-     * @dev Public function to mint a new application token
-     * @param did The DID of the application
-     * @param name The name of the application
-     * @param version The version string in format "x.y.z" or "x.y" (as bytes32)
-     * @param dataUrl General data URL
-     * @param iwpsPortalUri IWPS Portal URI
-     * @param agentApiUri Agent API URI
-     * @param contractAddress Optional CAIP-2 compatible contract address. Pass empty string ("") if no contract.
-     * @return The token ID of the newly minted application
+    /**
+     * @dev Helper function to convert DID string to hash
+     * @param didString The DID as string
+     * @return didHash The keccak256 hash of the DID
      */
-    function mint(
-        string memory did,
-        bytes32 name,
-        bytes32 version,
-        string memory dataUrl,
-        string memory iwpsPortalUri,
-        string memory agentApiUri,
-        string memory contractAddress
-    ) public nonReentrant returns (uint256) {
-        require(_didToTokenId[did] == 0, string(abi.encodePacked(ERROR_PREFIX, "DID already exists")));
-        require(name != bytes32(0), string(abi.encodePacked(ERROR_PREFIX, "Name cannot be empty")));
-        require(bytes(did).length <= MAX_DID_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "DID too long")));
-        require(bytes(dataUrl).length <= MAX_URL_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "Data URL too long")));
-        require(bytes(iwpsPortalUri).length <= MAX_URL_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "IWPS Portal URI too long")));
-        require(bytes(agentApiUri).length <= MAX_URL_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "Agent API URI too long")));
-        require(bytes(contractAddress).length <= MAX_URL_LENGTH, string(abi.encodePacked(ERROR_PREFIX, "Contract address too long")));
-        require(version != bytes32(0), string(abi.encodePacked(ERROR_PREFIX, "Version cannot be empty")));
-        
-        _totalTokens++;
-        uint256 newTokenId = _totalTokens;
-
-        _mint(msg.sender, newTokenId);
-
-        _apps[newTokenId] = App({
-            name: name,
-            version: version,
-            did: did,
-            dataUrl: dataUrl,
-            iwpsPortalUri: iwpsPortalUri,
-            agentApiUri: agentApiUri,
-            contractAddress: contractAddress,
-            minter: msg.sender,
-            status: AppStatus.ACTIVE,
-            hasContract: bytes(contractAddress).length > 0
-        });
-
-        _didToTokenId[did] = newTokenId;
-        _minterToTokenIds[msg.sender].push(newTokenId);
-
-        emit ApplicationMinted(newTokenId, did, msg.sender);
-        return newTokenId;
+    function getDidHash(string memory didString) public pure returns (bytes32) {
+        return keccak256(bytes(didString));
     }
 
     /**
-     * @dev Updates the status of an application
-     * @param did The DID of the application
-     * @param newStatus The new status to set
+     * @dev Helper function to resolve DID + major version to token ID
+     * @param didString The DID as string
+     * @param major The major version
+     * @return tokenId The token ID for this DID + major version
      */
-    function updateStatus(string memory did, AppStatus newStatus) public {
-        uint256 tokenId = _didToTokenId[did];
-        require(tokenId != 0, string(abi.encodePacked(ERROR_PREFIX, "Application does not exist")));
-        require(_apps[tokenId].minter == msg.sender, string(abi.encodePacked(ERROR_PREFIX, "Not the minter")));
-        require(newStatus != AppStatus.ACTIVE || _apps[tokenId].status != AppStatus.REPLACED, 
-            string(abi.encodePacked(ERROR_PREFIX, "Cannot reactivate replaced application")));
-        
-        _apps[tokenId].status = newStatus;
-        emit ApplicationStatusUpdated(tokenId, newStatus);
+    function _resolveToken(string memory didString, uint8 major) internal view returns (uint256) {
+        bytes32 didHash = getDidHash(didString);
+        return _resolveTokenByHash(didHash, major);
     }
 
     /**
-     * @dev Helper function to calculate the next token ID for pagination
-     * @param currentTokenId The current token ID
-     * @return The next token ID to use for the next call (0 if no more apps)
+     * @dev Helper function to resolve DID hash + major version to token ID
+     * @param didHash The DID hash
+     * @param major The major version
+     * @return tokenId The token ID for this DID + major version
      */
-    function calculateNextTokenId(uint256 currentTokenId) internal view returns (uint256) {
-        return (currentTokenId <= _totalTokens) ? currentTokenId : 0;
+    function _resolveTokenByHash(bytes32 didHash, uint8 major) internal view returns (uint256) {
+        return _didMajorToToken[didHash][major];
     }
 
     /**
-     * @dev Returns applications with a specific status, starting from a given token ID
-     * @param startFromTokenId The token ID to start from (1 for first call)
-     * @param status The status to filter by
-     * @return apps Array of App structs
-     * @return nextTokenId The next token ID to use for the next call (0 if no more apps)
+     * @dev Validate keyword constraints (shared by mint and update functions)
+     * @param keywordHashes Array of keyword hashes to validate
      */
-    function getAppsByStatus(uint256 startFromTokenId, AppStatus status) public view returns (App[] memory apps, uint256 nextTokenId) {
-        // Return empty array if no tokens exist or start token ID is out of bounds
-        if (_totalTokens == 0 || startFromTokenId == 0 || startFromTokenId > _totalTokens) {
-            return (new App[](0), 0);
+    function _validateKeywords(bytes32[] memory keywordHashes) internal pure {
+        if (keywordHashes.length > MAX_KEYWORDS) {
+            revert TooManyKeywords(keywordHashes.length);
         }
-        
-        App[] memory tempApps = new App[](MAX_APPS_PER_PAGE);
-        uint256 returnIndex = 0;
-        uint256 currentTokenId = startFromTokenId;
-        
-        while (currentTokenId <= _totalTokens && returnIndex < MAX_APPS_PER_PAGE) {
-            if (_apps[currentTokenId].status == status) {
-                tempApps[returnIndex] = _apps[currentTokenId];
-                returnIndex++;
-            }
-            currentTokenId++;
-        }
-        
-        // Create new array with exact size needed and copy matching apps
-        if (returnIndex == MAX_APPS_PER_PAGE) {
-            apps = tempApps;
-        } else {
-            apps = new App[](returnIndex);
-            for (uint256 i = 0; i < returnIndex; i++) {
-                apps[i] = tempApps[i];
-            }
-        }
-        
-        // Continue pagination if we've filled the page and haven't reached the end
-        nextTokenId = calculateNextTokenId(currentTokenId);
-        return (apps, nextTokenId);
-    }
-
-   /**
-     * @dev Returns active applications, starting from a given token ID
-     * @param startFromTokenId The token ID to start from (1 for first call)
-     * @return apps Array of App structs
-     * @return nextTokenId The next token ID to use for the next call (0 if no more apps)
-     */
-    function getApps(uint256 startFromTokenId) public view returns (App[] memory apps, uint256 nextTokenId) {
-        return getAppsByStatus(startFromTokenId, AppStatus.ACTIVE);
     }
 
     /**
-     * @dev Returns paginated DIDs with a specific status
-     * @param startFromTokenId The token ID to start from (1 for first call)
-     * @param status The status to filter by
-     * @return dids Array of DIDs
-     * @return nextTokenId The next token ID to use for the next call (0 if no more apps)
+     * @dev Get the latest (highest) major version for a DID hash
+     * @param didHash The DID hash (keccak256 of DID string)
+     * @return major The highest major version number for this DID
      */
-    function getAppDIDsByStatus(uint256 startFromTokenId, AppStatus status) public view returns (string[] memory dids, uint256 nextTokenId) {
-        // Return empty array if no tokens exist or start token ID is out of bounds
-        if (_totalTokens == 0 || startFromTokenId == 0 || startFromTokenId > _totalTokens) {
-            return (new string[](0), 0);
-        }
-        
-        string[] memory tempDIDs = new string[](MAX_DIDS_PER_PAGE);
-        uint256 returnIndex = 0;
-        uint256 currentTokenId = startFromTokenId;
-        
-        while (currentTokenId <= _totalTokens && returnIndex < MAX_DIDS_PER_PAGE) {
-            if (_apps[currentTokenId].status == status) {
-                tempDIDs[returnIndex] = _apps[currentTokenId].did;
-                returnIndex++;
-            }
-            currentTokenId++;
-        }
-        
-        if (returnIndex == MAX_DIDS_PER_PAGE) {
-            dids = tempDIDs;
-        } else {
-            dids = new string[](returnIndex);
-            for (uint256 i = 0; i < returnIndex; i++) {
-                dids[i] = tempDIDs[i];
-            }
-        }
-        
-        // Continue pagination if we've filled the page and haven't reached the end
-        nextTokenId = calculateNextTokenId(currentTokenId);
-        return (dids, nextTokenId);
+    function latestMajor(bytes32 didHash) external view returns (uint8) {
+        if (!_didExists[didHash]) revert DIDHashNotFound(didHash);
+        return _didToLatestMajor[didHash];
+    }
+
+    /// @notice Ensures only the current NFT owner can perform the action
+    modifier onlyAppOwner(string memory didString, uint8 major) {
+        uint256 tokenId = _resolveToken(didString, major);
+        if (tokenId == 0) revert AppNotFound(didString, major);
+        if (ownerOf(tokenId) != msg.sender) revert NotAppOwner(didString, major);
+        _;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+    // ERC721 COMPATIBILITY FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * @dev Get DID by token ID (standard token → metadata resolution pattern)
+     * @param tokenId The token ID to query
+     * @return The DID string for the given token
+     */
+    function getDIDByTokenId(uint256 tokenId) external view returns (string memory) {
+        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
+        return _apps[tokenId].did;
     }
 
     /**
-     * @dev Returns paginated application DIDs
-     * @param startFromTokenId The token ID to start from (1 for first call)
-     * @return dids Array of DIDs
-     * @return nextTokenId The next token ID to use for the next call (0 if no more apps)
+     * @dev Returns the total number of tokens (ERC721Enumerable compatibility)
+     * @return Total supply of minted tokens
      */
-    function getAppDIDs(uint256 startFromTokenId) public view returns (string[] memory dids, uint256 nextTokenId) {
-        return getAppDIDsByStatus(startFromTokenId, AppStatus.ACTIVE);
-    }
-
-    /**
-     * @dev Returns the total number of applications
-     * @return The total number of applications
-     */
-    function getTotalApps() public view returns (uint256) {
+    function totalSupply() public view returns (uint256) {
         return _totalTokens;
     }
 
+
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+    // INHERITED FUNCTIONS FROM OPENZEPPELIN
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+    // 
+    // From ERC721:
+    // - function ownerOf(uint256 tokenId) external view returns (address)
+    // - function balanceOf(address owner) external view returns (uint256)
+    // - function approve(address to, uint256 tokenId) external
+    // - function getApproved(uint256 tokenId) external view returns (address)
+    // - function setApprovalForAll(address operator, bool approved) external
+    // - function isApprovedForAll(address owner, address operator) external view returns (bool)
+    // - function transferFrom(address from, address to, uint256 tokenId) external
+    // - function safeTransferFrom(address from, address to, uint256 tokenId) external
+    // - function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external
+    // - function supportsInterface(bytes4 interfaceId) external view returns (bool)
+    // - function tokenURI(uint256 tokenId) external view returns (string memory)
+    //
+    // From Ownable:
+    // - function owner() external view returns (address)
+    // - function transferOwnership(address newOwner) external
+    // - function renounceOwnership() external
+    //
+    // From ReentrancyGuard:
+    // - modifier nonReentrant (already used in mint function)
+    //
+    // NOTE: Version changes are only possible through updateAppControlled() with actual content changes.
+    // This ensures transparency - versions cannot be bumped without corresponding metadata updates.
+    // The dataUrl JSON specification includes version field that must sync with on-chain version.
+    //
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+
     /**
-     * @dev Returns all applications minted by a specific address
-     * @param minter The address of the minter
-     * @return Array of App structs
+     * @dev Mint a new application token
+     * @param didString The DID as string
+     * @param interfaces Bitmap of supported interfaces
+     * @param dataUrl URL to off-chain metadata
+     * @param dataHash Hash of the off-chain data
+     * @param dataHashAlgorithm Algorithm used for dataHash
+     * @param fungibleTokenId Optional CAIP-19 token ID
+     * @param contractId Optional CAIP-10 contract address
+     * @param initialVersionMajor Initial version major number
+     * @param initialVersionMinor Initial version minor number  
+     * @param initialVersionPatch Initial version patch number
+     * @param keywordHashes Array of keyword hashes for tagging
+     * @return tokenId The newly minted token ID
      */
-    function getAppsByMinter(address minter) public view returns (App[] memory) {
-        uint256[] memory tokenIds = _minterToTokenIds[minter];
-        App[] memory apps = new App[](tokenIds.length);
+    function mint(
+        string memory didString,
+        uint16 interfaces,
+        string memory dataUrl,
+        bytes32 dataHash,
+        uint8 dataHashAlgorithm,
+        string memory fungibleTokenId,
+        string memory contractId,
+        uint8 initialVersionMajor,
+        uint8 initialVersionMinor,
+        uint8 initialVersionPatch,
+        bytes32[] memory keywordHashes
+    ) external nonReentrant returns (uint256) {
+        // Validations
+        if (bytes(didString).length == 0) revert DIDCannotBeEmpty();
+        if (bytes(didString).length > MAX_DID_LENGTH) revert DIDTooLong(bytes(didString).length);
+        if (interfaces == 0) revert InterfacesCannotBeEmpty();
+        if (bytes(dataUrl).length == 0) revert DataUrlCannotBeEmpty();
+        if (bytes(dataUrl).length > MAX_URL_LENGTH) revert DataUrlTooLong(bytes(dataUrl).length);
+        if (bytes(fungibleTokenId).length > MAX_URL_LENGTH) revert FungibleTokenIdTooLong(bytes(fungibleTokenId).length);
+        if (bytes(contractId).length > MAX_URL_LENGTH) revert ContractIdTooLong(bytes(contractId).length);
+        _validateKeywords(keywordHashes);
+        // Note: dataHashAlgorithm validation removed to allow future algorithm extensions
+
+        // DID + Major version uniqueness and fungible token consistency validation
+        bytes32 didHash = getDidHash(didString);
         
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            apps[i] = _apps[tokenIds[i]];
+        // Check if this specific (DID, major) combination already exists
+        if (_didMajorToToken[didHash][initialVersionMajor] != 0) {
+            revert DIDMajorAlreadyExists(didString, initialVersionMajor);
         }
         
-        return apps;
+        // Check fungible token consistency for existing DIDs
+        string memory existingFungibleTokenId = _didToFungibleTokenId[didHash];
+        if (bytes(existingFungibleTokenId).length > 0) {
+            // DID exists - validate fungible token consistency
+            if (keccak256(bytes(existingFungibleTokenId)) != keccak256(bytes(fungibleTokenId))) {
+                revert NewDIDRequired("Fungible token change requires new DID");
+            }
+            // Update latest major if this is higher
+            if (initialVersionMajor > _didToLatestMajor[didHash]) {
+                _didToLatestMajor[didHash] = initialVersionMajor;
+            }
+        } else {
+            // First time minting this DID - store the fungible token ID and latest major
+            _didToFungibleTokenId[didHash] = fungibleTokenId;
+            _didToLatestMajor[didHash] = initialVersionMajor;
+            _didExists[didHash] = true;
+        }
+
+        // Mint token
+        _totalTokens++;
+        uint256 tokenId = _totalTokens;
+        _mint(msg.sender, tokenId);
+
+        // Create version history with initial version
+        Version[] memory versions = new Version[](1);
+        versions[0] = Version(initialVersionMajor, initialVersionMinor, initialVersionPatch);
+
+        // Store app data
+        _apps[tokenId] = App({
+            minter: msg.sender,
+            interfaces: interfaces,
+            versionMajor: initialVersionMajor,
+            status: 0, // Active
+            dataHashAlgorithm: dataHashAlgorithm,
+            dataHash: dataHash,
+            did: didString,
+            fungibleTokenId: fungibleTokenId,
+            contractId: contractId,
+            dataUrl: dataUrl,
+            versionHistory: versions,
+            keywordHashes: keywordHashes
+        });
+
+        // Store mappings
+        _didMajorToToken[didHash][initialVersionMajor] = tokenId;
+        _ownerToTokenIds[msg.sender].push(tokenId);
+        
+        // Track active apps for efficient queries
+        _activeTokenIdToIndex[tokenId] = _activeTokenIds.length;
+        _activeTokenIds.push(tokenId); // New apps start as active (status = 0)
+
+        // Store registration tracking for bounded event log queries (only on first DID registration)
+        if (registrationBlock[didHash] == 0) {
+            registrationBlock[didHash] = block.number;
+            registrationTimestamp[didHash] = block.timestamp;
+        }
+
+        // Emit keyword event (bulk)
+        if (keywordHashes.length > 0) {
+            emit KeywordsUpdated(didHash, initialVersionMajor, tokenId, keywordHashes);
+        }
+
+        emit AppMinted(didHash, initialVersionMajor, tokenId, msg.sender, interfaces, block.number, block.timestamp);
+        if (initialVersionMajor > 0 || initialVersionMinor > 0 || initialVersionPatch > 0) {
+            emit VersionAdded(didHash, initialVersionMajor, tokenId, initialVersionMinor, initialVersionPatch);
+        }
+
+        return tokenId;
     }
 
     /**
-     * @dev Returns a specific application by DID
-     * @param did The DID of the application
-     * @return The App struct containing all fields
+     * @dev Update the status of an application
+     * @param didString The DID as string
+     * @param newStatus The new status (0=active, 1=deprecated, 2=replaced)
      */
-    function getApp(string memory did) public view returns (App memory) {
-        uint256 tokenId = _didToTokenId[did];
-        require(tokenId != 0, string(abi.encodePacked(ERROR_PREFIX, "Application does not exist")));
+    function updateStatus(
+        string memory didString,
+        uint8 major,
+        uint8 newStatus
+    ) external onlyAppOwner(didString, major) nonReentrant {
+        bytes32 didHash = getDidHash(didString);
+        uint256 tokenId = _resolveTokenByHash(didHash, major);
+        uint8 oldStatus = _apps[tokenId].status;
+        
+        // No-op if status unchanged (gas optimization)
+        if (oldStatus == newStatus) {
+            return;
+        }
+        
+        _apps[tokenId].status = newStatus;
+        
+        // Update active apps indexing
+        if (oldStatus == 0 && newStatus != 0) {
+            // Was active, now inactive - remove from active list (O(1) removal)
+            uint256 indexToRemove = _activeTokenIdToIndex[tokenId];
+            uint256 lastTokenId = _activeTokenIds[_activeTokenIds.length - 1];
+            
+            // Move last element to the gap
+            _activeTokenIds[indexToRemove] = lastTokenId;
+            _activeTokenIdToIndex[lastTokenId] = indexToRemove;
+            
+            // Remove the last element and clean up mapping
+            _activeTokenIds.pop();
+            delete _activeTokenIdToIndex[tokenId];
+        } else if (oldStatus != 0 && newStatus == 0) {
+            // Was inactive, now active - add to active list
+            _activeTokenIdToIndex[tokenId] = _activeTokenIds.length;
+            _activeTokenIds.push(tokenId);
+        }
+        
+        emit StatusUpdated(didHash, major, tokenId, newStatus, block.timestamp);
+    }
+
+
+
+
+
+    /**
+     * @dev Update app data, interfaces, and/or keywords with controlled versioning
+     * @param didString The DID as string
+     * @param major The major version of the app to update
+     * @param newDataUrl New data URL (empty string "" = no change)
+     * @param newDataHash New data hash (bytes32(0) = no change, REQUIRED if keywords change)
+     * @param newDataHashAlgorithm New hash algorithm (current value = no change)
+     * @param newInterfaces New interfaces bitmap (0 = no change, >0 = new interfaces)
+     * @param newKeywordHashes New keyword hashes (empty array [] = no change)
+     * @param newMinor New minor version (must be > current if interfaces change)
+     * @param newPatch New patch version (must be > current if data/keyword changes, unless minor++)
+     * @notice Keyword changes require new data hash for auditability
+     * @notice Interface changes require minor increment, data/keyword changes require patch increment
+     */
+    function updateAppControlled(
+        string memory didString,
+        uint8 major,
+        string memory newDataUrl,
+        bytes32 newDataHash,
+        uint8 newDataHashAlgorithm,
+        uint16 newInterfaces,
+        bytes32[] memory newKeywordHashes,
+        uint8 newMinor,
+        uint8 newPatch
+    ) external onlyAppOwner(didString, major) nonReentrant {
+        bytes32 didHash = getDidHash(didString);
+        uint256 tokenId = _resolveTokenByHash(didHash, major);
+        App storage app = _apps[tokenId];
+        
+        // Detect what changes are being made
+        bool hasDataChanges = (
+            bytes(newDataUrl).length > 0 && 
+            keccak256(bytes(newDataUrl)) != keccak256(bytes(app.dataUrl))
+        ) || (
+            newDataHash != bytes32(0) && 
+            newDataHash != app.dataHash
+        ) || (
+            newDataHashAlgorithm != app.dataHashAlgorithm
+        );
+        
+        bool hasInterfaceChanges = (newInterfaces != 0 && newInterfaces != app.interfaces);
+        
+        bool hasKeywordChanges = (newKeywordHashes.length > 0);
+        
+        // Must have at least one change
+        if (!hasDataChanges && !hasInterfaceChanges && !hasKeywordChanges) {
+            revert NoChangesSpecified();
+        }
+        
+        // Get current version for validation
+        Version storage currentVersion = app.versionHistory[app.versionHistory.length - 1];
+        
+        // SemVer validation rules
+        if (hasInterfaceChanges) {
+            // Rule 1: Interface changes require minor++
+            if (newMinor <= currentVersion.minor) {
+                revert MinorIncrementRequired(currentVersion.minor, newMinor);
+            }
+            
+            // Rule 2: Interface changes must be additive only
+            if ((newInterfaces & app.interfaces) != app.interfaces) {
+                revert InterfaceRemovalNotAllowed(app.interfaces, newInterfaces);
+            }
+        }
+        
+        if (hasDataChanges || hasKeywordChanges) {
+            // Rule 3: Data OR keyword changes require patch++ UNLESS minor++
+            if (newMinor <= currentVersion.minor && newPatch <= currentVersion.patch) {
+                revert PatchIncrementRequired(currentVersion.patch, newPatch);
+            }
+        }
+        
+        // Validate data constraints if updating
+        if (hasDataChanges) {
+            if (bytes(newDataUrl).length == 0) revert DataUrlCannotBeEmpty();
+            if (bytes(newDataUrl).length > MAX_URL_LENGTH) revert DataUrlTooLong(bytes(newDataUrl).length);
+            // Note: dataHashAlgorithm validation removed to allow future algorithm extensions
+        }
+        
+        // Validate keyword constraints if updating
+        if (hasKeywordChanges) {
+            _validateKeywords(newKeywordHashes);
+            // Require new data hash for keyword changes (auditability)
+            if (newDataHash == bytes32(0)) {
+                revert DataHashRequiredForKeywordChange();
+            }
+        }
+        
+        // Apply changes
+        if (hasDataChanges) {
+            app.dataUrl = newDataUrl;
+            app.dataHash = newDataHash;
+            app.dataHashAlgorithm = newDataHashAlgorithm;
+            emit DataUrlUpdated(didHash, major, tokenId, newDataUrl, newDataHash, newDataHashAlgorithm);
+        }
+        
+        if (hasInterfaceChanges) {
+            app.interfaces = newInterfaces;
+            emit InterfacesUpdated(didHash, major, tokenId, newInterfaces);
+        }
+        
+        if (hasKeywordChanges) {
+            app.keywordHashes = newKeywordHashes;
+            emit KeywordsUpdated(didHash, major, tokenId, newKeywordHashes);
+        }
+        
+        // Add new version to history
+        app.versionHistory.push(Version({
+            major: major,
+            minor: newMinor,
+            patch: newPatch
+        }));
+        
+        emit VersionAdded(didHash, major, tokenId, newMinor, newPatch);
+    }
+
+    /**
+     * @dev Get an application by DID
+     * @param didString The DID as string
+     * @return app The application data
+     */
+    function getApp(string memory didString, uint8 major) external view returns (App memory) {
+        uint256 tokenId = _resolveToken(didString, major);
+        if (tokenId == 0) revert AppNotFound(didString, major);
         return _apps[tokenId];
     }
 
     /**
-     * @dev Returns a W3C compliant DID Document for a given DID
-     * @param did The DID to look up
-     * @return The DID Document as a JSON string
+     * @dev Check if an app has any of the specified keywords
+     * @param didString The DID as string
+     * @param keywords Array of keyword hashes to check
+     * @return bool True if the app has at least one of the keywords
      */
-    function getDIDDocument(string memory did) public view returns (string memory) {
-        App memory app = getApp(did);
-        return formatDIDDocument(app);
-    }
-
-    /**
-     * @dev Utility function to format an App struct as a DID Document
-     * @param app The App struct to format
-     * @return The DID Document as a JSON string
-     */
-    function formatDIDDocument(App memory app) internal pure returns (string memory) {
-        // Start with basic properties
-        string memory document = string(abi.encodePacked(
-            '{"@context":"https://www.w3.org/ns/did/v1"',
-            ',"id":"', app.did, '"',
-            ',"name":"', bytes32ToString(app.name), '"',
-            ',"version":"', bytes32ToString(app.version), '"',
-            ',"status":', uint256(app.status).toString(),
-            ',"minter":"', toLowerHexString(app.minter), '"'
-        ));
+    function hasAnyKeywords(string memory didString, uint8 major, bytes32[] memory keywords) external view returns (bool) {
+        uint256 tokenId = _resolveToken(didString, major);
+        if (tokenId == 0) revert AppNotFound(didString, major);
         
-        // Add service endpoints
-        document = string(abi.encodePacked(
-            document,
-            ',"service":[',
-            '{"id":"#data","type":"URL","serviceEndpoint":"', app.dataUrl, '"}',
-            ',{"id":"#iwpsPortal","type":"URL","serviceEndpoint":"', app.iwpsPortalUri, '"}',
-            ',{"id":"#agentApi","type":"URL","serviceEndpoint":"', app.agentApiUri, '"}',
-            ']'
-        ));
+        bytes32[] memory appKeywords = _apps[tokenId].keywordHashes;
         
-        // Add verification method if contract exists
-        if (app.hasContract) {
-            document = string(abi.encodePacked(
-                document,
-                ',"verificationMethod":[',
-                '{"id":"', app.did, '#contract"',
-                ',"type":"EcdsaSecp256k1VerificationKey2019"',
-                ',"controller":"', app.did, '"',
-                ',"publicKeyMultibase":"', app.contractAddress, '"}',
-                ']'
-            ));
-        }
-        
-        // Close the JSON object
-        document = string(abi.encodePacked(document, '}'));
-        
-        return document;
-    }
-
-    /**
-     * @dev Convert bytes32 to string using OpenZeppelin's approach
-     * @param _bytes32 The bytes32 to convert
-     * @return The string representation
-     */
-    function bytes32ToString(bytes32 _bytes32) internal pure returns (string memory) {
-        // If the bytes32 value is empty, return an empty string
-        if (_bytes32 == bytes32(0)) {
-            return "";
-        }
-        
-        // Convert to bytes and find the length (first null byte)
-        bytes memory bytesValue = abi.encodePacked(_bytes32);
-        uint256 length = 0;
-        
-        // Find string length (position of first 0 byte)
-        for (uint256 i = 0; i < 32; i++) {
-            if (bytesValue[i] == 0) {
-                length = i;
-                break;
-            }
-            if (i == 31) {
-                length = 32; // No null terminator found
+        for (uint256 i = 0; i < keywords.length; i++) {
+            for (uint256 j = 0; j < appKeywords.length; j++) {
+                if (keywords[i] == appKeywords[j]) return true;
             }
         }
+        return false;
+    }
+
+    /**
+     * @dev Check if an app has all of the specified keywords
+     * @param didString The DID as string
+     * @param keywords Array of keyword hashes to check
+     * @return bool True if the app has all of the keywords
+     */
+    function hasAllKeywords(string memory didString, uint8 major, bytes32[] memory keywords) external view returns (bool) {
+        uint256 tokenId = _resolveToken(didString, major);
+        if (tokenId == 0) revert AppNotFound(didString, major);
         
-        // Create a properly sized bytes array
-        bytes memory resultBytes = new bytes(length);
+        bytes32[] memory appKeywords = _apps[tokenId].keywordHashes;
         
-        // Copy only the valid bytes
-        for (uint256 i = 0; i < length; i++) {
-            resultBytes[i] = bytesValue[i];
+        for (uint256 i = 0; i < keywords.length; i++) {
+            bool found = false;
+            for (uint256 j = 0; j < appKeywords.length; j++) {
+                if (keywords[i] == appKeywords[j]) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return false;
+        }
+        return true;
+    }
+
+    /**
+     * @dev Get total number of apps by status for the caller's owned apps
+     * @param status The status to query (0=active accessible to all, others restricted to owner)
+     * @return uint256 Total number of apps with the given status
+     */
+    function getTotalAppsByStatus(uint8 status) external view returns (uint256) {
+        if (status == 0) {
+            // Active apps: use efficient array (accessible to all)
+            return _activeTokenIds.length;
+        } else {
+            // Non-active apps: only show caller's own apps for privacy
+            // Apps are deactivated for a reason - shouldn't be publicly browsable
+            uint256[] storage ownerTokenIds = _ownerToTokenIds[msg.sender];
+            uint256 count = 0;
+            
+            for (uint256 i = 0; i < ownerTokenIds.length; i++) {
+                uint256 tokenId = ownerTokenIds[i];
+                if (_apps[tokenId].status == status) {
+                    count++;
+                }
+            }
+            return count;
+        }
+    }
+
+    /**
+     * @dev Returns applications with a specific status, using client-side pagination
+     * @param status The status to filter by (0=active accessible to all, others restricted to caller's apps)
+     * @param startIndex The starting index for pagination (0-based)
+     * @return apps Array of App structs
+     */
+    function getAppsByStatus(uint8 status, uint256 startIndex) external view returns (App[] memory apps, uint256 nextStartIndex) {
+        if (status == 0) {
+            // Active apps: use efficient array (accessible to all)
+            if (startIndex >= _activeTokenIds.length) {
+                return (new App[](0), 0);
+            }
+            
+            uint256 endIndex = startIndex + MAX_APPS_PER_PAGE;
+            if (endIndex > _activeTokenIds.length) {
+                endIndex = _activeTokenIds.length;
+            }
+            
+            apps = new App[](endIndex - startIndex);
+            for (uint256 i = startIndex; i < endIndex; i++) {
+                uint256 tokenId = _activeTokenIds[i];
+                apps[i - startIndex] = _apps[tokenId];
+            }
+            
+            // Calculate next start index (0 if no more pages)
+            nextStartIndex = (endIndex < _activeTokenIds.length) ? endIndex : 0;
+        } else {
+            // Non-active apps: only show caller's own apps for privacy
+            // Apps are deactivated for a reason - shouldn't be publicly browsable
+            uint256[] storage ownerTokenIds = _ownerToTokenIds[msg.sender];
+            
+            if (startIndex >= ownerTokenIds.length) {
+                return (new App[](0), 0);
+            }
+            
+            // Simple: allocate max size, collect what we can, return right size
+            App[] memory tempApps = new App[](MAX_APPS_PER_PAGE);
+            uint256 collected = 0;
+            uint256 i;
+            
+            for (i = startIndex; i < ownerTokenIds.length && collected < MAX_APPS_PER_PAGE; i++) {
+                uint256 tokenId = ownerTokenIds[i];
+                if (_apps[tokenId].status == status) {
+                    tempApps[collected] = _apps[tokenId];
+                    collected++;
+                }
+            }
+            
+            // Return exactly what we collected
+            apps = new App[](collected);
+            for (uint256 j = 0; j < collected; j++) {
+                apps[j] = tempApps[j];
+            }
+            
+            // Calculate next start index: if we might have more apps to scan
+            nextStartIndex = (i < ownerTokenIds.length) ? i : 0;
         }
         
-        return string(resultBytes);
+        return (apps, nextStartIndex);
     }
 
     /**
-     * @dev Override _update to make apps soulbound (non-transferable)
+     * @dev Returns active applications using client-side pagination
+     * @param startIndex The starting index for pagination (0-based)  
+     * @return apps Array of App structs
      */
-    function _update(
-        address to,
-        uint256 tokenId,
-        address auth
-    ) internal virtual override returns (address) {
-        // Only allow minting (auth == address(0))
-        require(auth == address(0), string(abi.encodePacked(ERROR_PREFIX, "Apps are soulbound and cannot be transferred or burned")));
-        return super._update(to, tokenId, auth);
+    function getApps(uint256 startIndex) external view returns (App[] memory apps) {
+        (App[] memory result,) = this.getAppsByStatus(0, startIndex); // 0 = Active status, ignore nextStartIndex
+        return result;
     }
 
     /**
-     * @dev Convert address to lowercase hexadecimal string
-     * @param addr The address to convert
-     * @return The lowercase hexadecimal string representation (0x prefix + 40 lowercase chars)
+     * @dev Get total number of apps by minter
+     * @param minter The minter's address
+     * @return uint256 Total number of apps minted by the minter
      */
-    function toLowerHexString(address addr) internal pure returns (string memory) {
-        // OpenZeppelin's toHexString already produces lowercase output
-        return Strings.toHexString(uint256(uint160(addr)), 20);
+    function getTotalAppsByMinter(address minter) external view returns (uint256) {
+        return _ownerToTokenIds[minter].length;
     }
 
-}
-
+    /**
+     * @dev Returns applications by minter using client-side pagination
+     * @param minter The minter's address
+     * @param startIndex The starting index for pagination (0-based)
+     * @return apps Array of App structs
+     */
+    function getAppsByMinter(address minter, uint256 startIndex) external view returns (App[] memory apps) {
+        uint256[] memory tokenIds = _ownerToTokenIds[minter];
+        uint256 totalApps = tokenIds.length;
+        
+        // Handle pagination
+        if (startIndex >= totalApps) {
+            return new App[](0);
+        }
+        
+        uint256 endIndex = startIndex + MAX_APPS_PER_PAGE;
+        if (endIndex > totalApps) {
+            endIndex = totalApps;
+        }
+        
+        apps = new App[](endIndex - startIndex);
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            apps[i - startIndex] = _apps[tokenIds[i]];
+        }
+        
+        return apps;
+    }
+} 
