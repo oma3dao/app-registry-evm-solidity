@@ -31,8 +31,8 @@ describe("OMA3AppRegistry", function () {
     // Contracts are deployed using the first signer/account by default
     const [deployer, minter1, minter2] = await hre.ethers.getSigners();
 
-    const OMA3AppRegistry = await hre.ethers.getContractFactory("OMA3AppRegistry");
-    const registry = await OMA3AppRegistry.deploy();
+    const OMA3AppRegistryLegacy = await hre.ethers.getContractFactory("OMA3AppRegistryLegacy");
+    const registry = await OMA3AppRegistryLegacy.deploy();
 
     return { registry, deployer, minter1, minter2 };
   }
@@ -603,19 +603,184 @@ describe("OMA3AppRegistry", function () {
   });
 
   // --- Soulbound enforcement ---
-  describe("Soulbound Enforcement", function () {
-    it("should revert on transfer attempt", async function () {
+  describe("Soulbound Token Behavior", function () {
+    it("should prevent token transfers via transferFrom", async function () {
       const config = await loadFixture(deployFixtureOneApp);
-      const app = config.apps[0];
-      
-      // Test transfer by trying to call safeTransferFrom (should fail due to soulbound)
+      const tokenId = 1; // First minted token
+
+      // Verify the token exists and is owned by minter1
+      expect(await config.registry.ownerOf(tokenId)).to.equal(config.minter1.address);
+
+      // Attempt to transfer the token should revert
+      await expect(
+        config.registry.connect(config.minter1).transferFrom(
+          config.minter1.address,
+          config.minter2.address,
+          tokenId
+        )
+      ).to.be.revertedWith(ERROR_PREFIX + ERRORS.SOULBOUND);
+    });
+
+    it("should prevent token transfers via safeTransferFrom", async function () {
+      const config = await loadFixture(deployFixtureOneApp);
+      const tokenId = 1; // First minted token
+
+      // Verify the token exists and is owned by minter1
+      expect(await config.registry.ownerOf(tokenId)).to.equal(config.minter1.address);
+
+      // Attempt to safe transfer the token should revert
       await expect(
         config.registry.connect(config.minter1)["safeTransferFrom(address,address,uint256)"](
           config.minter1.address,
           config.minter2.address,
-          1 // token ID 1
+          tokenId
         )
       ).to.be.revertedWith(ERROR_PREFIX + ERRORS.SOULBOUND);
+    });
+
+    it("should prevent token transfers via safeTransferFrom with data", async function () {
+      const config = await loadFixture(deployFixtureOneApp);
+      const tokenId = 1; // First minted token
+
+      // Verify the token exists and is owned by minter1
+      expect(await config.registry.ownerOf(tokenId)).to.equal(config.minter1.address);
+
+      // Attempt to safe transfer with data should revert
+      await expect(
+        config.registry.connect(config.minter1)["safeTransferFrom(address,address,uint256,bytes)"](
+          config.minter1.address,
+          config.minter2.address,
+          tokenId,
+          "0x"
+        )
+      ).to.be.revertedWith(ERROR_PREFIX + ERRORS.SOULBOUND);
+    });
+
+    it("should prevent token transfers even after approval", async function () {
+      const config = await loadFixture(deployFixtureOneApp);
+      const tokenId = 1; // First minted token
+
+      // Approve minter2 to transfer the token
+      await config.registry.connect(config.minter1).approve(config.minter2.address, tokenId);
+      
+      // Verify approval was set
+      expect(await config.registry.getApproved(tokenId)).to.equal(config.minter2.address);
+
+      // Even with approval, transfer should still revert due to soulbound nature
+      await expect(
+        config.registry.connect(config.minter2).transferFrom(
+          config.minter1.address,
+          config.minter2.address,
+          tokenId
+        )
+      ).to.be.revertedWith(ERROR_PREFIX + ERRORS.SOULBOUND);
+    });
+
+    it("should prevent token transfers even with setApprovalForAll", async function () {
+      const config = await loadFixture(deployFixtureOneApp);
+      const tokenId = 1; // First minted token
+
+      // Set approval for all tokens
+      await config.registry.connect(config.minter1).setApprovalForAll(config.minter2.address, true);
+      
+      // Verify approval for all was set
+      expect(await config.registry.isApprovedForAll(config.minter1.address, config.minter2.address)).to.be.true;
+
+      // Even with approval for all, transfer should still revert due to soulbound nature
+      await expect(
+        config.registry.connect(config.minter2).transferFrom(
+          config.minter1.address,
+          config.minter2.address,
+          tokenId
+        )
+      ).to.be.revertedWith(ERROR_PREFIX + ERRORS.SOULBOUND);
+    });
+
+    it("should allow approve and setApprovalForAll operations", async function () {
+      const config = await loadFixture(deployFixtureOneApp);
+      const tokenId = 1; // First minted token
+
+      // These operations should work (they don't trigger _update)
+      await expect(
+        config.registry.connect(config.minter1).approve(config.minter2.address, tokenId)
+      ).to.not.be.reverted;
+
+      await expect(
+        config.registry.connect(config.minter1).setApprovalForAll(config.minter2.address, true)
+      ).to.not.be.reverted;
+
+      // Verify the approvals were set correctly
+      expect(await config.registry.getApproved(tokenId)).to.equal(config.minter2.address);
+      expect(await config.registry.isApprovedForAll(config.minter1.address, config.minter2.address)).to.be.true;
+    });
+
+    it("should prevent token burning", async function () {
+      const config = await loadFixture(deployFixtureOneApp);
+      const tokenId = 1; // First minted token
+
+      // Verify the token exists
+      expect(await config.registry.ownerOf(tokenId)).to.equal(config.minter1.address);
+
+      // Note: ERC721 doesn't have a public burn function by default, but we can test
+      // the internal _update mechanism by trying to transfer to zero address
+      // This would be the equivalent of burning in most implementations
+      // OpenZeppelin's ERC721 might throw a different error for zero address, so we check for revert
+      await expect(
+        config.registry.connect(config.minter1).transferFrom(
+          config.minter1.address,
+          "0x0000000000000000000000000000000000000000",
+          tokenId
+        )
+      ).to.be.reverted; // Just check that it reverts, regardless of the specific error message
+    });
+
+    it("should allow minting (auth == address(0))", async function () {
+      const { registry, minter1 } = await loadFixture(deployFixture);
+
+      // Minting should work normally (this is the only allowed operation)
+      const did = "did:oma3:soulbound-test";
+      const name = hre.ethers.encodeBytes32String("Soulbound Test App");
+      const version = hre.ethers.encodeBytes32String("1.0.0");
+      const dataUrl = "https://data.example.com/soulbound";
+      const iwpsPortalUri = "https://portal.example.com/soulbound";
+      const agentApiUri = "https://api.example.com/soulbound";
+      const contractAddress = "";
+
+      await expect(
+        registry.connect(minter1).mint(
+          did,
+          name,
+          version,
+          dataUrl,
+          iwpsPortalUri,
+          agentApiUri,
+          contractAddress
+        )
+      ).to.not.be.reverted;
+
+      // Verify the token was minted successfully
+      expect(await registry.getTotalApps()).to.equal(1);
+      expect(await registry.ownerOf(1)).to.equal(minter1.address);
+    });
+
+    it("should maintain soulbound behavior across multiple tokens", async function () {
+      const config = await loadFixture(deployFixture4Apps);
+
+      // Try to transfer each token - all should fail
+      for (let tokenId = 1; tokenId <= 4; tokenId++) {
+        await expect(
+          config.registry.connect(config.minter1).transferFrom(
+            config.minter1.address,
+            config.minter2.address,
+            tokenId
+          )
+        ).to.be.revertedWith(ERROR_PREFIX + ERRORS.SOULBOUND);
+      }
+
+      // Verify all tokens are still owned by minter1
+      for (let tokenId = 1; tokenId <= 4; tokenId++) {
+        expect(await config.registry.ownerOf(tokenId)).to.equal(config.minter1.address);
+      }
     });
   });
 

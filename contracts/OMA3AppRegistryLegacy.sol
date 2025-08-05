@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
- * @title OMA3AppRegistry
- * @dev Registry for OMA3 applications using ERC721 tokens
+ * @title OMA3AppRegistryLegacy
+ * @dev Legacy Registry for OMA3 applications using ERC721 tokens
  */
-contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
+contract OMA3AppRegistryLegacy is ERC721, Ownable, ReentrancyGuard {
     using Strings for uint256;
     using Strings for address;
 
