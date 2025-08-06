@@ -113,7 +113,10 @@ function getAppsByStatus(uint8 status, uint256 startIndex)
     external view returns (App[] memory apps, uint256 nextStartIndex)
 
 function getAppsByMinter(address minter, uint256 startIndex) 
-    external view returns (App[] memory apps)
+    external view returns (App[] memory apps, uint256 nextStartIndex)
+
+function getApps(uint256 startIndex) 
+    external view returns (App[] memory apps, uint256 nextStartIndex)
 
 function getTotalAppsByStatus(uint8 status) 
     external view returns (uint256)
@@ -121,6 +124,16 @@ function getTotalAppsByStatus(uint8 status)
 function getTotalAppsByMinter(address minter) 
     external view returns (uint256)
 ```
+
+**Important**: 
+- **Token IDs** start from 1 (first minted app has token ID 1)
+- **Pagination indices** start from 0 (use `startIndex = 0` for the first page)
+- These are separate numbering systems - pagination index refers to position in result arrays, not token IDs
+
+**Example**: If you have 3 minted apps with token IDs [1, 2, 3]:
+- `getAppsByMinter(minter, 0)` returns apps at positions 0-2 (all 3 apps)
+- `getAppsByMinter(minter, 1)` returns apps at positions 1-2 (apps with token IDs 2, 3)
+- The apps themselves still have token IDs 1, 2, 3 regardless of pagination
 
 #### Keyword Filtering
 
@@ -185,7 +198,11 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
 
 ### Testing the Contract
 
-1. Change the MAX_APPS_PER_PAGE to more testable numbers by changing the line comments appropriately
+1. Change the MAX_APPS_PER_PAGE to 4 for testing by modifying the contract:
+   ```solidity
+   uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
+   //uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
+   ```
 
 2. Compile
    ```bash
@@ -196,7 +213,12 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
    ```bash
    npx hardhat test
    ```
-4. Change the MAX_APPS_PER_PAGE back to production values
+
+4. Change the MAX_APPS_PER_PAGE back to production values:
+   ```solidity
+   //uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
+   uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
+   ```
 
 5. Compile again
    ```bash

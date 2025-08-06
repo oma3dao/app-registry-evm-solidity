@@ -99,6 +99,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     uint256 private constant MAX_URL_LENGTH = 256;
     uint256 private constant MAX_KEYWORDS = 20;
     uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
+    //uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
 
     // Token ID counter
     // Note: OpenZeppelin ERC721 does not include totalSupply tracking
@@ -655,10 +656,11 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      * @dev Returns active applications using client-side pagination
      * @param startIndex The starting index for pagination (0-based)  
      * @return apps Array of App structs
+     * @return nextStartIndex Next index for pagination (0 if no more pages)
      */
-    function getApps(uint256 startIndex) external view returns (App[] memory apps) {
-        (App[] memory result,) = this.getAppsByStatus(0, startIndex); // 0 = Active status, ignore nextStartIndex
-        return result;
+    function getApps(uint256 startIndex) external view returns (App[] memory apps, uint256 nextStartIndex) {
+        (App[] memory result, uint256 next) = this.getAppsByStatus(0, startIndex); // 0 = Active status
+        return (result, next);
     }
 
     /**
@@ -671,30 +673,26 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns applications by minter using client-side pagination
+     * @dev Returns applications by minter (returns all remaining apps from startIndex)
      * @param minter The minter's address
-     * @param startIndex The starting index for pagination (0-based)
+     * @param startIndex The starting index (0-based)
      * @return apps Array of App structs
+     * @return nextStartIndex Always 0 (no pagination limit)
      */
-    function getAppsByMinter(address minter, uint256 startIndex) external view returns (App[] memory apps) {
+    function getAppsByMinter(address minter, uint256 startIndex) external view returns (App[] memory apps, uint256 nextStartIndex) {
         uint256[] memory tokenIds = _ownerToTokenIds[minter];
         uint256 totalApps = tokenIds.length;
         
-        // Handle pagination
         if (startIndex >= totalApps) {
-            return new App[](0);
+            return (new App[](0), 0);
         }
         
-        uint256 endIndex = startIndex + MAX_APPS_PER_PAGE;
-        if (endIndex > totalApps) {
-            endIndex = totalApps;
-        }
-        
-        apps = new App[](endIndex - startIndex);
-        for (uint256 i = startIndex; i < endIndex; i++) {
+        // Return all remaining apps from startIndex onwards
+        apps = new App[](totalApps - startIndex);
+        for (uint256 i = startIndex; i < totalApps; i++) {
             apps[i - startIndex] = _apps[tokenIds[i]];
         }
         
-        return apps;
+        return (apps, 0); // Always 0 since we return all remaining apps
     }
 } 
