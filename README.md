@@ -177,7 +177,8 @@ event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 in
 
 The OMA3AppRegistry contract is currently deployed on the Celo Alfajores testnet:
 - **Network**: Celo Alfajores Testnet
-- **Contract Address**: 0xb493465Bcb2151d5b5BaD19d87f9484c8B8A8e83
+- **Contract Address**: 0xE2d601F18166F6632f80d2Fa0Ab474B6d251D400 
+- **Legacy Contract Addres**: 0xb493465Bcb2151d5b5BaD19d87f9484c8B8A8e83
 
 ### Contract ABI
 
