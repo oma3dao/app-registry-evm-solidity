@@ -12,6 +12,11 @@ require('./tasks/getApp');
 require('./tasks/getAppsByMinter');
 require('./tasks/getApps');
 
+// Import legacy task files
+require('./tasks/getAppLegacy');
+require('./tasks/getAppsByMinterLegacy');
+require('./tasks/getAppsLegacy');
+
 // Load deployment key from SSH directory
 const deploymentKeyPath = path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
 if (fs.existsSync(deploymentKeyPath)) {

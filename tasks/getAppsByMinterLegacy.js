@@ -1,12 +1,10 @@
 const { task } = require("hardhat/config");
 
-task("get-apps-by-minter", "Fetches all applications minted by a specific address")
+task("get-apps-by-minter-legacy", "Fetches all applications minted by a specific address (Legacy Contract)")
   .addParam("minter", "The address of the minter")
-  .addParam("startfrom", "The index to start fetching from (use 0 for the first call)", "0", undefined, true)
   .setAction(async (taskArgs, hre) => {
-    const { minter, startfrom } = taskArgs;
-    const startFromIndex = parseInt(startfrom, 10);
-    console.log("Fetching apps for minter:", minter, "starting from index:", startFromIndex);
+    const { minter } = taskArgs;
+    console.log("Fetching apps for minter:", minter);
 
     const signers = await hre.ethers.getSigners();
     if (signers && signers.length > 0) {
@@ -32,27 +30,26 @@ task("get-apps-by-minter", "Fetches all applications minted by a specific addres
     }
     console.log(`Contract code found at ${registryAddress}. Proceeding...`);
 
-    const appRegistry = await hre.ethers.getContractAt("OMA3AppRegistry", registryAddress);
+    const appRegistry = await hre.ethers.getContractAt("OMA3AppRegistryLegacy", registryAddress);
 
     try {
-      const { apps, nextStartIndex } = await appRegistry.getAppsByMinter(minter, startFromIndex);
+      const apps = await appRegistry.getAppsByMinter(minter);
+      console.log("Raw 'apps' variable from contract call:", apps);
+
       console.log(`Found ${apps.length} application(s) for minter ${minter}:`);
       apps.forEach((app, index) => {
         console.log(`\nApplication ${index + 1}:`);
+        console.log("  Name:", hre.ethers.utils.parseBytes32String(app.name));
+        console.log("  Version:", hre.ethers.utils.parseBytes32String(app.version));
         console.log("  DID:", app.did);
-        console.log("  Major Version:", app.versionMajor);
-        console.log("  Interfaces:", app.interfaces.toString());
         console.log("  Data URL:", app.dataUrl);
-        console.log("  Data Hash:", app.dataHash);
-        console.log("  Data Hash Algorithm:", app.dataHashAlgorithm.toString());
-        console.log("  Fungible Token ID:", app.fungibleTokenId);
-        console.log("  Contract ID:", app.contractId);
+        console.log("  IWPS Portal URI:", app.iwpsPortalUri);
+        console.log("  Agent API URI:", app.agentApiUri);
+        console.log("  Contract Address:", app.contractAddress);
         console.log("  Minter:", app.minter);
         console.log("  Status:", app.status.toString());
-        console.log("  Keyword Hashes:", app.keywordHashes.length, "keywords");
+        console.log("  Has Contract:", app.hasContract);
       });
-
-      console.log("\nAll applications for this minter have been returned.");
     } catch (error) {
       console.error("Error fetching applications by minter. Details:");
       console.error("  Message:", error.message);

@@ -1,11 +1,11 @@
 const { task } = require("hardhat/config");
 
 task("get-apps", "Fetches active applications with pagination")
-  .addParam("startfrom", "The token ID to start fetching from (use 1 for the first call)", "1", undefined, true)
+  .addParam("startfrom", "The index to start fetching from (use 0 for the first call)", "0", undefined, true)
   .setAction(async (taskArgs, hre) => {
-    const startFromTokenId = parseInt(taskArgs.startfrom, 10);
+    const startFromIndex = parseInt(taskArgs.startfrom, 10);
     const [deployer] = await hre.ethers.getSigners();
-    console.log("Fetching active apps, starting from token ID:", startFromTokenId);
+    console.log("Fetching active apps, starting from index:", startFromIndex);
     console.log("Using account:", deployer.address);
 
     const registryAddress = process.env.APP_REGISTRY_ADDRESS;
@@ -18,24 +18,26 @@ task("get-apps", "Fetches active applications with pagination")
     const appRegistry = await hre.ethers.getContractAt("OMA3AppRegistry", registryAddress);
 
     try {
-      const { apps, nextTokenId } = await appRegistry.getApps(startFromTokenId);
+      const { apps, nextStartIndex } = await appRegistry.getApps(startFromIndex);
       console.log(`Found ${apps.length} active application(s):`);
       apps.forEach((app, index) => {
-        console.log(`\nApplication ${index + 1} (Token ID will vary based on actual minting order and status):`);
-        console.log("  Name:", hre.ethers.utils.parseBytes32String(app.name));
-        console.log("  Version:", hre.ethers.utils.parseBytes32String(app.version));
+        console.log(`\nApplication ${index + 1}:`);
         console.log("  DID:", app.did);
+        console.log("  Major Version:", app.versionMajor);
+        console.log("  Interfaces:", app.interfaces.toString());
         console.log("  Data URL:", app.dataUrl);
-        console.log("  IWPS Portal URI:", app.iwpsPortalUri);
-        console.log("  Agent API URI:", app.agentApiUri);
-        console.log("  Contract Address:", app.contractAddress);
+        console.log("  Data Hash:", app.dataHash);
+        console.log("  Data Hash Algorithm:", app.dataHashAlgorithm.toString());
+        console.log("  Fungible Token ID:", app.fungibleTokenId);
+        console.log("  Contract ID:", app.contractId);
         console.log("  Minter:", app.minter);
         console.log("  Status:", app.status.toString()); // Should be 0 (ACTIVE)
-        console.log("  Has Contract:", app.hasContract);
+        console.log("  Keyword Hashes:", app.keywordHashes.length, "keywords");
       });
 
-      if (nextTokenId.toString() !== "0") {
-        console.log(`\nNext token ID for pagination: ${nextTokenId.toString()}`);
+      if (nextStartIndex.toString() !== "0") {
+        console.log(`\nNext index for pagination: ${nextStartIndex.toString()}`);
+        console.log("To get the next page, use: --startfrom", nextStartIndex.toString());
       } else {
         console.log("\nNo more active applications to fetch.");
       }
