@@ -574,7 +574,16 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     function getTotalAppsByStatus(uint8 status) external view returns (uint256) {
         if (status == 0) {
             // Active apps: use efficient array (accessible to all)
-            return _activeTokenIds.length;
+            uint256 validCount = 0;
+            for (uint256 i = 0; i < _activeTokenIds.length; i++) {
+                uint256 tokenId = _activeTokenIds[i];
+                // Count only apps that exist in _apps mapping by checking multiple fields
+                App memory app = _apps[tokenId];
+                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+                    validCount++;
+                }
+            }
+            return validCount;
         } else {
             // Non-active apps: only show caller's own apps for privacy
             // Apps are deactivated for a reason - shouldn't be publicly browsable
@@ -583,13 +592,17 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             
             for (uint256 i = 0; i < ownerTokenIds.length; i++) {
                 uint256 tokenId = ownerTokenIds[i];
-                if (_apps[tokenId].status == status) {
+                // Count only apps that exist in _apps mapping and have the correct status
+                App memory app = _apps[tokenId];
+                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0 && app.status == status) {
                     count++;
                 }
             }
             return count;
         }
     }
+
+
 
     /**
      * @dev Returns applications with a specific status, using client-side pagination
@@ -609,10 +622,28 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
                 endIndex = _activeTokenIds.length;
             }
             
-            apps = new App[](endIndex - startIndex);
+            // Count valid apps first
+            uint256 validAppCount = 0;
             for (uint256 i = startIndex; i < endIndex; i++) {
                 uint256 tokenId = _activeTokenIds[i];
-                apps[i - startIndex] = _apps[tokenId];
+                // Check if the app exists in _apps mapping by checking multiple fields
+                App memory app = _apps[tokenId];
+                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+                    validAppCount++;
+                }
+            }
+            
+            // Return only valid apps
+            apps = new App[](validAppCount);
+            uint256 validIndex = 0;
+            for (uint256 i = startIndex; i < endIndex; i++) {
+                uint256 tokenId = _activeTokenIds[i];
+                // Only include apps that exist in _apps mapping
+                App memory app = _apps[tokenId];
+                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+                    apps[validIndex] = app;
+                    validIndex++;
+                }
             }
             
             // Calculate next start index (0 if no more pages)
@@ -633,8 +664,10 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             
             for (i = startIndex; i < ownerTokenIds.length && collected < MAX_APPS_PER_PAGE; i++) {
                 uint256 tokenId = ownerTokenIds[i];
-                if (_apps[tokenId].status == status) {
-                    tempApps[collected] = _apps[tokenId];
+                // Check if the app exists in _apps mapping and has the correct status
+                App memory app = _apps[tokenId];
+                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0 && app.status == status) {
+                    tempApps[collected] = app;
                     collected++;
                 }
             }
@@ -669,7 +702,19 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      * @return uint256 Total number of apps minted by the minter
      */
     function getTotalAppsByMinter(address minter) external view returns (uint256) {
-        return _ownerToTokenIds[minter].length;
+        uint256[] memory tokenIds = _ownerToTokenIds[minter];
+        uint256 validCount = 0;
+        
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            // Count only apps that exist in _apps mapping by checking multiple fields
+            App memory app = _apps[tokenId];
+            if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+                validCount++;
+            }
+        }
+        
+        return validCount;
     }
 
     /**
@@ -687,12 +732,30 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             return (new App[](0), 0);
         }
         
-        // Return all remaining apps from startIndex onwards
-        apps = new App[](totalApps - startIndex);
+        // Count valid apps first
+        uint256 validCount = 0;
         for (uint256 i = startIndex; i < totalApps; i++) {
-            apps[i - startIndex] = _apps[tokenIds[i]];
+            uint256 tokenId = tokenIds[i];
+            App memory app = _apps[tokenId];
+            if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+                validCount++;
+            }
         }
         
-        return (apps, 0); // Always 0 since we return all remaining apps
+        // Create array with exact size and populate it
+        apps = new App[](validCount);
+        uint256 validIndex = 0;
+        
+        for (uint256 i = startIndex; i < totalApps; i++) {
+            uint256 tokenId = tokenIds[i];
+            App memory app = _apps[tokenId];
+            if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+                require(validIndex < validCount, "Array bounds error");
+                apps[validIndex] = app;
+                validIndex++;
+            }
+        }
+        
+        return (apps, 0);
     }
 } 
