@@ -25,11 +25,9 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     struct App {
         // Slot 1 (32 bytes)
         address minter;                // 20 bytes - Original creator/minter (immutable)
-        uint16 interfaces;             // 2 bytes - Interface bitmap (1=human, 2=api, 4=mcp. Can combine: 5=human+mcp) (mutable)
-        uint8 versionMajor;            // 1 byte - Major version number of this NFT (immutable)
         uint8 status;                  // 1 byte - Status (0=active, 1=deprecated, 2=replaced)
-        uint8 dataHashAlgorithm;       // 1 byte - Hash algorithm (0=keccak256, 1=sha256)
-        // 7 bytes padding
+        uint8 versionMajor;            // 1 byte - Major version number of this NFT (immutable)
+        // 10 bytes padding
         
         bytes32 dataHash;              // 32 bytes - Hash of JSON data
         
@@ -38,6 +36,8 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         string fungibleTokenId;        // CAIP-19 token ID (immutable)
         string contractId;             // CAIP-10 contract address (immutable)
         string dataUrl;                // URL to off-chain data
+        string dataHashAlgorithm;      // Hash algorithm as string ("keccak256", "sha256")
+        uint8[] interfaces;            // Array of interface enum values (0=human, 1=api, 2=mcp)
         Version[] versionHistory;      // Array of version structs
         bytes32[] keywordHashes;       // Array of keyword hashes
     }
@@ -45,8 +45,8 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     // Custom errors for gas efficiency
     error DIDCannotBeEmpty();                      // DID string cannot be empty
     error DIDTooLong(uint256 length);             // DID exceeds MAX_DID_LENGTH
-    error InvalidDataHashAlgorithm(uint8 algorithm); // Unsupported hash algorithm value
-    error InterfacesCannotBeEmpty();              // Interface bitmap cannot be 0
+    error InvalidDataHashAlgorithm(string algorithm); // Unsupported hash algorithm value
+    error InterfacesCannotBeEmpty();              // Interface array cannot be empty
     error DataUrlTooLong(uint256 length);         // Data URL exceeds MAX_URL_LENGTH
     error DataUrlCannotBeEmpty();                 // Data URL cannot be empty
     error FungibleTokenIdTooLong(uint256 length); // Fungible token ID exceeds MAX_URL_LENGTH
@@ -60,7 +60,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     error NewDIDRequired(string reason);         // Need new DID for this change
     error MinorIncrementRequired(uint8 currentMinor, uint8 attemptedMinor); // Interface changes require minor version increment
     error PatchIncrementRequired(uint8 currentPatch, uint8 attemptedPatch); // Data changes require patch version increment (unless minor++)
-    error InterfaceRemovalNotAllowed(uint16 current, uint16 attempted); // Interface changes must be additive only
+    error InterfaceRemovalNotAllowed(uint8[] current, uint8[] attempted); // Interface changes must be additive only
     error NoChangesSpecified();                  // No changes detected in update call
     error DIDHashNotFound(bytes32 didHash);     // No app found for the given DID hash
     error DataHashRequiredForKeywordChange();   // New data hash required when updating keywords
@@ -108,12 +108,12 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
 
     // Events (indexed by didHash + major + tokenId for both DID-based and NFT ecosystem compatibility)
     // Note: For cross-chain DID resolution, use the canonical OMA3 deduplicator on OMAChain
-    event AppMinted(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, address minter, uint16 interfaces, uint256 registrationBlock, uint256 registrationTimestamp);
+    event AppMinted(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, address minter, uint8 status, uint256 registrationBlock, uint256 registrationTimestamp);
     event StatusUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 newStatus, uint256 timestamp);
-    event DataUrlUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, string newDataUrl, bytes32 newDataHash, uint8 dataHashAlgorithm);
+    event DataUrlUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, string newDataUrl, bytes32 newDataHash, string newDataHashAlgorithm);
     event VersionAdded(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 minor, uint8 patch);
     event KeywordsUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, bytes32[] newKeywordHashes);
-    event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint16 newInterfaces);
+    event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8[] newInterfaces);
 
     constructor() ERC721("OMA3 App Registry", "OMA3APP") Ownable(msg.sender) {}
 
@@ -233,7 +233,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     /**
      * @dev Mint a new application token
      * @param didString The DID as string
-     * @param interfaces Bitmap of supported interfaces
+     * @param status The status (0=active, 1=deprecated, 2=replaced)
      * @param dataUrl URL to off-chain metadata
      * @param dataHash Hash of the off-chain data
      * @param dataHashAlgorithm Algorithm used for dataHash
@@ -243,31 +243,33 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      * @param initialVersionMinor Initial version minor number  
      * @param initialVersionPatch Initial version patch number
      * @param keywordHashes Array of keyword hashes for tagging
+     * @param interfaces Array of interface enum values (0=human, 1=api, 2=mcp)
      * @return tokenId The newly minted token ID
      */
     function mint(
         string memory didString,
-        uint16 interfaces,
+        uint8 status,
         string memory dataUrl,
         bytes32 dataHash,
-        uint8 dataHashAlgorithm,
+        string memory dataHashAlgorithm,
         string memory fungibleTokenId,
         string memory contractId,
         uint8 initialVersionMajor,
         uint8 initialVersionMinor,
         uint8 initialVersionPatch,
-        bytes32[] memory keywordHashes
+        bytes32[] memory keywordHashes,
+        uint8[] memory interfaces
     ) external nonReentrant returns (uint256) {
         // Validations
         if (bytes(didString).length == 0) revert DIDCannotBeEmpty();
         if (bytes(didString).length > MAX_DID_LENGTH) revert DIDTooLong(bytes(didString).length);
-        if (interfaces == 0) revert InterfacesCannotBeEmpty();
+        if (interfaces.length == 0) revert InterfacesCannotBeEmpty();
         if (bytes(dataUrl).length == 0) revert DataUrlCannotBeEmpty();
         if (bytes(dataUrl).length > MAX_URL_LENGTH) revert DataUrlTooLong(bytes(dataUrl).length);
         if (bytes(fungibleTokenId).length > MAX_URL_LENGTH) revert FungibleTokenIdTooLong(bytes(fungibleTokenId).length);
         if (bytes(contractId).length > MAX_URL_LENGTH) revert ContractIdTooLong(bytes(contractId).length);
         _validateKeywords(keywordHashes);
-        // Note: dataHashAlgorithm validation removed to allow future algorithm extensions
+        if (!isValidDataHashAlgorithm(dataHashAlgorithm)) revert InvalidDataHashAlgorithm(dataHashAlgorithm);
 
         // DID + Major version uniqueness and fungible token consistency validation
         bytes32 didHash = getDidHash(didString);
@@ -307,15 +309,15 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         // Store app data
         _apps[tokenId] = App({
             minter: msg.sender,
-            interfaces: interfaces,
+            status: status,
             versionMajor: initialVersionMajor,
-            status: 0, // Active
-            dataHashAlgorithm: dataHashAlgorithm,
             dataHash: dataHash,
             did: didString,
             fungibleTokenId: fungibleTokenId,
             contractId: contractId,
             dataUrl: dataUrl,
+            dataHashAlgorithm: dataHashAlgorithm,
+            interfaces: interfaces,
             versionHistory: versions,
             keywordHashes: keywordHashes
         });
@@ -339,7 +341,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             emit KeywordsUpdated(didHash, initialVersionMajor, tokenId, keywordHashes);
         }
 
-        emit AppMinted(didHash, initialVersionMajor, tokenId, msg.sender, interfaces, block.number, block.timestamp);
+        emit AppMinted(didHash, initialVersionMajor, tokenId, msg.sender, status, block.number, block.timestamp);
         if (initialVersionMajor > 0 || initialVersionMinor > 0 || initialVersionPatch > 0) {
             emit VersionAdded(didHash, initialVersionMajor, tokenId, initialVersionMinor, initialVersionPatch);
         }
@@ -413,8 +415,8 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         uint8 major,
         string memory newDataUrl,
         bytes32 newDataHash,
-        uint8 newDataHashAlgorithm,
-        uint16 newInterfaces,
+        string memory newDataHashAlgorithm,
+        uint8[] memory newInterfaces,
         bytes32[] memory newKeywordHashes,
         uint8 newMinor,
         uint8 newPatch
@@ -431,10 +433,10 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             newDataHash != bytes32(0) && 
             newDataHash != app.dataHash
         ) || (
-            newDataHashAlgorithm != app.dataHashAlgorithm
+            keccak256(bytes(newDataHashAlgorithm)) != keccak256(bytes(app.dataHashAlgorithm))
         );
         
-        bool hasInterfaceChanges = (newInterfaces != 0 && newInterfaces != app.interfaces);
+        bool hasInterfaceChanges = (newInterfaces.length > 0 && !areInterfacesEqual(app.interfaces, newInterfaces));
         
         bool hasKeywordChanges = (newKeywordHashes.length > 0);
         
@@ -454,7 +456,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             }
             
             // Rule 2: Interface changes must be additive only
-            if ((newInterfaces & app.interfaces) != app.interfaces) {
+            if (!isAdditiveInterfaceChange(app.interfaces, newInterfaces)) {
                 revert InterfaceRemovalNotAllowed(app.interfaces, newInterfaces);
             }
         }
@@ -470,7 +472,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         if (hasDataChanges) {
             if (bytes(newDataUrl).length == 0) revert DataUrlCannotBeEmpty();
             if (bytes(newDataUrl).length > MAX_URL_LENGTH) revert DataUrlTooLong(bytes(newDataUrl).length);
-            // Note: dataHashAlgorithm validation removed to allow future algorithm extensions
+            if (!isValidDataHashAlgorithm(newDataHashAlgorithm)) revert InvalidDataHashAlgorithm(newDataHashAlgorithm);
         }
         
         // Validate keyword constraints if updating
@@ -579,7 +581,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
                 uint256 tokenId = _activeTokenIds[i];
                 // Count only apps that exist in _apps mapping by checking multiple fields
                 App memory app = _apps[tokenId];
-                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+                if (app.minter != address(0) && app.interfaces.length > 0 && bytes(app.did).length > 0) {
                     validCount++;
                 }
             }
@@ -594,7 +596,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
                 uint256 tokenId = ownerTokenIds[i];
                 // Count only apps that exist in _apps mapping and have the correct status
                 App memory app = _apps[tokenId];
-                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0 && app.status == status) {
+                if (app.minter != address(0) && app.interfaces.length > 0 && bytes(app.did).length > 0 && app.status == status) {
                     count++;
                 }
             }
@@ -628,7 +630,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
                 uint256 tokenId = _activeTokenIds[i];
                 // Check if the app exists in _apps mapping by checking multiple fields
                 App memory app = _apps[tokenId];
-                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+                if (app.minter != address(0) && app.interfaces.length > 0 && bytes(app.did).length > 0) {
                     validAppCount++;
                 }
             }
@@ -640,7 +642,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
                 uint256 tokenId = _activeTokenIds[i];
                 // Only include apps that exist in _apps mapping
                 App memory app = _apps[tokenId];
-                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+                if (app.minter != address(0) && app.interfaces.length > 0 && bytes(app.did).length > 0) {
                     apps[validIndex] = app;
                     validIndex++;
                 }
@@ -666,7 +668,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
                 uint256 tokenId = ownerTokenIds[i];
                 // Check if the app exists in _apps mapping and has the correct status
                 App memory app = _apps[tokenId];
-                if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0 && app.status == status) {
+                if (app.minter != address(0) && app.interfaces.length > 0 && bytes(app.did).length > 0 && app.status == status) {
                     tempApps[collected] = app;
                     collected++;
                 }
@@ -705,14 +707,14 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         uint256[] memory tokenIds = _ownerToTokenIds[minter];
         uint256 validCount = 0;
         
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            uint256 tokenId = tokenIds[i];
-            // Count only apps that exist in _apps mapping by checking multiple fields
-            App memory app = _apps[tokenId];
-            if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
-                validCount++;
+                    for (uint256 i = 0; i < tokenIds.length; i++) {
+                uint256 tokenId = tokenIds[i];
+                // Count only apps that exist in _apps mapping by checking multiple fields
+                App memory app = _apps[tokenId];
+                if (app.minter != address(0) && app.interfaces.length > 0 && bytes(app.did).length > 0) {
+                    validCount++;
+                }
             }
-        }
         
         return validCount;
     }
@@ -737,7 +739,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         for (uint256 i = startIndex; i < totalApps; i++) {
             uint256 tokenId = tokenIds[i];
             App memory app = _apps[tokenId];
-            if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+            if (app.minter != address(0) && app.interfaces.length > 0 && bytes(app.did).length > 0) {
                 validCount++;
             }
         }
@@ -749,7 +751,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         for (uint256 i = startIndex; i < totalApps; i++) {
             uint256 tokenId = tokenIds[i];
             App memory app = _apps[tokenId];
-            if (app.minter != address(0) && app.interfaces != 0 && bytes(app.did).length > 0) {
+            if (app.minter != address(0) && app.interfaces.length > 0 && bytes(app.did).length > 0) {
                 require(validIndex < validCount, "Array bounds error");
                 apps[validIndex] = app;
                 validIndex++;
@@ -757,5 +759,57 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         }
         
         return (apps, 0);
+    }
+
+         /**
+      * @dev Helper to check if an interface change is additive (only adds, never removes)
+      * @param currentInterfaces Current array of interface enum values
+      * @param newInterfaces New array of interface enum values
+      * @return bool True if the change is additive, false otherwise
+      */
+     function isAdditiveInterfaceChange(uint8[] memory currentInterfaces, uint8[] memory newInterfaces) internal pure returns (bool) {
+         if (newInterfaces.length < currentInterfaces.length) {
+             return false; // Cannot remove interfaces
+         }
+         for (uint256 i = 0; i < currentInterfaces.length; i++) {
+             bool found = false;
+             for (uint256 j = 0; j < newInterfaces.length; j++) {
+                 if (currentInterfaces[i] == newInterfaces[j]) {
+                     found = true;
+                     break;
+                 }
+             }
+             if (!found) {
+                 return false; // Found a current interface not in newInterfaces
+             }
+         }
+         return true; // All current interfaces are in newInterfaces
+     }
+
+     /**
+      * @dev Helper to check if two interface arrays are equal
+      * @param interfaces1 First array of interface enum values
+      * @param interfaces2 Second array of interface enum values
+      * @return bool True if the arrays are equal, false otherwise
+      */
+     function areInterfacesEqual(uint8[] memory interfaces1, uint8[] memory interfaces2) internal pure returns (bool) {
+         if (interfaces1.length != interfaces2.length) {
+             return false;
+         }
+         for (uint256 i = 0; i < interfaces1.length; i++) {
+             if (interfaces1[i] != interfaces2[i]) {
+                 return false;
+             }
+         }
+         return true;
+     }
+
+    /**
+     * @dev Helper to validate if a data hash algorithm is supported
+     * @param algorithm The algorithm string to validate
+     * @return bool True if the algorithm is supported, false otherwise
+     */
+    function isValidDataHashAlgorithm(string memory algorithm) internal pure returns (bool) {
+        return keccak256(bytes(algorithm)) == keccak256(bytes("keccak256")) || keccak256(bytes(algorithm)) == keccak256(bytes("sha256"));
     }
 } 

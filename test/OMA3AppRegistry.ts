@@ -10,6 +10,28 @@ const MAX_DID_LENGTH = 128;
 const MAX_URL_LENGTH = 256;
 const MAX_KEYWORDS = 20;
 
+// Interface types according to specification (0=human, 1=api, 2=mcp)
+const INTERFACE_TYPES = {
+  HUMAN: 0,
+  API: 1,
+  MCP: 2
+};
+
+// Status values
+const STATUS = {
+  ACTIVE: 0,
+  DEPRECATED: 1,
+  REPLACED: 2
+};
+
+// Data hash algorithms according to specification
+const DATA_HASH_ALGORITHMS = {
+  KECCAK256: "keccak256",
+  SHA256: "sha256"
+};
+
+
+
 // Custom error names (no prefix needed since they're custom errors)
 const ERRORS = {
   DID_CANNOT_BE_EMPTY: "DIDCannotBeEmpty",
@@ -34,6 +56,8 @@ const ERRORS = {
   DID_HASH_NOT_FOUND: "DIDHashNotFound",
   DATA_HASH_REQUIRED_FOR_KEYWORD_CHANGE: "DataHashRequiredForKeywordChange"
 };
+
+
 
 describe("OMA3AppRegistry", function () {
   // We define a fixture to reuse the same setup in every test.
@@ -60,20 +84,21 @@ describe("OMA3AppRegistry", function () {
     const apps = [];
     for (let i = 1; i <= numApps; i++) {
       const did = `did:oma3:test${i}`;
-      const interfaces = 1; // 1 = human interface
+      const status = 0; // 0 = active
       const dataUrl = `https://data.example.com/app${i}`;
       const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`));
-      const dataHashAlgorithm = 0; // 0 = keccak256
+      const dataHashAlgorithm = DATA_HASH_ALGORITHMS.KECCAK256; // "keccak256"
       const fungibleTokenId = ""; // No fungible token ID
       const contractId = ""; // No contract ID
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
       const keywordHashes: string[] = []; // No keywords
+      const interfaces = [INTERFACE_TYPES.HUMAN]; // Human interface only
 
       await registry.connect(minter1).mint(
         did,
-        interfaces,
+        status,
         dataUrl,
         dataHash,
         dataHashAlgorithm,
@@ -82,7 +107,8 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes
+        keywordHashes,
+        interfaces
       );
 
       apps.push({ did, interfaces, versionMajor: initialVersionMajor });
@@ -136,16 +162,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           did,
-          interfaces,
+          STATUS.ACTIVE, // status
           dataUrl,
           dataHash,
-          dataHashAlgorithm,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           fungibleTokenId,
           contractId,
           initialVersionMajor,
           initialVersionMinor,
           initialVersionPatch,
-          keywordHashes
+          keywordHashes,
+          [INTERFACE_TYPES.HUMAN] // interfaces array
         )
       ).to.not.be.reverted;
 
@@ -156,20 +183,21 @@ describe("OMA3AppRegistry", function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
       const did = "did:oma3:test1";
-      const interfaces = 1;
+      const status = STATUS.ACTIVE;
       const dataUrl = "https://data.example.com/app1";
       const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data"));
-      const dataHashAlgorithm = 0;
+      const dataHashAlgorithm = DATA_HASH_ALGORITHMS.KECCAK256;
       const fungibleTokenId = "";
       const contractId = "";
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
       const keywordHashes: string[] = [];
+      const interfaces = [INTERFACE_TYPES.HUMAN];
 
       await registry.connect(minter1).mint(
           did,
-          interfaces,
+          status,
         dataUrl,
         dataHash,
         dataHashAlgorithm,
@@ -178,19 +206,20 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes
+        keywordHashes,
+        interfaces
       );
 
       const app = await registry.getApp(did, 1);
       expect(app.did).to.equal(did);
-      expect(app.interfaces).to.equal(interfaces);
+      expect(app.interfaces).to.deep.equal(interfaces);
       expect(app.dataUrl).to.equal(dataUrl);
       expect(app.dataHash).to.equal(dataHash);
-      // Note: dataHashAlgorithm field may not be accessible in the returned struct
+      expect(app.dataHashAlgorithm).to.equal(dataHashAlgorithm);
       expect(app.fungibleTokenId).to.equal(fungibleTokenId);
       expect(app.contractId).to.equal(contractId);
       expect(app.versionMajor).to.equal(initialVersionMajor);
-      // Note: versionMinor and versionPatch may not be accessible in the returned struct
+      expect(app.status).to.equal(status);
       expect(app.keywordHashes.length).to.equal(0);
     });
 
@@ -198,20 +227,21 @@ describe("OMA3AppRegistry", function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
       const did = "did:oma3:test1";
-      const interfaces = 1;
+      const status = STATUS.ACTIVE;
       const dataUrl = "https://data.example.com/app1";
       const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data"));
-      const dataHashAlgorithm = 0;
+      const dataHashAlgorithm = DATA_HASH_ALGORITHMS.KECCAK256;
       const fungibleTokenId = "";
       const contractId = "";
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
       const keywordHashes: string[] = [];
+      const interfaces = [INTERFACE_TYPES.HUMAN];
 
         await registry.connect(minter1).mint(
         did,
-        interfaces,
+        status,
         dataUrl,
         dataHash,
         dataHashAlgorithm,
@@ -220,7 +250,8 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes
+        keywordHashes,
+        interfaces
       );
 
       // Debug: Check total apps by minter
@@ -238,26 +269,29 @@ describe("OMA3AppRegistry", function () {
       
       expect(apps.length).to.equal(1);
       expect(apps[0].did).to.equal(did);
+      expect(apps[0].interfaces).to.deep.equal(interfaces);
+      expect(apps[0].status).to.equal(status);
     });
 
     it("should get apps by status", async function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
       const did = "did:oma3:test1";
-      const interfaces = 1;
+      const status = STATUS.ACTIVE;
       const dataUrl = "https://data.example.com/app1";
       const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data"));
-      const dataHashAlgorithm = 0;
+      const dataHashAlgorithm = DATA_HASH_ALGORITHMS.KECCAK256;
       const fungibleTokenId = "";
       const contractId = "";
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
       const keywordHashes: string[] = [];
+      const interfaces = [INTERFACE_TYPES.HUMAN];
 
         await registry.connect(minter1).mint(
         did,
-        interfaces,
+        status,
         dataUrl,
         dataHash,
         dataHashAlgorithm,
@@ -266,32 +300,36 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes
+        keywordHashes,
+        interfaces
       );
 
-      const [apps, nextIndex] = await registry.getAppsByStatus(0, 0); // 0 = ACTIVE
+      const [apps, nextIndex] = await registry.getAppsByStatus(STATUS.ACTIVE, 0); // 0 = ACTIVE
       expect(apps.length).to.equal(1);
       expect(apps[0].did).to.equal(did);
+      expect(apps[0].interfaces).to.deep.equal(interfaces);
+      expect(apps[0].status).to.equal(status);
     });
 
     it("should update app status", async function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
       const did = "did:oma3:test1";
-      const interfaces = 1;
+      const status = STATUS.ACTIVE;
       const dataUrl = "https://data.example.com/app1";
       const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data"));
-      const dataHashAlgorithm = 0;
+      const dataHashAlgorithm = DATA_HASH_ALGORITHMS.KECCAK256;
       const fungibleTokenId = "";
       const contractId = "";
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
       const keywordHashes: string[] = [];
+      const interfaces = [INTERFACE_TYPES.HUMAN];
 
         await registry.connect(minter1).mint(
         did,
-        interfaces,
+        status,
         dataUrl,
         dataHash,
         dataHashAlgorithm,
@@ -300,17 +338,18 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes
+        keywordHashes,
+        interfaces
       );
 
       // Update status to DEPRECATED (1)
         await expect(
-        registry.connect(minter1).updateStatus(did, 1, 1)
+        registry.connect(minter1).updateStatus(did, 1, STATUS.DEPRECATED)
       ).to.not.be.reverted;
 
       // Verify the status was updated by checking the app directly
       const app = await registry.getApp(did, 1);
-      expect(app.status).to.equal(1); // 1 = DEPRECATED
+      expect(app.status).to.equal(STATUS.DEPRECATED); // 1 = DEPRECATED
     });
   });
 
@@ -321,16 +360,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
         "", // Empty DID
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DID_CANNOT_BE_EMPTY);
     });
@@ -344,16 +384,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           longDid,
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DID_TOO_LONG);
     });
@@ -364,16 +405,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           "did:oma3:test1",
-          0, // Empty interfaces
+          0, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [] // Empty interfaces array
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.INTERFACES_CANNOT_BE_EMPTY);
     });
@@ -384,16 +426,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           "did:oma3:test1",
-          1,
+          0, // status
           "", // Empty data URL
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DATA_URL_CANNOT_BE_EMPTY);
     });
@@ -407,16 +450,17 @@ describe("OMA3AppRegistry", function () {
         await expect(
           registry.connect(minter1).mint(
           "did:oma3:test1",
-          1,
+          0, // status
           longUrl,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DATA_URL_TOO_LONG);
     });
@@ -424,8 +468,8 @@ describe("OMA3AppRegistry", function () {
     it("should accept valid data hash algorithms", async function () {
         const { registry, minter1 } = await loadFixture(deployFixture);
         
-      // Test both valid algorithms: 0 (keccak256) and 1 (sha256)
-      const validAlgorithms = [0, 1];
+      // Test both valid algorithms: "keccak256" and "sha256"
+      const validAlgorithms = [DATA_HASH_ALGORITHMS.KECCAK256, DATA_HASH_ALGORITHMS.SHA256];
       
       for (const algorithm of validAlgorithms) {
         const did = `did:oma3:test-algorithm-${algorithm}`;
@@ -433,7 +477,7 @@ describe("OMA3AppRegistry", function () {
           await expect(
             registry.connect(minter1).mint(
             did,
-            1,
+            0, // status
             "https://data.example.com/app1",
             hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
             algorithm,
@@ -442,7 +486,8 @@ describe("OMA3AppRegistry", function () {
             1,
             0,
             0,
-            []
+            [], // keywordHashes
+            [INTERFACE_TYPES.HUMAN] // interfaces
             )
           ).to.not.be.reverted;
           
@@ -459,16 +504,17 @@ describe("OMA3AppRegistry", function () {
           await expect(
             registry.connect(minter1).mint(
           "did:oma3:test1",
-          1,
+            0, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
+            DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          tooManyKeywords
+            tooManyKeywords, // keywordHashes
+            [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.TOO_MANY_KEYWORDS);
       });
@@ -483,16 +529,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           maxLengthDid,
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
 
@@ -510,16 +557,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           "did:oma3:test-max-url",
-          1,
+          STATUS.ACTIVE, // status
           maxLengthUrl,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
 
@@ -539,16 +587,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           "did:oma3:test-max-keywords",
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          maxKeywords
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          maxKeywords, // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
 
@@ -563,16 +612,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           "did:oma3:test-empty-optionals",
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // empty fungibleTokenId
           "", // empty contractId
-          1,
-          0,
-          0,
-          []
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
 
@@ -582,34 +632,43 @@ describe("OMA3AppRegistry", function () {
       expect(app.contractId).to.equal("");
     });
 
-    it("should mint with all interface types (1, 2, 4, 5, 6, 7)", async function () {
+    it("should mint with all interface types (0, 1, 2)", async function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
-      // Test all valid interface bitmaps
-      const validInterfaces = [1, 2, 4, 5, 6, 7];
+      // Test all valid interface types according to specification
+      const validInterfaces = [
+        [INTERFACE_TYPES.HUMAN], // 0 = human interface
+        [INTERFACE_TYPES.API],   // 1 = api interface
+        [INTERFACE_TYPES.MCP],   // 2 = mcp interface
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // 0,1 = human + api
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.MCP], // 0,2 = human + mcp
+        [INTERFACE_TYPES.API, INTERFACE_TYPES.MCP],   // 1,2 = api + mcp
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // 0,1,2 = all
+      ];
       
       for (const interfaces of validInterfaces) {
-        const did = `did:oma3:test-interfaces-${interfaces}`;
+        const did = `did:oma3:test-interfaces-${interfaces.join('-')}`;
         
         await expect(
           registry.connect(minter1).mint(
             did,
-            interfaces,
+            STATUS.ACTIVE, // status
             "https://data.example.com/app1",
             hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-            0,
-            "",
-            "",
-            1,
-            0,
-            0,
-            []
+            DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+            "", // fungibleTokenId
+            "", // contractId
+            1, // initialVersionMajor
+            0, // initialVersionMinor
+            0, // initialVersionPatch
+            [], // keywordHashes
+            interfaces // interfaces array
           )
         ).to.not.be.reverted;
 
         // Verify the app was minted correctly
         const app = await registry.getApp(did, 1);
-        expect(app.interfaces).to.equal(interfaces);
+        expect(app.interfaces).to.deep.equal(interfaces);
       }
     });
 
@@ -619,32 +678,34 @@ describe("OMA3AppRegistry", function () {
       // Mint first app with a specific fungibleTokenId
       await registry.connect(minter1).mint(
         "did:oma3:test-fungible",
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "token123", // specific fungibleTokenId
-        "",
-        1,
-        0,
-        0,
-        []
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Try to mint second app with same DID but different fungibleTokenId (should fail)
       await expect(
         registry.connect(minter1).mint(
           "did:oma3:test-fungible",
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 2 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "token456", // different fungibleTokenId (should fail)
-          "",
+          "", // contractId
           2, // different major version
-          0,
-          0,
-          []
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.NEW_DID_REQUIRED);
     });
@@ -661,20 +722,21 @@ describe("OMA3AppRegistry", function () {
       
           const tx = await registry.connect(minter1).mint(
         longDid,
-        255, // All interfaces
+        STATUS.ACTIVE, // status
         longUrl,
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Large stress test data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "fungible-token-id",
         "contract-id",
-        255,
-        255,
-        255,
-        largeKeywords
+        255, // initialVersionMajor
+        255, // initialVersionMinor
+        255, // initialVersionPatch
+        largeKeywords, // keywordHashes
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // all interfaces
           );
           
           const receipt = await tx.wait();
-      expect(receipt.gasUsed).to.be.lessThan(BigInt(1300000));
+      expect(receipt.gasUsed).to.be.lessThan(BigInt(1400000));
       });
     });
 
@@ -688,16 +750,17 @@ describe("OMA3AppRegistry", function () {
         await expect(
           registry.connect(minter1).mint(
           exactLengthDid,
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
           )
         ).to.not.be.reverted;
       });
@@ -711,16 +774,17 @@ describe("OMA3AppRegistry", function () {
         await expect(
           registry.connect(minter1).mint(
           "did:oma3:test1",
-          1,
+          STATUS.ACTIVE, // status
           exactLengthUrl,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
           )
         ).to.not.be.reverted;
       });
@@ -734,16 +798,17 @@ describe("OMA3AppRegistry", function () {
         await expect(
           registry.connect(minter1).mint(
           "did:oma3:test1",
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          maxKeywords
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          maxKeywords, // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
           )
         ).to.not.be.reverted;
     });
@@ -757,16 +822,17 @@ describe("OMA3AppRegistry", function () {
       const did = "did:oma3:test-version-zero";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         0, // major version 0
         1, // minor version 1
         0, // patch version 0
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify latestMajor returns 0 (not error)
@@ -782,32 +848,34 @@ describe("OMA3AppRegistry", function () {
       // Mint app with version 0.1.0
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         0, // major version 0
         1, // minor version 1
         0, // patch version 0
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Mint app with version 0.2.0 (should fail - same DID, same major)
       await expect(
         registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data 2")),
-          0,
-          "",
-          "",
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
           0, // major version 0
           2, // minor version 2
           0, // patch version 0
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DID_MAJOR_ALREADY_EXISTS);
 
@@ -830,16 +898,17 @@ describe("OMA3AppRegistry", function () {
       // Mint app with version 0.0.0
       await registry.connect(minter1).mint(
         "did:oma3:test-zero-zero",
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         0, // major version 0
         0, // minor version 0
         0, // patch version 0
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Call latestMajor on existing DID with version 0 (should return 0, not revert)
@@ -855,31 +924,33 @@ describe("OMA3AppRegistry", function () {
       // Mint app with version 0.1.0
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         0, // major version 0
         1, // minor version 1
         0, // patch version 0
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Mint app with version 1.0.0 (same DID, different major)
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data 2")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         1, // major version 1
         0, // minor version 0
         0, // patch version 0
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify latestMajor returns 1 (not 0)
@@ -906,16 +977,17 @@ describe("OMA3AppRegistry", function () {
 
       await registry.connect(minter1).mint(
         did,
-        interfaces,
+        STATUS.ACTIVE, // status
         dataUrl,
         dataHash,
-        dataHashAlgorithm,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         fungibleTokenId,
         contractId,
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes
+        keywordHashes,
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       return { registry, minter1, did };
@@ -931,8 +1003,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "", // no data URL change
           hre.ethers.ZeroHash, // no data hash change
-          0, // no algorithm change
-          3, // new interfaces (human + api)
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // new interfaces (human + api)
           [], // no keyword changes
           0, // minor version not incremented (should fail)
           0  // patch version
@@ -946,8 +1018,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "", // no data URL change
           hre.ethers.ZeroHash, // no data hash change
-          0, // no algorithm change
-          3, // new interfaces (human + api)
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // new interfaces (human + api)
           [], // no keyword changes
           1, // minor version incremented
           0  // patch version
@@ -965,8 +1037,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "", // no data URL change
           hre.ethers.ZeroHash, // no data hash change
-          0, // no algorithm change
-          0, // removing all interfaces (should fail)
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change (should fail - no changes)
           [], // no keyword changes
           1, // minor version
           0  // patch version
@@ -984,8 +1056,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "https://data.example.com/app1-updated", // new data URL
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")), // new data hash
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           [], // no keyword changes
           0, // no minor increment
           0  // patch version not incremented (should fail)
@@ -999,8 +1071,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "https://data.example.com/app1-updated", // new data URL
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")), // new data hash
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           [], // no keyword changes
           0, // no minor increment
           1  // patch version incremented
@@ -1020,8 +1092,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "", // no data URL change
           hre.ethers.ZeroHash, // no data hash (should fail)
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           newKeywords, // keyword changes
           0, // no minor increment
           1  // patch version
@@ -1035,8 +1107,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "https://data.example.com/app1-keywords", // data URL for keyword changes
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("New data for keywords")), // new data hash
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           newKeywords, // keyword changes
           0, // no minor increment
           1  // patch version (incremented from 0)
@@ -1054,8 +1126,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "", // no data URL change
           hre.ethers.ZeroHash, // no data hash change
-          0, // no algorithm change
-          1, // same interfaces
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           [], // no keyword changes
           0, // no version changes
           0  // no version changes
@@ -1075,8 +1147,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "https://data.example.com/app1-combined", // new data URL
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Combined update data")), // new data hash
-          0, // no algorithm change
-          3, // new interfaces (human + api)
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // new interfaces (human + api)
           newKeywords, // keyword changes
           1, // minor increment (required for interface change)
           0  // patch version
@@ -1085,7 +1157,7 @@ describe("OMA3AppRegistry", function () {
 
       // Verify the app was updated correctly
       const app = await registry.getApp(did, 1);
-      expect(app.interfaces).to.equal(3);
+      expect(app.interfaces).to.deep.equal([INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API]);
       expect(app.dataUrl).to.equal("https://data.example.com/app1-combined");
       expect(app.keywordHashes.length).to.equal(1);
     });
@@ -1100,8 +1172,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "", // empty data URL (should fail)
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")),
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           [], // no keyword changes
           0, // no minor increment
           1  // patch version
@@ -1116,8 +1188,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           longUrl, // too long URL (should fail)
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")),
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           [], // no keyword changes
           0, // no minor increment
           1  // patch version
@@ -1137,8 +1209,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "", // no data URL change
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")),
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           tooManyKeywords, // too many keywords (should fail)
           0, // no minor increment
           1  // patch version
@@ -1155,8 +1227,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://data.example.com/app1-v1-1", // new data URL
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Version 1.0.1 data")),
-        0, // no algorithm change
-        1, // no interface change
+        DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+        [], // no interface change
         [], // no keyword changes
         0, // no minor increment
         1  // patch version
@@ -1167,8 +1239,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://data.example.com/app1-v1-1", // same data URL
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Version 1.1.0 data")),
-        0, // no algorithm change
-        3, // new interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // new interfaces
         [], // no keyword changes
         1, // minor increment
         0  // patch version
@@ -1178,7 +1250,7 @@ describe("OMA3AppRegistry", function () {
       const app = await registry.getApp(did, 1);
       // Note: versionHistory may not be directly accessible, but we can verify the app exists
       expect(app.did).to.equal(did);
-      expect(app.interfaces).to.equal(3);
+      expect(app.interfaces).to.deep.equal([INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API]);
     });
   });
 
@@ -1192,16 +1264,17 @@ describe("OMA3AppRegistry", function () {
         const did = `did:oma3:stress-test-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
         apps.push(did);
       }
@@ -1237,16 +1310,17 @@ describe("OMA3AppRegistry", function () {
       const did = "did:oma3:single-app";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify app is active
@@ -1270,16 +1344,17 @@ describe("OMA3AppRegistry", function () {
         const did = `did:oma3:reactivation-test-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
         apps.push(did);
       }
@@ -1315,16 +1390,17 @@ describe("OMA3AppRegistry", function () {
         const did = `did:oma3:complex-test-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
         apps.push(did);
       }
@@ -1365,16 +1441,17 @@ describe("OMA3AppRegistry", function () {
       const did = "did:oma3:no-effect-test";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Try to change to same status (should not fail)
@@ -1396,30 +1473,32 @@ describe("OMA3AppRegistry", function () {
       
       await registry.connect(minter1).mint(
         app1,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       await registry.connect(minter2).mint(
         app2,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 2 data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify both apps are active
@@ -1462,16 +1541,17 @@ describe("OMA3AppRegistry", function () {
       // Mint app with DID major 1
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         1, // major version 1
-        0,
-        0,
-        []
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify registration data was recorded
@@ -1486,16 +1566,17 @@ describe("OMA3AppRegistry", function () {
       // Mint same DID major 2
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data 2")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         2, // major version 2
-        0,
-        0,
-        []
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify registration data unchanged (should still be from first registration)
@@ -1517,16 +1598,17 @@ describe("OMA3AppRegistry", function () {
       // Mint first app
       await registry.connect(minter1).mint(
         did1,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify first registration
@@ -1536,16 +1618,17 @@ describe("OMA3AppRegistry", function () {
       // Mint second app with different DID
       await registry.connect(minter1).mint(
         did2,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 2 data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify second registration
@@ -1569,32 +1652,34 @@ describe("OMA3AppRegistry", function () {
       // Mint first app
       await registry.connect(minter1).mint(
         did1,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Mint second app with different DID (should succeed even if hash collision occurred)
       await expect(
         registry.connect(minter1).mint(
           did2,
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 2 data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
 
@@ -1620,16 +1705,17 @@ describe("OMA3AppRegistry", function () {
       // Mint app with version 0.1.0
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         0, // major version 0
-        1,
-        0,
-        []
+        1, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify registration data was recorded
@@ -1644,16 +1730,17 @@ describe("OMA3AppRegistry", function () {
       // Mint same DID with version 1.0.0
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data 2")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         1, // major version 1
-        0,
-        0,
-        []
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify registration data unchanged (should still be from first registration)
@@ -1674,16 +1761,17 @@ describe("OMA3AppRegistry", function () {
       // Mint app with version 1.0.0
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         1, // major version 1
-        0,
-        0,
-        []
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify registration data was recorded
@@ -1698,16 +1786,17 @@ describe("OMA3AppRegistry", function () {
       // Mint same DID with version 2.0.0
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data 2")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         2, // major version 2
-        0,
-        0,
-        []
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify registration data unchanged (should still be from first registration)
@@ -1720,16 +1809,17 @@ describe("OMA3AppRegistry", function () {
       // Mint same DID with version 3.0.0
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app3",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data 3")),
-        0,
-        "",
-        "",
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
         3, // major version 3
-        0,
-        0,
-        []
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify registration data still unchanged
@@ -1762,16 +1852,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-          0,
-          "",
-          "",
-          1,
-          0,
-          0,
-          []
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
+          1, // initialVersionMajor
+          0, // initialVersionMinor
+          0, // initialVersionPatch
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
 
@@ -1787,16 +1878,17 @@ describe("OMA3AppRegistry", function () {
       const did = "did:oma3:update-reentrancy-test";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Test that updateAppControlled function completes successfully
@@ -1806,8 +1898,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "https://data.example.com/app1-updated", // new data URL
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")), // new data hash
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           [], // no keyword changes
           0, // no minor increment
           1  // patch version incremented
@@ -1826,16 +1918,17 @@ describe("OMA3AppRegistry", function () {
       const did = "did:oma3:status-reentrancy-test";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Test that updateStatus function completes successfully
@@ -1855,16 +1948,17 @@ describe("OMA3AppRegistry", function () {
       const did = "did:oma3:access-control-test";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Try to update with different account (should fail)
@@ -1874,8 +1968,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "https://data.example.com/unauthorized-update",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Unauthorized data")),
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           [], // no keyword changes
           0, // no minor increment
           1  // patch version
@@ -1895,16 +1989,17 @@ describe("OMA3AppRegistry", function () {
       const did = "did:oma3:ownership-transfer-test";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
-        "",
-        "",
-        1,
-        0,
-        0,
-        []
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        "", // fungibleTokenId
+        "", // contractId
+        1, // initialVersionMajor
+        0, // initialVersionMinor
+        0, // initialVersionPatch
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Transfer ownership to minter2
@@ -1917,8 +2012,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "https://data.example.com/old-owner-update",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Old owner data")),
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           [], // no keyword changes
           0, // no minor increment
           1  // patch version
@@ -1932,8 +2027,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "https://data.example.com/new-owner-update",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("New owner data")),
-          0, // no algorithm change
-          1, // no interface change
+          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          [], // no interface change
           [], // no keyword changes
           0, // no minor increment
           1  // patch version
@@ -1958,16 +2053,17 @@ describe("OMA3AppRegistry", function () {
         try {
           await registry.connect(minter1).mint(
             "did:oma3:malicious-test",
-            1,
+            STATUS.ACTIVE, // status
             maliciousUrl,
             hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test data")),
-            0,
-            "",
-            "",
-            1,
-            0,
-            0,
-            []
+            DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+            "", // fungibleTokenId
+            "", // contractId
+            1, // initialVersionMajor
+            0, // initialVersionMinor
+            0, // initialVersionPatch
+            [], // keywordHashes
+            [INTERFACE_TYPES.HUMAN] // interfaces
           );
           console.log(`    ✓ Malicious URL handled: ${maliciousUrl.substring(0, 30)}...`);
         } catch (error) {
@@ -1988,16 +2084,17 @@ describe("OMA3AppRegistry", function () {
       // This should complete within reasonable gas limits
       const tx = await registry.connect(minter1).mint(
         maxDid,
-        255, // All interfaces
+        STATUS.ACTIVE, // status
         maxUrl,
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Maximum data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "fungible-token-id",
         "contract-id",
-        255,
-        255,
-        255,
-        maxKeywords
+        255, // initialVersionMajor
+        255, // initialVersionMinor
+        255, // initialVersionPatch
+        maxKeywords, // keywordHashes
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // all interfaces
       );
 
       const receipt = await tx.wait();
@@ -2013,16 +2110,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           "did:oma3:overflow-test",
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test data")),
-          0,
-          "",
-          "",
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
           255, // max uint8
           255, // max uint8
           255, // max uint8
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
 
@@ -2030,16 +2128,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           "did:oma3:underflow-test",
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test data")),
-          0,
-          "",
-          "",
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          "", // fungibleTokenId
+          "", // contractId
           0, // min uint8
           0, // min uint8
           0, // min uint8
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
     });
@@ -2062,16 +2161,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 1; i <= 3; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:pagination-test-${i}`,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
       }
 
@@ -2088,16 +2188,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 1; i <= 7; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:multipage-test-${i}`,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
       }
 
@@ -2114,16 +2215,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 1; i <= 2; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:pagesize-test-${i}`,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
       }
 
@@ -2144,16 +2246,17 @@ describe("OMA3AppRegistry", function () {
       // Mint 1 app
       await registry.connect(minter1).mint(
         "did:oma3:invalid-index-test",
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1,
         0,
         0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Test with invalid start index (beyond available apps)
@@ -2171,16 +2274,17 @@ describe("OMA3AppRegistry", function () {
         const did = `did:oma3:consistency-test-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
         appDids.push(did);
       }
@@ -2209,16 +2313,17 @@ describe("OMA3AppRegistry", function () {
         const did = `did:oma3:integrity-test-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
         appDids.push(did);
       }
@@ -2255,16 +2360,17 @@ describe("OMA3AppRegistry", function () {
         const did = `did:oma3:rapid-test-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
         appDids.push(did);
       }
@@ -2300,16 +2406,17 @@ describe("OMA3AppRegistry", function () {
         const did = `did:oma3:edge-test-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1,
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
         appDids.push(did);
       }
@@ -2339,16 +2446,17 @@ describe("OMA3AppRegistry", function () {
       const did = "did:oma3:duplicate-test";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1,
         0,
         0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Verify app is active
@@ -2373,32 +2481,34 @@ describe("OMA3AppRegistry", function () {
       // Mint first app
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, // major version 1
         0,
         0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Try to mint same DID and major (should fail)
       await expect(
         registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 2 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1, // same major version (should fail)
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DID_MAJOR_ALREADY_EXISTS);
     });
@@ -2411,32 +2521,34 @@ describe("OMA3AppRegistry", function () {
       // Mint app with major version 1
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, // major version 1
         0,
         0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Mint same DID with major version 2 (should succeed)
       await expect(
         registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 2 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           2, // different major version (should succeed)
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
 
@@ -2453,32 +2565,34 @@ describe("OMA3AppRegistry", function () {
       // Mint app with DID1 and major version 1
       await registry.connect(minter1).mint(
         "did:oma3:test1",
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, // major version 1
         0,
         0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Mint app with DID2 and same major version 1 (should succeed)
       await expect(
         registry.connect(minter1).mint(
           "did:oma3:test2",
-          1,
+          STATUS.ACTIVE, // status
           "https://data.example.com/app2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 2 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1, // same major version, different DID (should succeed)
           0,
           0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.not.be.reverted;
 
@@ -2497,32 +2611,34 @@ describe("OMA3AppRegistry", function () {
       // Mint first app with fungible token ID
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "fungible-token-123", // fungible token ID
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Try to mint same DID with different fungible token ID (should fail)
       await expect(
         registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE,
           "https://data.example.com/app2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 2 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "fungible-token-456", // different fungible token ID (should fail)
           "",
           2, // different major version
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.NEW_DID_REQUIRED);
 
@@ -2530,16 +2646,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE,
           "https://data.example.com/app3",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 3 data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "fungible-token-123", // same fungible token ID (should succeed)
           "",
           2, // different major version
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         )
       ).to.not.be.reverted;
     });
@@ -2568,16 +2685,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:enumeration-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Test total supply increased
@@ -2592,16 +2710,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:ownership-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Test owner of token
@@ -2618,16 +2737,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:transfer-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Transfer token
@@ -2645,16 +2765,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:approval-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Approve minter2 to transfer token
@@ -2676,16 +2797,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:operator-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Set operator approval
@@ -2707,16 +2829,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:uri-test",
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1,
         0,
         0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Test token URI generation
@@ -2741,16 +2864,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:unauthorized-test",
-        1,
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1,
         0,
         0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Try to transfer without approval (should fail)
@@ -2769,16 +2893,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE,
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         )
       ).to.emit(registry, "Transfer")
         .withArgs(hre.ethers.ZeroAddress, minter1.address, 1);
@@ -2790,16 +2915,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:transfer-event-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Transfer token
@@ -2815,16 +2941,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:approval-event-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Approve token
@@ -2853,19 +2980,20 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE,
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         )
       ).to.emit(registry, "AppMinted")
-        .withArgs(anyValue, 1, 1, minter1.address, 1, anyValue, anyValue); // didHash, major, tokenId, minter, interfaces, registrationBlock, registrationTimestamp
+        .withArgs(anyValue, 1, 1, minter1.address, STATUS.ACTIVE, anyValue, anyValue); // didHash, major, tokenId, minter, status, registrationBlock, registrationTimestamp
 
       // Test status update event
       await expect(
@@ -2880,14 +3008,14 @@ describe("OMA3AppRegistry", function () {
           1,
           "https://data.example.com/app1-updated",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")),
-          0,
-          1,
+          DATA_HASH_ALGORITHMS.KECCAK256,
+          [INTERFACE_TYPES.HUMAN],
           [],
           0,
           1
         )
       ).to.emit(registry, "DataUrlUpdated")
-        .withArgs(anyValue, 1, 1, "https://data.example.com/app1-updated", anyValue, 0); // didHash, major, tokenId, newDataUrl, newDataHash, dataHashAlgorithm
+        .withArgs(anyValue, 1, 1, "https://data.example.com/app1-updated", anyValue, DATA_HASH_ALGORITHMS.KECCAK256); // didHash, major, tokenId, newDataUrl, newDataHash, dataHashAlgorithm
     });
 
     it("should efficiently filter events by DID hash", async function () {
@@ -2903,16 +3031,17 @@ describe("OMA3AppRegistry", function () {
       for (const did of dids) {
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE,
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
       }
 
@@ -2943,16 +3072,17 @@ describe("OMA3AppRegistry", function () {
         
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE,
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
       }
 
@@ -2989,16 +3119,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 1; i <= 100; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:large-dataset-${i}`,
-          1,
+          STATUS.ACTIVE,
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
       }
       const mintTime = Date.now() - startTime;
@@ -3024,16 +3155,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 1; i <= numApps; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:large-scale-${i}`,
-          1,
+          STATUS.ACTIVE,
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
       }
       const mintTime = Date.now() - startTime;
@@ -3066,16 +3198,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 1; i <= 20; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:pagination-large-${i}`,
-          1,
+          STATUS.ACTIVE,
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
       }
 
@@ -3096,16 +3229,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 1; i <= 75; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:mixed-status-${i}`,
-          1,
+          STATUS.ACTIVE,
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
       }
 
@@ -3131,16 +3265,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 1; i <= 20; i++) {
         const tx = await registry.connect(minter1).mint(
           `did:oma3:gas-test-${i}`,
-          1,
+          STATUS.ACTIVE,
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
         const receipt = await tx.wait();
         gasCosts.push(receipt.gasUsed);
@@ -3170,16 +3305,17 @@ describe("OMA3AppRegistry", function () {
       // Mint app with duplicate keyword hashes
       await registry.connect(minter1).mint(
         "did:oma3:keyword-collision-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        [hash1, hash2, hash3] // Should handle duplicates gracefully
+        [hash1, hash2, hash3], // Should handle duplicates gracefully
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Verify app was minted successfully
@@ -3201,16 +3337,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 0; i < keywordSets.length; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:keyword-performance-${i}`,
-          1,
+          STATUS.ACTIVE,
           `https://data.example.com/app${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          keywordSets[i]
+          keywordSets[i],
+          [INTERFACE_TYPES.HUMAN]
         );
       }
 
@@ -3243,16 +3380,17 @@ describe("OMA3AppRegistry", function () {
       const startTime = Date.now();
       await registry.connect(minter1).mint(
         "did:oma3:max-keywords-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        maxKeywords
+        maxKeywords,
+        [INTERFACE_TYPES.HUMAN]
       );
       const mintTime = Date.now() - startTime;
       console.log(`    ✓ Minted app with ${MAX_KEYWORDS} keywords in ${mintTime}ms`);
@@ -3272,16 +3410,17 @@ describe("OMA3AppRegistry", function () {
       
       await registry.connect(minter1).mint(
         "did:oma3:keyword-update-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Initial data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        initialKeywords
+        initialKeywords,
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Update with new keywords
@@ -3296,8 +3435,8 @@ describe("OMA3AppRegistry", function () {
         1,
         "https://data.example.com/app1-updated",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")),
-        0,
-        1,
+        DATA_HASH_ALGORITHMS.KECCAK256,
+        [INTERFACE_TYPES.HUMAN],
         newKeywords,
         0,
         1
@@ -3325,22 +3464,23 @@ describe("OMA3AppRegistry", function () {
         await expect(
           registry.connect(minter1).mint(
             did,
-            bitmap,
+            STATUS.ACTIVE,
             "https://data.example.com/app1",
             hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-            0,
+            DATA_HASH_ALGORITHMS.KECCAK256,
             "",
             "",
             1,
             0,
             0,
-            []
+            [],
+            [bitmap] // Convert bitmap to array format
           )
         ).to.not.be.reverted;
 
-        // Verify bitmap was stored correctly
+        // Verify interfaces array was stored correctly
         const app = await registry.getApp(did, 1);
-        expect(app.interfaces).to.equal(bitmap);
+        expect(app.interfaces).to.deep.equal([bitmap]);
         
         console.log(`    ✓ Bitmap ${bitmap} (${getBitmapDescription(bitmap)}) accepted`);
       }
@@ -3355,16 +3495,17 @@ describe("OMA3AppRegistry", function () {
         await expect(
           registry.connect(minter1).mint(
             `did:oma3:invalid-bitmap-${bitmap}`,
-            bitmap,
+            STATUS.ACTIVE,
             "https://data.example.com/app1",
             hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-            0,
+            DATA_HASH_ALGORITHMS.KECCAK256,
             "",
             "",
             1,
             0,
             0,
-            []
+            [],
+            [bitmap] // Convert bitmap to array format
           )
         ).to.not.be.reverted; // Note: Contract might not validate bitmap range
 
@@ -3378,16 +3519,17 @@ describe("OMA3AppRegistry", function () {
       // Start with human interface (1)
       await registry.connect(minter1).mint(
         "did:oma3:interface-rules-test",
-        1, // human interface
+        STATUS.ACTIVE, // status
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Try to add API interface (should require minor increment)
@@ -3397,8 +3539,8 @@ describe("OMA3AppRegistry", function () {
           1,
           "",
           hre.ethers.ZeroHash,
-          0,
-          3, // human + api (1 + 2)
+          DATA_HASH_ALGORITHMS.KECCAK256,
+          [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // human + api
           [],
           1, // minor increment required
           0
@@ -3407,7 +3549,7 @@ describe("OMA3AppRegistry", function () {
 
       // Verify interfaces were added
       const app = await registry.getApp("did:oma3:interface-rules-test", 1);
-      expect(app.interfaces).to.equal(3);
+      expect(app.interfaces).to.deep.equal([INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API]);
     });
 
     it("should handle complex interface combinations", async function () {
@@ -3429,20 +3571,21 @@ describe("OMA3AppRegistry", function () {
         
         await registry.connect(minter1).mint(
           did,
-          test.bitmap,
+          STATUS.ACTIVE,
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [test.bitmap] // Convert bitmap to array format
         );
 
         const app = await registry.getApp(did, 1);
-        expect(app.interfaces).to.equal(test.bitmap);
+        expect(app.interfaces).to.deep.equal([test.bitmap]);
         
         console.log(`    ✓ ${test.description} (bitmap ${test.bitmap}) works correctly`);
       }
@@ -3457,26 +3600,27 @@ describe("OMA3AppRegistry", function () {
       for (let i = 1; i <= 10; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:bitmap-storage-${i}`,
-          i % 7 + 1, // Cycle through valid bitmaps
+          STATUS.ACTIVE,
           "https://data.example.com/app1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256,
           "",
           "",
           1,
           0,
           0,
-          []
+          [],
+          [i % 7 + 1] // Cycle through valid bitmaps, convert to array format
         );
       }
       
       const mintTime = Date.now() - startTime;
       console.log(`    ✓ Minted 10 apps with different bitmaps in ${mintTime}ms`);
       
-      // Verify all apps have correct bitmaps
+      // Verify all apps have correct interfaces arrays
       for (let i = 1; i <= 10; i++) {
         const app = await registry.getApp(`did:oma3:bitmap-storage-${i}`, 1);
-        expect(app.interfaces).to.equal(i % 7 + 1);
+        expect(app.interfaces).to.deep.equal([i % 7 + 1]);
       }
     });
   });
@@ -3493,16 +3637,17 @@ describe("OMA3AppRegistry", function () {
         mintPromises.push(
           registry.connect(minter1).mint(
             `did:oma3:concurrent-user1-${i}`,
-            1,
+            STATUS.ACTIVE,
             `https://data.example.com/user1-app${i}`,
             hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`User1 App ${i} data`)),
-            0,
+            DATA_HASH_ALGORITHMS.KECCAK256,
             "",
             "",
             1,
             0,
             0,
-            []
+            [],
+            [INTERFACE_TYPES.HUMAN]
           )
         );
       }
@@ -3512,16 +3657,17 @@ describe("OMA3AppRegistry", function () {
         mintPromises.push(
           registry.connect(minter2).mint(
             `did:oma3:concurrent-user2-${i}`,
-            1,
+            STATUS.ACTIVE,
             `https://data.example.com/user2-app${i}`,
             hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`User2 App ${i} data`)),
-            0,
+            DATA_HASH_ALGORITHMS.KECCAK256,
             "",
             "",
             1,
             0,
             0,
-            []
+            [],
+            [INTERFACE_TYPES.HUMAN]
           )
         );
       }
@@ -3546,31 +3692,33 @@ describe("OMA3AppRegistry", function () {
       // User 1 mints an app
       await registry.connect(minter1).mint(
         "did:oma3:user1-app",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/user1-app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("User1 App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // User 2 mints an app
       await registry.connect(minter2).mint(
         "did:oma3:user2-app",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/user2-app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("User2 App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // User 1 should not be able to update User 2's app
@@ -3580,8 +3728,8 @@ describe("OMA3AppRegistry", function () {
           1,
           "https://data.example.com/unauthorized-update",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Unauthorized data")),
-          0,
-          1,
+          DATA_HASH_ALGORITHMS.KECCAK256,
+          [INTERFACE_TYPES.HUMAN],
           [],
           0,
           1
@@ -3595,8 +3743,8 @@ describe("OMA3AppRegistry", function () {
           1,
           "https://data.example.com/unauthorized-update",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Unauthorized data")),
-          0,
-          1,
+          DATA_HASH_ALGORITHMS.KECCAK256,
+          [INTERFACE_TYPES.HUMAN],
           [],
           0,
           1
@@ -3610,30 +3758,32 @@ describe("OMA3AppRegistry", function () {
       // Both users mint apps
       await registry.connect(minter1).mint(
         "did:oma3:concurrent-status-1",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("App 1 data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       await registry.connect(minter2).mint(
         "did:oma3:concurrent-status-2",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("App 2 data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Simulate concurrent status updates
@@ -3658,39 +3808,41 @@ describe("OMA3AppRegistry", function () {
       // User 1 creates human interface app
       await registry.connect(minter1).mint(
         "did:oma3:human-interface",
-        1, // human interface
+        STATUS.ACTIVE,
         "https://data.example.com/human-app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Human App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // User 2 creates API interface app
       await registry.connect(minter2).mint(
         "did:oma3:api-interface",
-        2, // api interface
+        STATUS.ACTIVE,
         "https://data.example.com/api-app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("API App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.API]
       );
 
       // Verify interface isolation
       const humanApp = await registry.getApp("did:oma3:human-interface", 1);
       const apiApp = await registry.getApp("did:oma3:api-interface", 1);
       
-      expect(humanApp.interfaces).to.equal(1);
-      expect(apiApp.interfaces).to.equal(2);
+      expect(humanApp.interfaces).to.deep.equal([INTERFACE_TYPES.HUMAN]);
+      expect(apiApp.interfaces).to.deep.equal([INTERFACE_TYPES.API]);
     });
 
     it("should handle ownership transfers between users", async function () {
@@ -3699,16 +3851,17 @@ describe("OMA3AppRegistry", function () {
       // User 1 mints an app
       await registry.connect(minter1).mint(
         "did:oma3:transfer-test",
-        1,
+        STATUS.ACTIVE,
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("App data")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256,
         "",
         "",
         1,
         0,
         0,
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Transfer ownership to User 2
@@ -3721,8 +3874,8 @@ describe("OMA3AppRegistry", function () {
           1,
           "https://data.example.com/transferred-app",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Transferred app data")),
-          0,
-          1,
+          DATA_HASH_ALGORITHMS.KECCAK256,
+          [INTERFACE_TYPES.HUMAN],
           [],
           0,
           1
@@ -3736,8 +3889,8 @@ describe("OMA3AppRegistry", function () {
           1,
           "https://data.example.com/old-owner-update",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Old owner data")),
-          0,
-          1,
+          DATA_HASH_ALGORITHMS.KECCAK256,
+          [INTERFACE_TYPES.HUMAN],
           [],
           0,
           1
@@ -3807,16 +3960,17 @@ describe("OMA3AppRegistry", function () {
         await expect(
           registry.connect(minter1).mint(
             did,
-            interfaces,
+            STATUS.ACTIVE,
             dataUrl,
             hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Random App ${i}`)),
-            0, // dataHashAlgorithm
+            DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
             "", // fungibleTokenId
             "", // contractId
             1, // major (simplified)
             0, // minor
             0, // patch
-            keywordHashes
+            keywordHashes,
+            [interfaces] // Convert to array format
           )
         ).to.not.be.reverted;
       }
@@ -3844,16 +3998,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           longDid,
-          1, // interfaces
+          STATUS.ACTIVE,
           longUrl,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Long Test")),
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, // major
           0, // minor
           0, // patch
-          [] // keywordHashes
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN]
         )
       ).to.not.be.reverted;
       
@@ -3862,16 +4017,17 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           specialDid,
-          1, // interfaces
+          STATUS.ACTIVE,
           "https://example.com",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Special Test")),
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, // major
           0, // minor
           0, // patch
-          [] // keywordHashes
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN]
         )
       ).to.not.be.reverted;
     });
@@ -3885,16 +4041,17 @@ describe("OMA3AppRegistry", function () {
       // Measure minimal mint gas cost
       const minimalMintTx = await registry.connect(minter1).mint(
         "did:oma3:gasTest1",
-        1, // interfaces (must be non-zero)
+        STATUS.ACTIVE,
         "https://data.example.com",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [] // keywordHashes
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN]
       );
       const minimalMintReceipt = await minimalMintTx.wait();
       console.log(`Minimal mint gas used: ${minimalMintReceipt.gasUsed.toString()}`);
@@ -3905,16 +4062,17 @@ describe("OMA3AppRegistry", function () {
       );
       const fullMintTx = await registry.connect(minter1).mint(
         "did:oma3:gasTest2",
-        7, // interfaces
+        STATUS.ACTIVE,
         "https://data.example.com",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        keywordHashes
+        keywordHashes,
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // All interfaces
       );
       const fullMintReceipt = await fullMintTx.wait();
       console.log(`Full mint gas used: ${fullMintReceipt.gasUsed.toString()}`);
@@ -3932,8 +4090,8 @@ describe("OMA3AppRegistry", function () {
       console.log(`getAppsByStatus query completed`);
       
       // Verify gas costs are within reasonable limits
-      expect(minimalMintReceipt.gasUsed).to.be.below(500000); // 500k gas limit
-      expect(fullMintReceipt.gasUsed).to.be.below(700000); // 700k gas limit (increased for full mint with keywords)
+      expect(minimalMintReceipt.gasUsed).to.be.below(550000); // 550k gas limit (increased due to new contract structure)
+      expect(fullMintReceipt.gasUsed).to.be.below(750000); // 750k gas limit (increased for full mint with keywords)
       expect(statusUpdateReceipt.gasUsed).to.be.below(100000); // 100k gas limit
     });
 
@@ -3944,16 +4102,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 0; i < 50; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:pagination${i}`,
-          1, // interfaces (must be non-zero)
+          STATUS.ACTIVE,
           "https://data.example.com",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [] // keywordHashes
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN]
         );
       }
       
@@ -3975,16 +4134,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app first
       await registry.connect(minter1).mint(
         "did:oma3:updateTest",
-        1, // interfaces (must be non-zero)
+        STATUS.ACTIVE,
         "https://data.example.com",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [] // keywordHashes
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN]
       );
       
       // Measure data-only update
@@ -3993,8 +4153,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://newdata.example.com", // newDataUrl
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("newdata")), // newDataHash
-        0, // newDataHashAlgorithm
-        1, // newInterfaces (keep same)
+        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // newInterfaces (keep same)
         [], // newKeywordHashes
         0, // newMinor
         1 // newPatch
@@ -4008,8 +4168,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://newdata.example.com", // newDataUrl (keep same)
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("newdata")), // newDataHash
-        0, // newDataHashAlgorithm
-        3, // newInterfaces (add interface)
+        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // newInterfaces (add interface)
         [], // newKeywordHashes
         1, // newMinor
         0 // newPatch
@@ -4031,16 +4191,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 0; i < 10; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:storage${i}`,
-          1, // interfaces (must be non-zero)
+          STATUS.ACTIVE,
           "https://data.example.com",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [] // keywordHashes
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN]
         );
       }
       
@@ -4065,16 +4226,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 0; i < 100; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:perf${i}`,
-          1, // interfaces (must be non-zero)
+          STATUS.ACTIVE,
           "https://data.example.com",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [] // keywordHashes
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN]
         );
       }
       
@@ -4096,16 +4258,17 @@ describe("OMA3AppRegistry", function () {
       // Test that storage operations are consistent
       await registry.connect(minter1).mint(
         "did:oma3:slotTest",
-        1, // interfaces (must be non-zero)
+        STATUS.ACTIVE,
         "https://data.example.com",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [] // keywordHashes
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN]
       );
       
       // Verify storage consistency
@@ -4129,16 +4292,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:marketplace",
-        1, // interfaces (must be non-zero)
+        STATUS.ACTIVE,
         "https://data.example.com",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [] // keywordHashes
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN]
       );
       
       // Test approval mechanisms (ERC721 standard)
@@ -4164,16 +4328,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:transfer",
-        1, // interfaces (must be non-zero)
+        STATUS.ACTIVE,
         "https://data.example.com",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [] // keywordHashes
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN]
       );
       
       // Test that safe transfer functions work (inherited from ERC721)
@@ -4205,16 +4370,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 0; i < 5; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:batch${i}`,
-          1, // interfaces (must be non-zero)
+          STATUS.ACTIVE,
           "https://data.example.com",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [] // keywordHashes
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN]
         );
       }
       
@@ -4245,16 +4411,17 @@ describe("OMA3AppRegistry", function () {
       // Mint an app
       await registry.connect(minter1).mint(
         "did:oma3:metadata",
-        1, // interfaces (must be non-zero)
+        STATUS.ACTIVE,
         "https://data.example.com",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [] // keywordHashes
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN]
       );
       
       // Test that basic ERC721 functions work
@@ -4272,16 +4439,17 @@ describe("OMA3AppRegistry", function () {
       for (let i = 0; i < 10; i++) {
         await registry.connect(minter1).mint(
           `did:oma3:query${i}`,
-          1, // interfaces (must be non-zero)
+          STATUS.ACTIVE,
           "https://data.example.com",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("data")), // dataHash
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [] // keywordHashes
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN]
         );
         
         // Set some to deprecated
@@ -4319,14 +4487,15 @@ describe("OMA3AppRegistry", function () {
       // Mint initial app at version 1.0.0
       await registry.connect(minter1).mint(
         "did:example:version-history",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("initial data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Update to version 1.1.0
@@ -4335,8 +4504,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://example.com/app-v1-1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated data v1.1")),
-        0, // dataHashAlgorithm
-        1, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // interfaces
         [], // keywordHashes
         1, // minor
         0  // patch
@@ -4348,8 +4517,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://example.com/app-v1-1-1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated data v1.1.1")),
-        0, // dataHashAlgorithm
-        1, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // interfaces
         [], // keywordHashes
         1, // minor
         1  // patch
@@ -4361,8 +4530,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://example.com/app-v1-2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated data v1.2")),
-        0, // dataHashAlgorithm
-        1, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // interfaces
         [], // keywordHashes
         2, // minor
         0  // patch
@@ -4380,14 +4549,15 @@ describe("OMA3AppRegistry", function () {
       // Mint initial app at version 2.1.5
       await registry.connect(minter1).mint(
         "did:example:downgrade-test",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("initial data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         2, 1, 5, // version 2.1.5
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Try to downgrade to 2.1.4 (should fail)
@@ -4398,8 +4568,8 @@ describe("OMA3AppRegistry", function () {
           2, // major
           "https://example.com/app-downgrade",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("downgrade data")),
-          0, // dataHashAlgorithm
-          1, // interfaces
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          [INTERFACE_TYPES.HUMAN], // interfaces
           [], // keywordHashes
           1, // minor
           4  // patch
@@ -4418,8 +4588,8 @@ describe("OMA3AppRegistry", function () {
           2, // major
           "https://example.com/app-downgrade",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("downgrade data")),
-          0, // dataHashAlgorithm
-          1, // interfaces
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          [INTERFACE_TYPES.HUMAN], // interfaces
           [], // keywordHashes
           0, // minor
           9  // patch
@@ -4436,8 +4606,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           "https://example.com/app-downgrade",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("downgrade data")),
-          0, // dataHashAlgorithm
-          1, // interfaces
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          [INTERFACE_TYPES.HUMAN], // interfaces
           [], // keywordHashes
           9, // minor
           9  // patch
@@ -4454,14 +4624,15 @@ describe("OMA3AppRegistry", function () {
       // Start at 1.0.0
       await registry.connect(minter1).mint(
         "did:example:complex-versions",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/v1-0-0",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v1.0.0")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // 1.0.0 → 1.1.0
@@ -4470,8 +4641,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://example.com/v1-1-0",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v1.1.0")),
-        0, // dataHashAlgorithm
-        1, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // interfaces
         [], // keywordHashes
         1, // minor
         0  // patch
@@ -4483,8 +4654,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://example.com/v1-1-1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v1.1.1")),
-        0, // dataHashAlgorithm
-        1, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // interfaces
         [], // keywordHashes
         1, // minor
         1  // patch
@@ -4496,8 +4667,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://example.com/v1-2-0",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v1.2.0")),
-        0, // dataHashAlgorithm
-        1, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // interfaces
         [], // keywordHashes
         2, // minor
         0  // patch
@@ -4507,14 +4678,15 @@ describe("OMA3AppRegistry", function () {
       // So we'll mint a new app with major version 2
       await registry.connect(minter1).mint(
         "did:example:complex-versions",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/v2-0-0",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v2.0.0")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         2, 0, 0, // version 2.0.0
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Verify final state
@@ -4534,14 +4706,15 @@ describe("OMA3AppRegistry", function () {
       // Mint app (starts as Active = 0)
       await registry.connect(minter1).mint(
         "did:example:active-to-inactive",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Verify app is in active array
@@ -4568,14 +4741,15 @@ describe("OMA3AppRegistry", function () {
       // Mint app and immediately set to Inactive
       await registry.connect(minter1).mint(
         "did:example:inactive-to-active",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
       
       await registry.connect(minter1).updateStatus("did:example:inactive-to-active", 1, 1);
@@ -4616,14 +4790,15 @@ describe("OMA3AppRegistry", function () {
         // Mint app (starts as Active = 0)
         await registry.connect(minter1).mint(
           did,
-          1, // interfaces
+          STATUS.ACTIVE,
           "https://example.com/app",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, 0, 0, // version 1.0.0
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
 
         // Set to initial status if not Active
@@ -4652,14 +4827,15 @@ describe("OMA3AppRegistry", function () {
       // Mint app
       await registry.connect(minter1).mint(
         did,
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Get app and verify hash consistency
@@ -4686,38 +4862,41 @@ describe("OMA3AppRegistry", function () {
       // Mint apps with different keyword sets
       await registry.connect(minter1).mint(
         "did:example:keywords1",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data 1")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        keywordHashes1
+        keywordHashes1,
+        [INTERFACE_TYPES.HUMAN]
       );
 
       await registry.connect(minter1).mint(
         "did:example:keywords2",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data 2")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        keywordHashes2
+        keywordHashes2,
+        [INTERFACE_TYPES.HUMAN]
       );
 
       await registry.connect(minter1).mint(
         "did:example:keywords3",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app3",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data 3")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        keywordHashes3
+        keywordHashes3,
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Verify keyword hashes are stored correctly
@@ -4747,20 +4926,21 @@ describe("OMA3AppRegistry", function () {
       // Mint app with original data hash
       await registry.connect(minter1).mint(
         "did:example:data-hash",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         originalHash,
-        0, // dataHashAlgorithm (keccak256)
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm (keccak256)
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Verify original data hash
       const appBefore = await registry.getApp("did:example:data-hash", 1);
       expect(appBefore.dataHash).to.equal(originalHash);
-      expect(appBefore.dataHashAlgorithm).to.equal(0); // 0 = keccak256
+      expect(appBefore.dataHashAlgorithm).to.equal(DATA_HASH_ALGORITHMS.KECCAK256); // keccak256
 
       // Update with new data hash
       await registry.connect(minter1).updateAppControlled(
@@ -4768,8 +4948,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://example.com/app-updated",
         updatedHash,
-        0, // dataHashAlgorithm
-        1, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // interfaces
         [], // keywordHashes
         0, // minor
         1  // patch
@@ -4778,7 +4958,7 @@ describe("OMA3AppRegistry", function () {
       // Verify updated data hash
       const appAfter = await registry.getApp("did:example:data-hash", 1);
       expect(appAfter.dataHash).to.equal(updatedHash);
-      expect(appAfter.dataHashAlgorithm).to.equal(0); // 0 = keccak256
+      expect(appAfter.dataHashAlgorithm).to.equal(DATA_HASH_ALGORITHMS.KECCAK256); // keccak256
       expect(appAfter.dataHash).to.not.equal(originalHash);
     });
   });
@@ -4793,20 +4973,21 @@ describe("OMA3AppRegistry", function () {
       
       await registry.connect(minter1).mint(
         "did:example:max-values",
-        7, // interfaces (max valid bitmap value)
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        0, // dataHashAlgorithm (keccak256)
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm (keccak256)
         "", // fungibleTokenId
         "", // contractId
         maxUint8, maxUint8, maxUint8, // version 255.255.255
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // All interfaces
       );
 
       const app = await registry.getApp("did:example:max-values", maxUint8);
       expect(app.versionMajor).to.equal(maxUint8);
-      expect(app.interfaces).to.equal(7);
-      expect(app.dataHashAlgorithm).to.equal(0); // 0 = keccak256
+      expect(app.interfaces).to.deep.equal([INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP]);
+      expect(app.dataHashAlgorithm).to.equal(DATA_HASH_ALGORITHMS.KECCAK256); // keccak256
       expect(app.fungibleTokenId).to.equal(""); // Empty string
     });
 
@@ -4820,14 +5001,15 @@ describe("OMA3AppRegistry", function () {
 
       await registry.connect(minter1).mint(
         "did:example:large-arrays",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        maxKeywords
+        maxKeywords,
+        [INTERFACE_TYPES.HUMAN]
       );
 
       const app = await registry.getApp("did:example:large-arrays", 1);
@@ -4863,14 +5045,15 @@ describe("OMA3AppRegistry", function () {
         
         await registry.connect(minter1).mint(
           did,
-          1, // interfaces
+          STATUS.ACTIVE,
           "https://example.com/app",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`data${i}`)),
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, 0, 0, // version 1.0.0
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
 
         const app = await registry.getApp(did, 1);
@@ -4889,14 +5072,15 @@ describe("OMA3AppRegistry", function () {
       
       await registry.connect(minter1).mint(
         maxLengthDid,
-        1, // interfaces
+        STATUS.ACTIVE,
         maxLengthUrl,
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       const app = await registry.getApp(maxLengthDid, 1);
@@ -4912,14 +5096,15 @@ describe("OMA3AppRegistry", function () {
       // Start with high version numbers
       await registry.connect(minter1).mint(
         "did:example:version-overflow",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         254, 254, 254, // version 254.254.254
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Try to update to maximum version
@@ -4928,8 +5113,8 @@ describe("OMA3AppRegistry", function () {
         254, // major (same major)
         "https://example.com/app-updated",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated data")),
-        0, // dataHashAlgorithm
-        1, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // interfaces
         [], // keywordHashes
         255, // minor
         255  // patch
@@ -4948,14 +5133,15 @@ describe("OMA3AppRegistry", function () {
       // Test deep call stack with multiple updates
       await registry.connect(minter1).mint(
         "did:example:stack-depth",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("initial data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        []
+        [],
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Perform multiple sequential updates to test stack depth
@@ -4965,8 +5151,8 @@ describe("OMA3AppRegistry", function () {
           1, // major
           `https://example.com/app-v${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`data v${i}`)),
-          0, // dataHashAlgorithm
-          1, // interfaces
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+          [INTERFACE_TYPES.HUMAN], // interfaces
           [], // keywordHashes
           0, // minor
           i  // patch
@@ -4988,14 +5174,15 @@ describe("OMA3AppRegistry", function () {
         const did = `did:example:memory-test-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1, // interfaces
+          STATUS.ACTIVE,
           `https://example.com/app-${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`data ${i}`)),
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, 0, 0, // version 1.0.0
-          []
+          [],
+          [INTERFACE_TYPES.HUMAN]
         );
         apps.push(did);
       }
@@ -5022,18 +5209,19 @@ describe("OMA3AppRegistry", function () {
       for (const testCase of testCases) {
         await registry.connect(minter1).mint(
           testCase.did,
-          testCase.interfaces,
+          STATUS.ACTIVE,
           "https://example.com/app",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-          0, // dataHashAlgorithm
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "", // fungibleTokenId
           "", // contractId
           1, 0, 0, // version 1.0.0
-          []
+          [],
+          [testCase.interfaces] // Convert to array format
         );
 
         const app = await registry.getApp(testCase.did, 1);
-        expect(app.interfaces).to.equal(testCase.interfaces);
+        expect(app.interfaces).to.deep.equal([testCase.interfaces]);
       }
     });
 
@@ -5047,14 +5235,15 @@ describe("OMA3AppRegistry", function () {
 
       await registry.connect(minter1).mint(
         "did:example:memory-intensive",
-        1, // interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("memory test data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
-        largeKeywordSet
+        largeKeywordSet,
+        [INTERFACE_TYPES.HUMAN]
       );
 
       // Update with even more keywords
@@ -5067,8 +5256,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://example.com/app-updated",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated memory test data")),
-        0, // dataHashAlgorithm
-        1, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // interfaces
         updatedKeywordSet, // keywordHashes
         0, // minor
         1  // patch
@@ -5087,10 +5276,10 @@ describe("OMA3AppRegistry", function () {
       // Perform a series of operations
       await registry.connect(minter1).mint(
         "did:example:performance-test",
-        7, // All interfaces
+        STATUS.ACTIVE,
         "https://example.com/app",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("performance data")),
-        0, // dataHashAlgorithm
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "", // fungibleTokenId
         "", // contractId
         1, 0, 0, // version 1.0.0
@@ -5098,7 +5287,8 @@ describe("OMA3AppRegistry", function () {
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("perf1")),
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("perf2")),
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("perf3"))
-        ]
+        ],
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // All interfaces
       );
 
       // Update status
@@ -5113,8 +5303,8 @@ describe("OMA3AppRegistry", function () {
         1, // major
         "https://example.com/app-performance-updated",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated performance data")),
-        0, // dataHashAlgorithm
-        7, // interfaces
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP], // interfaces
         [
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated-perf1")),
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated-perf2"))
@@ -5146,26 +5336,28 @@ describe("OMA3AppRegistry", function () {
 
       await registry.connect(minter1).mint(
         did1,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/one",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("one")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, 0, 0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       await registry.connect(minter1).mint(
         did2,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/two",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("two")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, 0, 0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Update status for did1 (major 1)
@@ -5193,14 +5385,15 @@ describe("OMA3AppRegistry", function () {
       for (let i = 0; i < total; i++) {
         await registry.connect(minter1).mint(
           `did:plan:active-${i}`,
-          1,
+          STATUS.ACTIVE, // status
           `https://example.com/a${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`a${i}`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1, 0, 0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
       }
 
@@ -5226,14 +5419,15 @@ describe("OMA3AppRegistry", function () {
         const did = `did:plan:deprecated-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           `https://example.com/d${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`d${i}`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1, 0, 0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
         await registry.connect(minter1).updateStatus(did, 1, 1);
       }
@@ -5256,14 +5450,15 @@ describe("OMA3AppRegistry", function () {
 
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/private",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("p")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, 0, 0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
       await registry.connect(minter1).updateStatus(did, 1, 1);
 
@@ -5276,14 +5471,15 @@ describe("OMA3AppRegistry", function () {
       const did = "did:plan:missing-major";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/mm",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("mm")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, 0, 0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
       await expect(registry.getApp(did, 2)).to.be.revertedWithCustomError(registry, ERRORS.APP_NOT_FOUND);
     });
@@ -5295,14 +5491,15 @@ describe("OMA3AppRegistry", function () {
       // Start at 0.0.0 so mint doesn't emit VersionAdded
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/v0",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v0")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         0, 0, 0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // 0.0.0 -> 0.0.1 (data change)
@@ -5311,11 +5508,11 @@ describe("OMA3AppRegistry", function () {
         0,
         "https://example.com/v0-0-1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v0-0-1")),
-        0,
-        1,
-        [],
-        0,
-        1
+        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // newInterfaces
+        [], // newKeywordHashes
+        0, // newMinor
+        1  // newPatch
       );
 
       // 0.0.1 -> 0.1.0 (interface change)
@@ -5324,11 +5521,11 @@ describe("OMA3AppRegistry", function () {
         0,
         "https://example.com/v0-1-0",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v0-1-0")),
-        0,
-        3,
-        [],
-        1,
-        0
+        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // newInterfaces
+        [], // newKeywordHashes
+        1, // newMinor
+        0  // newPatch
       );
 
       // 0.1.0 -> 0.1.1 (data change)
@@ -5337,11 +5534,11 @@ describe("OMA3AppRegistry", function () {
         0,
         "https://example.com/v0-1-1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v0-1-1")),
-        0,
-        3,
-        [],
-        1,
-        1
+        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // newInterfaces
+        [], // newKeywordHashes
+        1, // newMinor
+        1  // newPatch
       );
 
       const didHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(did));
@@ -5356,14 +5553,15 @@ describe("OMA3AppRegistry", function () {
 
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/op",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("op")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, 0, 0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Approvals should not grant update privileges per onlyAppOwner
@@ -5380,11 +5578,11 @@ describe("OMA3AppRegistry", function () {
           1,
           "https://example.com/op2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("op2")),
-          0,
-          1,
-          [],
-          0,
-          1
+          DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
+          [INTERFACE_TYPES.HUMAN], // newInterfaces
+          [], // newKeywordHashes
+          0, // newMinor
+          1  // newPatch
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.NOT_APP_OWNER);
     });
@@ -5398,14 +5596,15 @@ describe("OMA3AppRegistry", function () {
 
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/kw",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("kw")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, 0, 0,
-        [k1, k2]
+        [k1, k2], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       expect(await registry.hasAnyKeywords(did, 1, [k1])).to.equal(true);
@@ -5419,14 +5618,15 @@ describe("OMA3AppRegistry", function () {
       const did = "did:plan:by-token";
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/t",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("t")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, 0, 0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
       const didByToken = await registry.getDIDByTokenId(1);
       expect(didByToken).to.equal(did);
@@ -5439,14 +5639,15 @@ describe("OMA3AppRegistry", function () {
         const did = `did:plan:count-${i}`;
         await registry.connect(minter1).mint(
           did,
-          1,
+          STATUS.ACTIVE, // status
           `https://example.com/c${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`c${i}`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1, 0, 0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
         await registry.connect(minter1).updateStatus(did, 1, 1);
       }
@@ -5463,28 +5664,30 @@ describe("OMA3AppRegistry", function () {
       await expect(
         registry.connect(minter1).mint(
           did1,
-          1,
+          STATUS.ACTIVE, // status
           "https://example.com/f1",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("f1")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           long,
           "",
           1, 0, 0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.FUNGIBLE_TOKEN_ID_TOO_LONG);
 
       await expect(
         registry.connect(minter1).mint(
           did2,
-          1,
+          STATUS.ACTIVE, // status
           "https://example.com/f2",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("f2")),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           long,
           1, 0, 0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.CONTRACT_ID_TOO_LONG);
     });
@@ -5495,14 +5698,15 @@ describe("OMA3AppRegistry", function () {
       for (let i = 0; i < total; i++) {
         await registry.connect(minter1).mint(
           `did:plan:by-minter-${i}`,
-          1,
+          STATUS.ACTIVE, // status
           `https://example.com/m${i}`,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`m${i}`)),
-          0,
+          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
           "",
           "",
           1, 0, 0,
-          []
+          [], // keywordHashes
+          [INTERFACE_TYPES.HUMAN] // interfaces
         );
       }
       const count = await registry.getTotalAppsByMinter(minter1.address);
@@ -5515,14 +5719,15 @@ describe("OMA3AppRegistry", function () {
 
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/r",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("r")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, 0, 0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       let app = await registry.getApp(did, 1);
@@ -5547,14 +5752,15 @@ describe("OMA3AppRegistry", function () {
 
       await registry.connect(minter1).mint(
         did,
-        1,
+        STATUS.ACTIVE, // status
         "https://example.com/pt",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("pt")),
-        0,
+        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
         1, 0, 0,
-        []
+        [], // keywordHashes
+        [INTERFACE_TYPES.HUMAN] // interfaces
       );
 
       // Transfer ownership to minter2
@@ -5572,11 +5778,11 @@ describe("OMA3AppRegistry", function () {
           1,
           "https://example.com/pt-up",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("pt-up")),
-          0,
-          1,
-          [],
-          0,
-          1
+          DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
+          [INTERFACE_TYPES.HUMAN], // newInterfaces
+          [], // newKeywordHashes
+          0, // newMinor
+          1  // newPatch
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.NOT_APP_OWNER);
 
@@ -5590,11 +5796,11 @@ describe("OMA3AppRegistry", function () {
         1,
         "https://example.com/pt-up2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("pt-up2")),
-        0,
-        1,
-        [],
-        0,
-        2
+        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
+        [INTERFACE_TYPES.HUMAN], // newInterfaces
+        [], // newKeywordHashes
+        0, // newMinor
+        2  // newPatch
       );
 
       app = await registry.getApp(did, 1);
