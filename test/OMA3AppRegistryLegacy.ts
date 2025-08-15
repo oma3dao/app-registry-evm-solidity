@@ -1798,20 +1798,13 @@ describe("OMA3AppRegistry", function () {
       const config = await loadFixture(deployFixtureOneApp);
       const app = config.apps[0];
       
-      // Simulate concurrent status updates (sequential but rapid)
-      // Reduce the number of operations to avoid gas issues
-      const promises = [];
-      for (let i = 0; i < 2; i++) {
-        promises.push(
-          config.registry.connect(config.minter1).updateStatus(app.did, i % 2) // Only use 0 and 1
-        );
-      }
-      
-      await Promise.all(promises);
+      // Simulate rapid sequential status updates instead of concurrent to avoid gas issues
+      await config.registry.connect(config.minter1).updateStatus(app.did, 1); // Set to DEPRECATED
+      await config.registry.connect(config.minter1).updateStatus(app.did, 0); // Set back to ACTIVE
       
       // Verify final state is consistent
       const finalApp = await config.registry.getApp(app.did);
-      expect(finalApp.status).to.equal(1); // Should be DEPRECATED (last update)
+      expect(finalApp.status).to.equal(0); // Should be ACTIVE (last update)
     });
   });
 
@@ -2387,20 +2380,13 @@ describe("OMA3AppRegistry", function () {
       const config = await loadFixture(deployFixtureOneApp);
       const app = config.apps[0];
       
-      // Simulate concurrent status updates (sequential but rapid)
-      // Reduce the number of operations to avoid gas issues
-      const promises = [];
-      for (let i = 0; i < 2; i++) {
-        promises.push(
-          config.registry.connect(config.minter1).updateStatus(app.did, i % 2) // Only use 0 and 1
-        );
-      }
-      
-      await Promise.all(promises);
+      // Simulate rapid sequential status updates instead of concurrent to avoid gas issues
+      await config.registry.connect(config.minter1).updateStatus(app.did, 1); // Set to DEPRECATED
+      await config.registry.connect(config.minter1).updateStatus(app.did, 0); // Set back to ACTIVE
       
       // Verify final state is consistent
       const finalApp = await config.registry.getApp(app.did);
-      expect(finalApp.status).to.equal(1); // Should be DEPRECATED (last update)
+      expect(finalApp.status).to.equal(0); // Should be ACTIVE (last update)
     });
   });
 
