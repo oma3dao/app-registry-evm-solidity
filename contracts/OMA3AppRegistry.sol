@@ -190,6 +190,17 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Returns the metadata URI for the given `tokenId`.
+     * @dev Returns the off-chain `dataUrl` stored for the app, which may be an HTTPS/IPFS URL
+     *      or a data:application/json;base64 URI per the OMA3 spec.
+     */
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
+        return _apps[tokenId].dataUrl;
+    }
+
+
+    /**
      * @dev Returns the total number of tokens (ERC721Enumerable compatibility)
      * @return Total supply of minted tokens
      */
