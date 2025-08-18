@@ -7,21 +7,56 @@ import * as path from 'path';
 // Load environment variables from .env file
 dotenvConfig();
 
-// Import task files
-require('./tasks/getApp');
-require('./tasks/getAppsByMinter');
-require('./tasks/getApps');
+// Import task files - Registry tasks
+import "./tasks/registry/getApp";
+import "./tasks/registry/getApps";
+import "./tasks/registry/getAppsByMinter";
+import "./tasks/registry/updateAppControlled";
+import "./tasks/registry/updateStatus";
+import "./tasks/registry/getDidHash";
+import "./tasks/registry/tokenUri";
+import "./tasks/registry/totalSupply";
+import "./tasks/registry/hasKeywords";
+import "./tasks/registry/getAppsByStatus";
 
-// Import legacy task files
-require('./tasks/getAppLegacy');
-require('./tasks/getAppsByMinterLegacy');
-require('./tasks/getAppsLegacy');
+// Import task files - Legacy tasks
+import "./tasks/legacy/getAppLegacy";
+import "./tasks/legacy/getAppsLegacy";
+import "./tasks/legacy/getAppsByMinterLegacy";
+
+// Import task files - Inherited functions
+import "./tasks/inherited/erc721";
+import "./tasks/inherited/ownable";
+
+// Import task files - Metadata tasks  
+import "./tasks/metadata/getmetadatajson";
+import "./tasks/metadata/setmetadatajson";
 
 // Load deployment key from SSH directory
 const deploymentKeyPath = path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
 if (fs.existsSync(deploymentKeyPath)) {
   dotenvConfig({ path: deploymentKeyPath });
 }
+
+// Network-specific contract addresses
+export const NETWORK_CONTRACTS = {
+  thirdwebTestnet: {
+    registry: "0x", // TODO: Set after deployment
+    metadata: "0x"  // TODO: Set after deployment
+  },
+  celoAlfajores: {
+    registry: "0x", // TODO: Set after deployment
+    metadata: "0x"  // TODO: Set after deployment
+  },
+  hardhat: {
+    registry: "0x", // Will be set automatically during local deployment
+    metadata: "0x"  // Will be set automatically during local deployment
+  },
+  localhost: {
+    registry: "0x", // Will be set automatically during local deployment
+    metadata: "0x"  // Will be set automatically during local deployment
+  }
+};
 
 const config: HardhatUserConfig = {
   solidity: {

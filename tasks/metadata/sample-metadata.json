@@ -1,0 +1,48 @@
+{
+  "descriptionUrl": "https://oma3.org/deployment/description.txt",
+  "iwpsUrl": "https://oma3.org/deployment/iwps-url",
+  "agentUrl": "https://oma3.org/deployment/agent-url",
+  "image": "https://oma3.org/deployment/icon.png",
+  "screenshotUrls": [
+    "https://oma3.org/deployment/screenshot1.png",
+    "https://oma3.org/deployment/screenshot2.png"
+  ],
+  "external_url": "https://world.oma3.org",
+  "token": "eip155:1:0x1234567890abcdef",
+  "platforms": {
+    "web": {
+      "url_launch": "https://world.oma3.org/play"
+    },
+    "ios": {
+      "url_download": "https://apps.apple.com/app/id123456789",
+      "url_launch": "https://world.oma3.org/play", 
+      "supported": ["iPhone", "iPad", "VisionPro"]
+    },
+    "android": {
+      "url_download": "https://play.google.com/store/apps/details?id=com.example.app", 
+      "url_launch": "https://world.oma3.org/play" 
+    },
+    "windows": {
+      "url_download": "https://apps.microsoft.com/store/detail/yourapp/XXXXXXXX",
+      "url_launch": "oma3://launch", 
+      "supported": ["x64"]
+    },
+    "macos": {
+      "url_download": "https://apps.apple.com/app/id123456789?mt=12",
+      "url_launch": "oma3://launch"
+    },
+    "meta": {
+      "url_download": "https://www.meta.com/experiences/1234567890",
+      "url_launch": "oculus://store/1234567890"
+    },
+    "ps5": {
+      "url_download": "https://store.playstation.com/en-us/product/UP9000-CUSA12345_00-YOURGAME0000000"
+    },
+    "xbox": {
+      "url_download": "https://www.microsoft.com/store/apps/9NBLGGH4R315"
+    },
+    "nintendo": {
+      "url_download": "https://www.nintendo.com/store/products/your-game-name-switch/"
+    }
+  }  
+}

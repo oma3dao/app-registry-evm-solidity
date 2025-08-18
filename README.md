@@ -42,6 +42,7 @@ Each ERC721 token represents one major version of an application:
 - **Keyword Tagging**: Hash-based keyword system for discoverability
 - **Off-chain Data**: URL + hash for integrity verification
 - **Registration Tracking**: Block/timestamp tracking for event log queries
+- **Optional Metadata Storage**: Integrate with OMA3AppMetadata for on-chain JSON storage
 
 ## Smart Contract API
 
@@ -61,9 +62,12 @@ function mint(
     uint8 initialVersionMajor,         // Initial major version
     uint8 initialVersionMinor,         // Initial minor version
     uint8 initialVersionPatch,         // Initial patch version
-    bytes32[] memory keywordHashes     // Keyword hashes for tagging
+    bytes32[] memory keywordHashes,    // Keyword hashes for tagging
+    string memory metadataJson         // Optional: JSON to store on-chain via metadata contract
 ) external nonReentrant returns (uint256 tokenId)
 ```
+
+**Note**: The `metadataJson` parameter is optional. If provided and a metadata contract is configured, the JSON will be stored on-chain for guaranteed availability. If empty or no metadata contract is set, only the `dataUrl` and `dataHash` are used for off-chain metadata reference.
 
 #### Updating Applications
 
@@ -90,6 +94,24 @@ function updateStatus(
     uint8 newStatus                    // 0=active, 1=deprecated, 2=replaced
 ) external onlyAppOwner(didString, major) nonReentrant
 ```
+
+#### Metadata Contract Integration
+
+```solidity
+function setMetadataContract(address _metadataContract) external onlyOwner
+
+function setMetadataJson(
+    string memory didString,
+    uint8 major,
+    string memory metadataJson,
+    bytes32 dataHash,
+    uint8 dataHashAlgorithm
+) external onlyAppOwner(didString, major) nonReentrant
+```
+
+**Metadata Storage Options:**
+- **Off-chain**: Use IPFS, Arweave, HTTP endpoints, or data URIs (most common)
+- **On-chain**: Optionally store JSON in the metadata contract for guaranteed availability
 
 ### Query Functions
 
@@ -279,10 +301,11 @@ const keywordHashes = [
   ethers.utils.keccak256(ethers.utils.toUtf8Bytes("web3"))
 ];
 
+// Option 1: Off-chain metadata (IPFS/Arweave/HTTP)
 const tx = await registry.mint(
   "did:example:123",           // DID
   interfaces,                  // Interface bitmap
-  "https://example.com/app",   // Data URL
+  "ipfs://QmHash...",          // Data URL
   dataHash,                    // Data hash
   0,                          // keccak256 algorithm
   "",                         // No fungible token
@@ -290,7 +313,30 @@ const tx = await registry.mint(
   1,                          // Major version 1
   0,                          // Minor version 0
   0,                          // Patch version 0
-  keywordHashes               // Keywords
+  keywordHashes,              // Keywords
+  ""                          // No on-chain metadata
+);
+
+// Option 2: On-chain metadata storage
+const metadataJson = JSON.stringify({
+  name: "My Gaming App",
+  description: "A Web3 gaming application",
+  icon: "https://example.com/icon.png"
+});
+
+const tx = await registry.mint(
+  "did:example:123",           // DID
+  interfaces,                  // Interface bitmap
+  "https://api.registry.com/metadata/did:example:123", // Data URL points to registry API
+  ethers.utils.keccak256(ethers.utils.toUtf8Bytes(metadataJson)), // Hash of JSON
+  0,                          // keccak256 algorithm
+  "",                         // No fungible token
+  "",                         // No contract
+  1,                          // Major version 1
+  0,                          // Minor version 0
+  0,                          // Patch version 0
+  keywordHashes,              // Keywords
+  metadataJson                // Store JSON on-chain
 );
 ```
 
@@ -327,6 +373,41 @@ const latest = await registry.latestMajor(
   ethers.utils.keccak256(ethers.utils.toUtf8Bytes("did:example:123"))
 );
 ```
+
+---
+
+## Metadata Storage Integration
+
+The registry supports optional integration with the OMA3AppMetadata contract for on-chain JSON storage.
+
+### Configuration
+
+```solidity
+// Set metadata contract address (owner only)
+await registry.setMetadataContract("0x9f1f5559b6D08eC855cafaCD76D9ae69c41169C9");
+```
+
+### Developer Choice
+
+**Option A: Off-Chain Metadata (Recommended)**
+```javascript
+// Use IPFS, Arweave, HTTP, or data URIs
+await registry.mint(did, interfaces, "ipfs://QmHash...", dataHash, 0, "", "", 1, 0, 0, [], "");
+```
+
+**Option B: On-Chain Metadata**
+```javascript
+// Store JSON in metadata contract
+const json = JSON.stringify({name: "My App", description: "Description"});
+await registry.mint(did, interfaces, dataUrl, keccak256(json), 0, "", "", 1, 0, 0, [], json);
+```
+
+### Benefits
+
+- **Flexibility**: Choose storage method per application
+- **Future-proof**: Migrate between storage methods
+- **Cost-effective**: Pay for on-chain storage only when needed
+- **Reliable**: Registry works with or without metadata contract
 
 ---
 

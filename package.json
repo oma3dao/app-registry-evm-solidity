@@ -7,6 +7,8 @@
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy.ts",
+    "deploy:system": "npx hardhat run scripts/deploySystem.ts",
+    "deploy:system:test": "npx hardhat run scripts/deploySystem.ts -- --test",
     "clean": "npx hardhat clean"
   },
   "repository": {
