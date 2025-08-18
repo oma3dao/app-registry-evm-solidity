@@ -5,6 +5,11 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+// Interface for metadata contract
+interface IOMA3AppMetadata {
+    function setMetadataForRegistry(string memory did, string memory metadataJson) external;
+}
+
 
 /**
  * @title OMA3AppRegistry
@@ -64,6 +69,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     error NoChangesSpecified();                  // No changes detected in update call
     error DIDHashNotFound(bytes32 didHash);     // No app found for the given DID hash
     error DataHashRequiredForKeywordChange();   // New data hash required when updating keywords
+    error DataHashMismatch(bytes32 computed, bytes32 provided); // Computed hash doesn't match provided dataHash
 
 
     // Storage
@@ -93,6 +99,9 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     mapping(bytes32 => uint256) public registrationBlock; // DID hash => block number when first registered
     mapping(bytes32 => uint256) public registrationTimestamp; // DID hash => timestamp when first registered
 
+    // Metadata contract integration
+    IOMA3AppMetadata public metadataContract;
+
 
     // Constants
     uint256 private constant MAX_DID_LENGTH = 128;
@@ -116,6 +125,15 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint16 newInterfaces);
 
     constructor() ERC721("OMA3 App Registry", "OMA3APP") Ownable(msg.sender) {}
+
+    /**
+     * @dev Set the metadata contract address (onlyOwner)
+     * @param _metadataContract Address of the metadata contract
+     */
+    function setMetadataContract(address _metadataContract) external onlyOwner {
+        require(_metadataContract != address(0), "Invalid metadata contract address");
+        metadataContract = IOMA3AppMetadata(_metadataContract);
+    }
 
     /**
      * @dev Helper function to convert DID string to hash
@@ -154,6 +172,36 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     function _validateKeywords(bytes32[] memory keywordHashes) internal pure {
         if (keywordHashes.length > MAX_KEYWORDS) {
             revert TooManyKeywords(keywordHashes.length);
+        }
+    }
+
+    /**
+     * @dev Validate that metadataJson hash matches the provided dataHash
+     * @param metadataJson The JSON metadata string
+     * @param dataHash The expected hash
+     * @param dataHashAlgorithm The hash algorithm used (0=keccak256, 1=sha256)
+     */
+    function _validateMetadataHash(
+        string memory metadataJson,
+        bytes32 dataHash,
+        uint8 dataHashAlgorithm
+    ) internal pure {
+        if (bytes(metadataJson).length > 0) {
+            bytes32 computedHash;
+            if (dataHashAlgorithm == 0) {
+                // keccak256
+                computedHash = keccak256(bytes(metadataJson));
+            } else if (dataHashAlgorithm == 1) {
+                // sha256
+                computedHash = sha256(bytes(metadataJson));
+            } else {
+                // For future algorithms, require empty metadataJson or matching implementation
+                revert InvalidDataHashAlgorithm(dataHashAlgorithm);
+            }
+            
+            if (computedHash != dataHash) {
+                revert DataHashMismatch(computedHash, dataHash);
+            }
         }
     }
 
@@ -242,7 +290,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
 
     /**
-     * @dev Mint a new application token
+     * @dev Mint a new application token with optional metadata storage
      * @param didString The DID as string
      * @param interfaces Bitmap of supported interfaces
      * @param dataUrl URL to off-chain metadata
@@ -254,6 +302,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      * @param initialVersionMinor Initial version minor number  
      * @param initialVersionPatch Initial version patch number
      * @param keywordHashes Array of keyword hashes for tagging
+     * @param metadataJson Optional JSON metadata to store on-chain (empty string to skip)
      * @return tokenId The newly minted token ID
      */
     function mint(
@@ -267,7 +316,8 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         uint8 initialVersionMajor,
         uint8 initialVersionMinor,
         uint8 initialVersionPatch,
-        bytes32[] memory keywordHashes
+        bytes32[] memory keywordHashes,
+        string memory metadataJson
     ) external nonReentrant returns (uint256) {
         // Validations
         if (bytes(didString).length == 0) revert DIDCannotBeEmpty();
@@ -278,6 +328,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         if (bytes(fungibleTokenId).length > MAX_URL_LENGTH) revert FungibleTokenIdTooLong(bytes(fungibleTokenId).length);
         if (bytes(contractId).length > MAX_URL_LENGTH) revert ContractIdTooLong(bytes(contractId).length);
         _validateKeywords(keywordHashes);
+        
         // Note: dataHashAlgorithm validation removed to allow future algorithm extensions
 
         // DID + Major version uniqueness and fungible token consistency validation
@@ -350,12 +401,57 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             emit KeywordsUpdated(didHash, initialVersionMajor, tokenId, keywordHashes);
         }
 
+        // Store metadata on-chain if provided
+        if (bytes(metadataJson).length > 0) {
+            _setMetadataJson(didString, metadataJson, dataHash, dataHashAlgorithm);
+        }
+
         emit AppMinted(didHash, initialVersionMajor, tokenId, msg.sender, interfaces, block.number, block.timestamp);
         if (initialVersionMajor > 0 || initialVersionMinor > 0 || initialVersionPatch > 0) {
             emit VersionAdded(didHash, initialVersionMajor, tokenId, initialVersionMinor, initialVersionPatch);
         }
 
         return tokenId;
+    }
+
+    /**
+     * @dev Set metadata for an existing app (allows developers to update metadata after mint)
+     * @param didString The DID as string
+     * @param major The major version of the app
+     * @param metadataJson JSON string containing the app metadata
+     * @param dataHash Hash of the metadata JSON
+     * @param dataHashAlgorithm Algorithm used for dataHash (0=keccak256, 1=sha256)
+     */
+    function setMetadataJson(
+        string memory didString,
+        uint8 major,
+        string memory metadataJson,
+        bytes32 dataHash,
+        uint8 dataHashAlgorithm
+    ) external onlyAppOwner(didString, major) nonReentrant {
+        _setMetadataJson(didString, metadataJson, dataHash, dataHashAlgorithm);
+    }
+
+    /**
+     * @dev Internal function to set metadata with validation
+     * @param didString The DID as string
+     * @param metadataJson JSON string containing the app metadata
+     * @param dataHash Hash of the metadata JSON
+     * @param dataHashAlgorithm Algorithm used for dataHash (0=keccak256, 1=sha256)
+     */
+    function _setMetadataJson(
+        string memory didString,
+        string memory metadataJson,
+        bytes32 dataHash,
+        uint8 dataHashAlgorithm
+    ) internal {
+        // Validate metadataJson hash matches dataHash
+        _validateMetadataHash(metadataJson, dataHash, dataHashAlgorithm);
+        
+        // Call metadata contract if set
+        if (address(metadataContract) != address(0)) {
+            metadataContract.setMetadataForRegistry(didString, metadataJson);
+        }
     }
 
     /**
