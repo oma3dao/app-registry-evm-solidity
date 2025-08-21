@@ -255,8 +255,75 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
    # Install dependencies
    npm install
    
-   # Create a .env file with your private key or ensure it's in ~/.ssh/test-evm-deployment-key
-   echo "PRIVATE_KEY=0xyourprivatekey" > .env
+   # Private key is loaded automatically from ~/.ssh/test-evm-deployment-key
+   # Accepted formats (one line):
+   #   - PRIVATE_KEY=0x<64-hex>
+   #   - <64-hex> (raw, without 0x) 
+   # The loader normalizes to 0x-prefixed hex and validates length/charset.
+
+   # Create the SSH key file if it doesn't exist
+   mkdir -p ~/.ssh
+   # Option A: env-style
+   echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
+   # Option B: raw hex (no 0x)
+   # echo "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
+
+   # Secure permissions
+   chmod 600 ~/.ssh/test-evm-deployment-key
+
+## Security and Private Key Management
+
+### Private Key Policy
+
+This project follows a **strict security policy** for private key management:
+
+**✅ Recommended: Secure storage and permissions**
+- Private keys should be stored in `~/.ssh/test-evm-deployment-key`
+- File permissions MUST be 600 (owner read/write only)
+- Use a password manager or OS keychain to store the source key securely. If you encrypt the file, decrypt it to plaintext before running Hardhat (the project does not prompt for decryption).
+
+**❌ NEVER ALLOWED: Plain text in .env files**
+- No `PRIVATE_KEY=` entries in any `.env` files
+- No `.env.private_key` files
+- No unencrypted private key storage
+
+### Security Setup
+
+**⚠️ IMPORTANT: Use secp256k1 keys for EVM, not ed25519**
+
+```bash
+# 1. DO NOT generate ed25519 keys - EVM uses secp256k1
+# Instead, create the SSH file directly for your existing EVM private key
+
+# 2. Set secure permissions
+chmod 600 ~/.ssh/test-evm-deployment-key*
+
+# 3. Export your EVM private key to the SSH file
+# Format: Just the hex string without '0x' prefix
+# Example for a secp256k1 private key:
+echo "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
+
+# 4. Verify the key format (should be 64 hex characters)
+cat ~/.ssh/test-evm-deployment-key
+# Should show: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+
+# 5. Verify your key file exists and has correct permissions
+ls -la ~/.ssh/test-evm-deployment-key
+```
+
+### Environment Variables
+
+Only these environment variables are used:
+- `PRIVATE_KEY` - Set automatically from `~/.ssh/test-evm-deployment-key`; values from `.env` files are ignored
+- `REPORT_GAS` - Gas reporting toggle
+- `HOME` - System variable (used to locate ~/.ssh/test-evm-deployment-key)
+
+**Never store private keys in:**
+- `.env` files
+- `.env.local` files
+- Repository code
+- Docker containers
+- CI/CD pipelines
    ```
 
 2. **Deploy to Celo Alfajores** (only necessary to deploy a new contract):
