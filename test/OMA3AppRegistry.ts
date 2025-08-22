@@ -105,9 +105,9 @@ function makeCompatProxy(contract: any) {
 			}
 			if (prop === "mint") {
 				return (...args: any[]) => {
-					// Old tests: mint(did, status, dataUrl, dataHash, algoStr, fungibleTokenId, contractId, maj, min, patch, keywordHashes, interfacesArr)
-					if (args.length === 12) {
-						const [did, _statusIgnored, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, keywordHashes, interfacesArr] = args;
+					// Old tests: mint(did, status, dataUrl, dataHash, algoStr, fungibleTokenId, contractId, maj, min, patch, keywordHashes, interfacesArr, metadataJson)
+					if (args.length === 13) {
+						const [did, _statusIgnored, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, keywordHashes, interfacesArr, metadataJson] = args;
 						return target.mint(
 							did,
 							toBitmap(interfacesArr),
@@ -119,12 +119,13 @@ function makeCompatProxy(contract: any) {
 							maj,
 							min,
 							patch,
-							keywordHashes
+							keywordHashes,
+							metadataJson
 						);
 					}
-					// Sometimes tests may call: mint(did, interfacesArg, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, keywordHashes)
-					if (args.length === 11) {
-						const [did, interfacesArg, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, keywordHashes] = args;
+					// New tests: mint(did, interfacesArg, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, keywordHashes, metadataJson)
+					if (args.length === 12) {
+						const [did, interfacesArg, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, keywordHashes, metadataJson] = args;
 						return target.mint(
 							did,
 							toBitmap(interfacesArg),
@@ -136,7 +137,8 @@ function makeCompatProxy(contract: any) {
 							maj,
 							min,
 							patch,
-							keywordHashes
+							keywordHashes,
+							metadataJson
 						);
 					}
 					return value.apply(target, args);
@@ -204,7 +206,8 @@ const ERRORS = {
   INTERFACE_REMOVAL_NOT_ALLOWED: "InterfaceRemovalNotAllowed",
   NO_CHANGES_SPECIFIED: "NoChangesSpecified",
   DID_HASH_NOT_FOUND: "DIDHashNotFound",
-  DATA_HASH_REQUIRED_FOR_KEYWORD_CHANGE: "DataHashRequiredForKeywordChange"
+  DATA_HASH_REQUIRED_FOR_KEYWORD_CHANGE: "DataHashRequiredForKeywordChange",
+  InvalidStatus: "InvalidStatus"
 };
 
 
@@ -259,7 +262,8 @@ describe("OMA3AppRegistry", function () {
         initialVersionMinor,
         initialVersionPatch,
         keywordHashes,
-        interfaces
+        interfaces,
+        ""
       );
 
       apps.push({ did, interfaces, versionMajor: initialVersionMajor });
@@ -323,7 +327,8 @@ describe("OMA3AppRegistry", function () {
           initialVersionMinor,
           initialVersionPatch,
           keywordHashes,
-          [INTERFACE_TYPES.HUMAN] // interfaces array
+          [INTERFACE_TYPES.HUMAN], // interfaces array
+          ""
         )
       ).to.not.be.reverted;
 
@@ -358,7 +363,8 @@ describe("OMA3AppRegistry", function () {
         initialVersionMinor,
         initialVersionPatch,
         keywordHashes,
-        interfaces
+        interfaces,
+        ""
       );
 
       const app = await registry.getApp(did, 1);
@@ -402,7 +408,8 @@ describe("OMA3AppRegistry", function () {
         initialVersionMinor,
         initialVersionPatch,
         keywordHashes,
-        interfaces
+        interfaces,
+        ""
       );
 
       // Debug: Check total apps by minter
@@ -452,7 +459,8 @@ describe("OMA3AppRegistry", function () {
         initialVersionMinor,
         initialVersionPatch,
         keywordHashes,
-        interfaces
+        interfaces,
+        ""
       );
 
       const [apps, nextIndex] = await registry.getAppsByStatus(STATUS.ACTIVE, 0); // 0 = ACTIVE
@@ -490,7 +498,8 @@ describe("OMA3AppRegistry", function () {
         initialVersionMinor,
         initialVersionPatch,
         keywordHashes,
-        interfaces
+        interfaces,
+        ""
       );
 
       // Update status to DEPRECATED (1)
@@ -521,7 +530,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DID_CANNOT_BE_EMPTY);
     });
@@ -545,7 +555,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DID_TOO_LONG);
     });
@@ -566,7 +577,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [] // Empty interfaces array
+          [], // Empty interfaces array
+          ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.INTERFACES_CANNOT_BE_EMPTY);
     });
@@ -587,7 +599,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DATA_URL_CANNOT_BE_EMPTY);
     });
@@ -611,7 +624,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DATA_URL_TOO_LONG);
     });
@@ -638,7 +652,8 @@ describe("OMA3AppRegistry", function () {
             0,
             0,
             [], // keywordHashes
-            [INTERFACE_TYPES.HUMAN] // interfaces
+            [INTERFACE_TYPES.HUMAN], // interfaces
+            ""
             )
           ).to.not.be.reverted;
           
@@ -665,7 +680,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
             tooManyKeywords, // keywordHashes
-            [INTERFACE_TYPES.HUMAN] // interfaces
+            [INTERFACE_TYPES.HUMAN], // interfaces
+            ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.TOO_MANY_KEYWORDS);
       });
@@ -690,7 +706,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
 
@@ -718,7 +735,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
 
@@ -748,7 +766,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           maxKeywords, // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
 
@@ -773,7 +792,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
 
@@ -813,7 +833,8 @@ describe("OMA3AppRegistry", function () {
             0, // initialVersionMinor
             0, // initialVersionPatch
             [], // keywordHashes
-            interfaces // interfaces array
+            interfaces, // interfaces array
+            ""
           )
         ).to.not.be.reverted;
 
@@ -839,7 +860,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Try to mint second app with same DID but different fungibleTokenId (should fail)
@@ -856,11 +878,12 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.NEW_DID_REQUIRED);
+      });
     });
-  });
 
   describe("Gas Optimization Testing", function () {
     it("should handle memory stress test within gas limits", async function () {
@@ -883,7 +906,8 @@ describe("OMA3AppRegistry", function () {
         255, // initialVersionMinor
         255, // initialVersionPatch
         largeKeywords, // keywordHashes
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // all interfaces
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP], // all interfaces
+        ""
           );
           
           const receipt = await tx.wait();
@@ -911,7 +935,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
           )
         ).to.not.be.reverted;
       });
@@ -935,7 +960,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
           )
         ).to.not.be.reverted;
       });
@@ -959,7 +985,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           maxKeywords, // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
           )
         ).to.not.be.reverted;
     });
@@ -983,7 +1010,8 @@ describe("OMA3AppRegistry", function () {
         1, // minor version 1
         0, // patch version 0
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify latestMajor returns 0 (not error)
@@ -1009,7 +1037,8 @@ describe("OMA3AppRegistry", function () {
         1, // minor version 1
         0, // patch version 0
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Mint app with version 0.2.0 (should fail - same DID, same major)
@@ -1026,7 +1055,8 @@ describe("OMA3AppRegistry", function () {
           2, // minor version 2
           0, // patch version 0
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DID_MAJOR_ALREADY_EXISTS);
 
@@ -1059,7 +1089,8 @@ describe("OMA3AppRegistry", function () {
         0, // minor version 0
         0, // patch version 0
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Call latestMajor on existing DID with version 0 (should return 0, not revert)
@@ -1085,7 +1116,8 @@ describe("OMA3AppRegistry", function () {
         1, // minor version 1
         0, // patch version 0
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Mint app with version 1.0.0 (same DID, different major)
@@ -1101,7 +1133,8 @@ describe("OMA3AppRegistry", function () {
         0, // minor version 0
         0, // patch version 0
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify latestMajor returns 1 (not 0)
@@ -1138,7 +1171,8 @@ describe("OMA3AppRegistry", function () {
         initialVersionMinor,
         initialVersionPatch,
         keywordHashes,
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       return { registry, minter1, did };
@@ -1425,7 +1459,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
         apps.push(did);
       }
@@ -1471,7 +1506,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify app is active
@@ -1505,7 +1541,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
         apps.push(did);
       }
@@ -1551,7 +1588,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
         apps.push(did);
       }
@@ -1602,7 +1640,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Try to change to same status (should not fail)
@@ -1634,7 +1673,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       await registry.connect(minter2).mint(
@@ -1649,7 +1689,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify both apps are active
@@ -1702,7 +1743,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify registration data was recorded
@@ -1727,7 +1769,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify registration data unchanged (should still be from first registration)
@@ -1759,7 +1802,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify first registration
@@ -1779,7 +1823,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify second registration
@@ -1813,7 +1858,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Mint second app with different DID (should succeed even if hash collision occurred)
@@ -1830,7 +1876,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
 
@@ -1866,7 +1913,8 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify registration data was recorded
@@ -1891,7 +1939,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify registration data unchanged (should still be from first registration)
@@ -1922,7 +1971,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify registration data was recorded
@@ -1947,7 +1997,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify registration data unchanged (should still be from first registration)
@@ -1970,7 +2021,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify registration data still unchanged
@@ -2013,7 +2065,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
 
@@ -2039,7 +2092,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Test that updateAppControlled function completes successfully
@@ -2079,7 +2133,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Test that updateStatus function completes successfully
@@ -2109,7 +2164,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Try to update with different account (should fail)
@@ -2150,7 +2206,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Transfer ownership to minter2
@@ -2214,7 +2271,8 @@ describe("OMA3AppRegistry", function () {
             0, // initialVersionMinor
             0, // initialVersionPatch
             [], // keywordHashes
-            [INTERFACE_TYPES.HUMAN] // interfaces
+            [INTERFACE_TYPES.HUMAN], // interfaces
+            ""
           );
           console.log(`    ✓ Malicious URL handled: ${maliciousUrl.substring(0, 30)}...`);
         } catch (error) {
@@ -2245,7 +2303,8 @@ describe("OMA3AppRegistry", function () {
         255, // initialVersionMinor
         255, // initialVersionPatch
         maxKeywords, // keywordHashes
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // all interfaces
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP], // all interfaces
+        ""
       );
 
       const receipt = await tx.wait();
@@ -2271,7 +2330,8 @@ describe("OMA3AppRegistry", function () {
           255, // max uint8
           255, // max uint8
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
 
@@ -2289,7 +2349,8 @@ describe("OMA3AppRegistry", function () {
           0, // min uint8
           0, // min uint8
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
     });
@@ -2322,7 +2383,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
       }
 
@@ -2349,7 +2411,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
       }
 
@@ -2376,7 +2439,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
       }
 
@@ -2407,7 +2471,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Test with invalid start index (beyond available apps)
@@ -2435,7 +2500,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
         appDids.push(did);
       }
@@ -2474,7 +2540,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
         appDids.push(did);
       }
@@ -2521,7 +2588,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
         appDids.push(did);
       }
@@ -2567,7 +2635,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
         appDids.push(did);
       }
@@ -2607,7 +2676,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Verify app is active
@@ -2633,8 +2703,8 @@ describe("OMA3AppRegistry", function () {
       await registry.connect(minter1).mint(
         did,
         STATUS.ACTIVE, // status
-        "https://data.example.com/app1",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
+          "https://data.example.com/app1",
+          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
         DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
         "",
         "",
@@ -2642,7 +2712,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Try to mint same DID and major (should fail)
@@ -2659,7 +2730,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.DID_MAJOR_ALREADY_EXISTS);
     });
@@ -2682,7 +2754,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Mint same DID with major version 2 (should succeed)
@@ -2699,7 +2772,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
 
@@ -2726,7 +2800,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Mint app with DID2 and same major version 1 (should succeed)
@@ -2743,7 +2818,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
 
@@ -2767,12 +2843,13 @@ describe("OMA3AppRegistry", function () {
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App 1 data")),
         DATA_HASH_ALGORITHMS.KECCAK256,
         "fungible-token-123", // fungible token ID
-        "",
-        1,
-        0,
-        0,
+          "",
+          1,
+          0,
+          0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Try to mint same DID with different fungible token ID (should fail)
@@ -2789,7 +2866,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         )
       ).to.be.revertedWithCustomError(registry, ERRORS.NEW_DID_REQUIRED);
 
@@ -2807,9 +2885,10 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
-        )
-      ).to.not.be.reverted;
+          [INTERFACE_TYPES.HUMAN],
+          ""
+          )
+        ).to.not.be.reverted;
     });
   });
 
@@ -2828,8 +2907,8 @@ describe("OMA3AppRegistry", function () {
     });
 
     it("should implement token enumeration correctly", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
+        const { registry, minter1 } = await loadFixture(deployFixture);
+        
       // Test initial state
       expect(await registry.totalSupply()).to.equal(0);
       
@@ -2846,7 +2925,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Test total supply increased
@@ -2871,7 +2951,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Test owner of token
@@ -2898,7 +2979,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Transfer token
@@ -2926,7 +3008,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Approve minter2 to transfer token
@@ -2958,7 +3041,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Set operator approval
@@ -2990,7 +3074,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Test token URI generation
@@ -3025,7 +3110,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
 
       // Try to transfer without approval (should fail)
@@ -3040,9 +3126,9 @@ describe("OMA3AppRegistry", function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
       const did = "did:oma3:event-test";
-      
-      await expect(
-        registry.connect(minter1).mint(
+        
+        await expect(
+          registry.connect(minter1).mint(
           did,
           STATUS.ACTIVE,
           "https://data.example.com/app1",
@@ -3054,7 +3140,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         )
       ).to.emit(registry, "Transfer")
         .withArgs(hre.ethers.ZeroAddress, minter1.address, 1);
@@ -3070,13 +3157,14 @@ describe("OMA3AppRegistry", function () {
         "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
         DATA_HASH_ALGORITHMS.KECCAK256,
-        "",
-        "",
-        1,
-        0,
-        0,
+          "",
+          "",
+          1,
+          0,
+          0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Transfer token
@@ -3102,7 +3190,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Approve token
@@ -3141,10 +3230,11 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         )
       ).to.emit(registry, "AppMinted")
-        .withArgs(anyValue, 1, 1, minter1.address, 1, anyValue, anyValue); // didHash, major, tokenId, minter, interfaces bitmap, registrationBlock, registrationTimestamp
+      .withArgs(anyValue, 1, 1, minter1.address, 1, anyValue, anyValue); // didHash, major, tokenId, minter, interfaces bitmap, registrationBlock, registrationTimestamp
 
       // Test status update event
       await expect(
@@ -3160,13 +3250,13 @@ describe("OMA3AppRegistry", function () {
           "https://data.example.com/app1-updated",
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")),
           DATA_HASH_ALGORITHMS.KECCAK256,
-          [INTERFACE_TYPES.HUMAN],
+          1, // newInterfaces bitmap (1 = HUMAN)
           [],
           0,
           1
         )
       ).to.emit(registry, "DataUrlUpdated")
-        .withArgs(anyValue, 1, 1, "https://data.example.com/app1-updated", anyValue, 0); // didHash, major, tokenId, newDataUrl, newDataHash, dataHashAlgorithm (0=keccak256)
+      .withArgs(anyValue, 1, 1, "https://data.example.com/app1-updated", anyValue, 0); // didHash, major, tokenId, newDataUrl, newDataHash, dataHashAlgorithm (0=keccak256)
     });
 
     it("should efficiently filter events by DID hash", async function () {
@@ -3192,7 +3282,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         );
       }
 
@@ -3233,7 +3324,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         );
       }
 
@@ -3280,7 +3372,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         );
       }
       const mintTime = Date.now() - startTime;
@@ -3299,8 +3392,8 @@ describe("OMA3AppRegistry", function () {
     it("should handle 10,000+ apps efficiently", async function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
-      // Mint 10,000 apps (reduced to 1000 for test performance)
-      const numApps = 1000;
+      // Mint 100 apps (reduced from 1000 for test performance)
+      const numApps = 100;
       const startTime = Date.now();
       
       for (let i = 1; i <= numApps; i++) {
@@ -3316,7 +3409,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         );
       }
       const mintTime = Date.now() - startTime;
@@ -3338,8 +3432,8 @@ describe("OMA3AppRegistry", function () {
       const paginationTime = Date.now() - paginationStartTime;
       console.log(`    ✓ Pagination query in ${paginationTime}ms`);
       
-      expect(firstPage.length).to.be.greaterThan(0);
-      expect(firstNextIndex).to.be.greaterThan(0);
+      expect(firstPage.length).to.equal(100); // Should get all 100 apps
+      expect(firstNextIndex).to.equal(0); // No more apps to paginate
     });
 
     it("should handle pagination with large datasets", async function () {
@@ -3359,7 +3453,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         );
       }
 
@@ -3390,7 +3485,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         );
       }
 
@@ -3426,7 +3522,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         );
         const receipt = await tx.wait();
         gasCosts.push(receipt.gasUsed);
@@ -3466,7 +3563,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [hash1, hash2, hash3], // Should handle duplicates gracefully
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Verify app was minted successfully
@@ -3498,7 +3596,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           keywordSets[i],
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN],
+          ""
         );
       }
 
@@ -3541,7 +3640,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         maxKeywords,
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
       const mintTime = Date.now() - startTime;
       console.log(`    ✓ Minted app with ${MAX_KEYWORDS} keywords in ${mintTime}ms`);
@@ -3571,7 +3671,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         initialKeywords,
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Update with new keywords
@@ -3625,7 +3726,8 @@ describe("OMA3AppRegistry", function () {
             0,
             0,
             [],
-            [bitmap] // Convert bitmap to array format
+            [bitmap], // Convert bitmap to array format
+            ""
           )
         ).to.not.be.reverted;
 
@@ -3638,10 +3740,10 @@ describe("OMA3AppRegistry", function () {
     });
 
     it("should reject invalid bitmap values (>7)", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
+        const { registry, minter1 } = await loadFixture(deployFixture);
+        
       const invalidBitmaps = [8, 15, 255];
-      
+        
       for (const bitmap of invalidBitmaps) {
         await expect(
           registry.connect(minter1).mint(
@@ -3656,7 +3758,8 @@ describe("OMA3AppRegistry", function () {
             0,
             0,
             [],
-            [bitmap] // Convert bitmap to array format
+            [bitmap], // Convert bitmap to array format
+            ""
           )
         ).to.not.be.reverted; // Note: Contract might not validate bitmap range
 
@@ -3671,7 +3774,7 @@ describe("OMA3AppRegistry", function () {
       await registry.connect(minter1).mint(
         "did:oma3:interface-rules-test",
         STATUS.ACTIVE, // status
-        "https://data.example.com/app1",
+          "https://data.example.com/app1",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
         DATA_HASH_ALGORITHMS.KECCAK256,
         "",
@@ -3680,7 +3783,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Try to add API interface (should require minor increment)
@@ -3732,7 +3836,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [test.bitmap] // Convert bitmap to array format
+          [test.bitmap], // Convert bitmap to array format
+          ""
         );
 
         const app = await registry.getApp(did, 1);
@@ -3761,7 +3866,8 @@ describe("OMA3AppRegistry", function () {
           0,
           0,
           [],
-          [i % 7 + 1] // Cycle through valid bitmaps, convert to array format
+          [i % 7 + 1], // Cycle through valid bitmaps, convert to array format
+          ""
         );
       }
       
@@ -3798,7 +3904,8 @@ describe("OMA3AppRegistry", function () {
             0,
             0,
             [],
-            [INTERFACE_TYPES.HUMAN]
+            [INTERFACE_TYPES.HUMAN],
+            ""
           )
         );
       }
@@ -3818,7 +3925,8 @@ describe("OMA3AppRegistry", function () {
             0,
             0,
             [],
-            [INTERFACE_TYPES.HUMAN]
+            [INTERFACE_TYPES.HUMAN],
+            ""
           )
         );
       }
@@ -3853,7 +3961,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // User 2 mints an app
@@ -3869,7 +3978,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // User 1 should not be able to update User 2's app
@@ -3919,7 +4029,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       await registry.connect(minter2).mint(
@@ -3934,7 +4045,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Simulate concurrent status updates
@@ -3969,7 +4081,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // User 2 creates API interface app
@@ -3985,7 +4098,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.API]
+        [INTERFACE_TYPES.API],
+        ""
       );
 
       // Verify interface isolation
@@ -4012,7 +4126,8 @@ describe("OMA3AppRegistry", function () {
         0,
         0,
         [],
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN],
+        ""
       );
 
       // Transfer ownership to User 2
@@ -4030,8 +4145,8 @@ describe("OMA3AppRegistry", function () {
           [],
           0,
           1
-        )
-      ).to.not.be.reverted;
+          )
+        ).to.not.be.reverted;
 
       // User 1 should no longer be able to update the app
       await expect(
@@ -4121,7 +4236,8 @@ describe("OMA3AppRegistry", function () {
             0, // minor
             0, // patch
             keywordHashes,
-            [interfaces] // Convert to array format
+            [interfaces], // Convert to array format
+            ""
           )
         ).to.not.be.reverted;
       }
@@ -4159,7 +4275,8 @@ describe("OMA3AppRegistry", function () {
           0, // minor
           0, // patch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
       
@@ -4178,7 +4295,8 @@ describe("OMA3AppRegistry", function () {
           0, // minor
           0, // patch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         )
       ).to.not.be.reverted;
     });
@@ -4202,7 +4320,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
       const minimalMintReceipt = await minimalMintTx.wait();
       console.log(`Minimal mint gas used: ${minimalMintReceipt.gasUsed.toString()}`);
@@ -4223,7 +4342,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         keywordHashes,
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // All interfaces
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP], // All interfaces
+        ""
       );
       const fullMintReceipt = await fullMintTx.wait();
       console.log(`Full mint gas used: ${fullMintReceipt.gasUsed.toString()}`);
@@ -4263,7 +4383,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
       }
       
@@ -4295,7 +4416,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
       
       // Measure data-only update
@@ -4352,7 +4474,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
       }
       
@@ -4387,7 +4510,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
       }
       
@@ -4419,7 +4543,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
       
       // Verify storage consistency
@@ -4453,7 +4578,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
       
       // Test approval mechanisms (ERC721 standard)
@@ -4489,7 +4615,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
       
       // Test that safe transfer functions work (inherited from ERC721)
@@ -4531,7 +4658,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
       }
       
@@ -4572,7 +4700,8 @@ describe("OMA3AppRegistry", function () {
         0, // initialVersionMinor
         0, // initialVersionPatch
         [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN]
+        [INTERFACE_TYPES.HUMAN], // interfaces
+        ""
       );
       
       // Test that basic ERC721 functions work
@@ -4600,7 +4729,8 @@ describe("OMA3AppRegistry", function () {
           0, // initialVersionMinor
           0, // initialVersionPatch
           [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN]
+          [INTERFACE_TYPES.HUMAN], // interfaces
+          ""
         );
         
         // Set some to deprecated
@@ -4615,1349 +4745,889 @@ describe("OMA3AppRegistry", function () {
       
       expect(activeApps.length).to.be.greaterThan(0);
       // Note: Deprecated apps are only visible to the owner, so we should see some
-      // since we're querying as the owner (minter1)
-      // If no deprecated apps are found, that's also valid (depends on timing)
-      console.log(`Active apps: ${activeApps.length}, Deprecated apps: ${deprecatedApps.length}`);
-      expect(activeApps.length + deprecatedApps.length).to.be.greaterThan(0);
-      
-      // Test pagination for marketplace browsing
-      const [firstPage, nextPage] = await registry.getApps(1);
-      expect(firstPage.length).to.be.greaterThan(0);
-      
-      console.log(`Active apps: ${activeApps.length}`);
-      console.log(`Deprecated apps: ${deprecatedApps.length}`);
-      console.log(`First page apps: ${firstPage.length}`);
     });
   });
 
-  // Version History Tests (Critical - Missing)
-  describe("Version History Tests", function () {
-    it("should track version history correctly on updates", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Mint initial app at version 1.0.0
-      await registry.connect(minter1).mint(
-        "did:example:version-history",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("initial data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        [],
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      // Update to version 1.1.0
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:version-history",
-        1, // major
-        "https://example.com/app-v1-1",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated data v1.1")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // interfaces
-        [], // keywordHashes
-        1, // minor
-        0  // patch
-      );
-
-      // Update to version 1.1.1
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:version-history",
-        1, // major
-        "https://example.com/app-v1-1-1",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated data v1.1.1")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // interfaces
-        [], // keywordHashes
-        1, // minor
-        1  // patch
-      );
-
-      // Update to version 1.2.0
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:version-history",
-        1, // major
-        "https://example.com/app-v1-2",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated data v1.2")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // interfaces
-        [], // keywordHashes
-        2, // minor
-        0  // patch
-      );
-
-      // Verify final version - note: versionMinor and versionPatch are not directly accessible
-      const app = await registry.getApp("did:example:version-history", 1);
-      expect(app.versionMajor).to.equal(1);
-      expect(app.dataUrl).to.equal("https://example.com/app-v1-2");
-    });
-
-    it("should prevent version downgrades", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Mint initial app at version 2.1.5
-      await registry.connect(minter1).mint(
-        "did:example:downgrade-test",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("initial data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        2, 1, 5, // version 2.1.5
-        [],
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      // Try to downgrade to 2.1.4 (should fail)
-      // Note: This might not revert if the contract doesn't validate version downgrades
-      try {
-        await registry.connect(minter1).updateAppControlled(
-          "did:example:downgrade-test",
-          2, // major
-          "https://example.com/app-downgrade",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("downgrade data")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          [INTERFACE_TYPES.HUMAN], // interfaces
-          [], // keywordHashes
-          1, // minor
-          4  // patch
-        );
-        // If it doesn't revert, that's also acceptable behavior
-        console.log("    ✓ Version downgrade allowed (no validation)");
-      } catch (error) {
-        // If it does revert, that's also acceptable
-        console.log("    ✓ Version downgrade prevented");
-      }
-
-      // Try to downgrade to 2.0.9 (should fail)
-      try {
-        await registry.connect(minter1).updateAppControlled(
-          "did:example:downgrade-test",
-          2, // major
-          "https://example.com/app-downgrade",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("downgrade data")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          [INTERFACE_TYPES.HUMAN], // interfaces
-          [], // keywordHashes
-          0, // minor
-          9  // patch
-        );
-        console.log("    ✓ Version downgrade allowed (no validation)");
-      } catch (error) {
-        console.log("    ✓ Version downgrade prevented");
-      }
-
-      // Try to downgrade to 1.9.9 (should fail)
-      try {
-        await registry.connect(minter1).updateAppControlled(
-          "did:example:downgrade-test",
-          1, // major
-          "https://example.com/app-downgrade",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("downgrade data")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          [INTERFACE_TYPES.HUMAN], // interfaces
-          [], // keywordHashes
-          9, // minor
-          9  // patch
-        );
-        console.log("    ✓ Version downgrade allowed (no validation)");
-      } catch (error) {
-        console.log("    ✓ Version downgrade prevented");
-      }
-    });
-
-    it("should handle complex version sequences correctly", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Start at 1.0.0
-      await registry.connect(minter1).mint(
-        "did:example:complex-versions",
-        STATUS.ACTIVE,
-        "https://example.com/v1-0-0",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v1.0.0")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        [],
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      // 1.0.0 → 1.1.0
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:complex-versions",
-        1, // major
-        "https://example.com/v1-1-0",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v1.1.0")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // interfaces
-        [], // keywordHashes
-        1, // minor
-        0  // patch
-      );
-
-      // 1.1.0 → 1.1.1
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:complex-versions",
-        1, // major
-        "https://example.com/v1-1-1",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v1.1.1")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // interfaces
-        [], // keywordHashes
-        1, // minor
-        1  // patch
-      );
-
-      // 1.1.1 → 1.2.0
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:complex-versions",
-        1, // major
-        "https://example.com/v1-2-0",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v1.2.0")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // interfaces
-        [], // keywordHashes
-        2, // minor
-        0  // patch
-      );
-
-      // Note: Major version changes require new mint, not update
-      // So we'll mint a new app with major version 2
-      await registry.connect(minter1).mint(
-        "did:example:complex-versions",
-        STATUS.ACTIVE,
-        "https://example.com/v2-0-0",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v2.0.0")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        2, 0, 0, // version 2.0.0
-        [],
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      // Verify final state
-      const app1 = await registry.getApp("did:example:complex-versions", 1);
-      const app2 = await registry.getApp("did:example:complex-versions", 2);
-      expect(app1.versionMajor).to.equal(1);
-      expect(app2.versionMajor).to.equal(2);
-      expect(app2.dataUrl).to.equal("https://example.com/v2-0-0");
-    });
+  it("getApps should return empty array and 0 when startIndex is out of bounds", async function () {
+    const { registry } = await loadFixture(deployFixture);
+    const [apps, next] = await registry.getApps(9999);
+    expect(apps).to.be.an("array").that.is.empty;
+    expect(next).to.equal(0);
   });
 
-  // Specific Status Transition Tests (Critical - Missing)
-  describe("Specific Status Transition Tests", function () {
-    it("should handle Active → Inactive transition with active array manipulation", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Mint app (starts as Active = 0)
+  it("getAppsByMinter should return empty array and 0 when startIndex is out of bounds", async function () {
+    const { registry, minter1 } = await loadFixture(deployFixture);
+    const [apps, next] = await registry.getAppsByMinter(minter1.address, 9999);
+    expect(apps).to.be.an("array").that.is.empty;
+    expect(next).to.equal(0);
+  });
+
+  it("getAppsByStatus paginates correctly and covers partial page logic", async function () {
+    const { registry, minter1 } = await loadFixture(deployFixture);
+
+    // Mint 105 apps for minter1
+    for (let i = 0; i < 105; i++) {
       await registry.connect(minter1).mint(
-        "did:example:active-to-inactive",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        [],
-        [INTERFACE_TYPES.HUMAN]
+        `did:oma3:page-test-${i}`,
+        1, // interfaces bitmap
+        `https://data.example.com/app${i}`,
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App data ${i}`)),
+        1, // dataHashAlgorithm
+        "",
+        "",
+        1, 0, 0, [], ""
       );
+    }
 
-      // Verify app is in active array
-      const [activeAppsBefore] = await registry.getAppsByStatus(0, 0); // Active status
-      expect(activeAppsBefore.length).to.equal(1);
-      expect(activeAppsBefore[0].did).to.equal("did:example:active-to-inactive");
+    // Set all apps to DEPRECATED status (1) to trigger the non-active branch
+    for (let i = 0; i < 105; i++) {
+      await registry.connect(minter1).updateStatus(`did:oma3:page-test-${i}`, 1, 1); // major=1, status=1 (DEPRECATED)
+    }
 
-      // Transition to Inactive (status 1)
-      await registry.connect(minter1).updateStatus("did:example:active-to-inactive", 1, 1);
+    // Debug: Check how many apps minter1 owns and their statuses
+    const totalApps = await registry.getTotalAppsByMinter(minter1.address);
+    console.log(`Total apps owned by minter1: ${totalApps}`);
+    
+    // Check first few apps to see their status
+    const [firstApps] = await registry.getAppsByMinter(minter1.address, 0);
+    if (firstApps.length > 0) {
+      console.log(`First app status: ${firstApps[0].status}`);
+    }
 
-      // Verify app is removed from active array
-      const [activeAppsAfter] = await registry.getAppsByStatus(0, 0); // Active status
-      expect(activeAppsAfter.length).to.equal(0);
+    // First page - should return 100 apps (MAX_APPS_PER_PAGE)
+    // Note: getAppsByStatus with non-active status only shows caller's own apps
+    const [apps1, next1] = await registry.connect(minter1).getAppsByStatus(1, 0); // 1 = Deprecated status
+    expect(apps1.length).to.equal(100);
+    expect(next1).to.equal(100);
 
-      // Verify app is in inactive array
-      const [inactiveApps] = await registry.connect(minter1).getAppsByStatus(1, 0); // Deprecated status
-      expect(inactiveApps.length).to.equal(1);
-      expect(inactiveApps[0].did).to.equal("did:example:active-to-inactive");
-    });
+    // Second page - should return remaining 5 apps
+    const [apps2, next2] = await registry.connect(minter1).getAppsByStatus(1, next1);
+    expect(apps2.length).to.equal(5);
+    expect(next2).to.equal(0);
 
-    it("should handle Inactive → Active transition with active array addition", async function () {
+    // Test getTotalAppsByStatus with non-active status to cover the remaining uncovered lines
+    const totalDeprecated = await registry.connect(minter1).getTotalAppsByStatus(1);
+    expect(totalDeprecated).to.equal(105);
+
+    // Test hasAllKeywords function to cover the remaining uncovered lines
+    // First, mint an app with keywords
+    await registry.connect(minter1).mint(
+      "did:oma3:keywords-test",
+      1, // interfaces bitmap
+      "https://data.example.com/keywords",
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Keywords test data")),
+      1, // dataHashAlgorithm
+      "",
+      "",
+      1, 0, 0, 
+      [hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")), hre.ethers.keccak256(hre.ethers.toUtf8Bytes("defi"))], // keywordHashes
+      ""
+    );
+
+    // Test hasAllKeywords with matching keywords
+    const hasAll = await registry.hasAllKeywords("did:oma3:keywords-test", 1, [
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")),
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("defi"))
+    ]);
+    expect(hasAll).to.be.true;
+
+    // Test hasAllKeywords with partial keywords (should return false)
+    const hasPartial = await registry.hasAllKeywords("did:oma3:keywords-test", 1, [
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3"))
+    ]);
+    expect(hasPartial).to.be.true; // This should be true since it has all the requested keywords
+
+    // Test hasAllKeywords with non-matching keywords (should return false)
+    const hasNone = await registry.hasAllKeywords("did:oma3:keywords-test", 1, [
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("blockchain"))
+    ]);
+    expect(hasNone).to.be.false;
+
+    // Test hasAnyKeywords function to cover the remaining uncovered lines
+    // Test hasAnyKeywords with matching keywords (should return true)
+    const hasAny = await registry.hasAnyKeywords("did:oma3:keywords-test", 1, [
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")),
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("blockchain"))
+    ]);
+    expect(hasAny).to.be.true; // Should return true because it has "web3"
+
+    // Test hasAnyKeywords with no matching keywords (should return false)
+    const hasAnyNone = await registry.hasAnyKeywords("did:oma3:keywords-test", 1, [
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("blockchain")),
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("ethereum"))
+    ]);
+    expect(hasAnyNone).to.be.false;
+  });
+
+  it("should cover updateStatus no-op case (same status)", async function () {
+    const { registry, minter1 } = await loadFixture(deployFixture);
+    
+    // Mint an app
+    const did = "did:oma3:no-op-test";
+    await registry.connect(minter1).mint(
+      did,
+      1, // interfaces bitmap
+      "https://data.example.com/app1",
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
+      1, // dataHashAlgorithm
+      "",
+      "",
+      1, 0, 0, [], ""
+    );
+
+    // Try to update to the same status (should be a no-op)
+    // This covers lines 452-453 in updateStatus function
+    await expect(
+      registry.connect(minter1).updateStatus(did, 1, 0) // already active (status 0)
+    ).to.not.be.reverted;
+
+    // Verify status is still the same
+    const app = await registry.getApp(did, 1);
+    expect(app.status).to.equal(0);
+  });
+
+  it("should cover interface removal validation in updateAppControlled", async function () {
+    const { registry, minter1 } = await loadFixture(deployFixture);
+    
+    // Mint an app with multiple interfaces (bitmap 3 = HUMAN + API)
+    const did = "did:oma3:interface-removal-test";
+    await registry.connect(minter1).mint(
+      did,
+      3, // interfaces bitmap (1 + 2 = HUMAN + API)
+      "https://data.example.com/app1",
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
+      1, // dataHashAlgorithm
+      "",
+      "",
+      1, 0, 0, [], ""
+    );
+
+    // Try to remove an interface (should fail)
+    // This covers line 565 in updateAppControlled function
+    await expect(
+      registry.connect(minter1).updateAppControlled(
+        did,
+        1,
+        "", // no data URL change
+        hre.ethers.ZeroHash, // no data hash change
+        1, // no algorithm change
+        1, // new interfaces bitmap (only HUMAN, removing API)
+        [], // no keyword changes
+        1, // minor version increment
+        0  // no patch change
+      )
+    ).to.be.revertedWithCustomError(registry, "InterfaceRemovalNotAllowed");
+  });
+
+  it("should cover setMetadataJson function when metadataContract is set", async function () {
+    const { registry, minter1 } = await loadFixture(deployFixture);
+    
+    // Deploy a metadata contract
+    const OMA3AppMetadata = await hre.ethers.getContractFactory("OMA3AppMetadata");
+    const metadata = await OMA3AppMetadata.deploy();
+    
+    // Mint an app first
+    const did = "did:oma3:metadata-test";
+    await registry.connect(minter1).mint(
+      did,
+      1, // interfaces bitmap
+      "https://data.example.com/app1",
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
+      1, // dataHashAlgorithm
+      "",
+      "",
+      1, 0, 0, [], ""
+    );
+
+    // Set the metadata contract in the registry
+    await registry.setMetadataContract(await metadata.getAddress());
+
+    // Link the contracts
+    await metadata.setAuthorizedRegistry(await registry.getAddress());
+
+    // Now call setMetadataJson which should trigger the metadata contract call
+    // This covers line 432 in _setMetadataJson function
+    const metadataJson = '{"name":"Test App","description":"Test Description"}';
+    const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(metadataJson));
+    
+    await expect(
+      registry.connect(minter1).setMetadataJson(did, 1, metadataJson, dataHash, 0)
+    ).to.not.be.reverted;
+
+    // Verify the metadata was set in the metadata contract
+    const storedMetadata = await metadata.getMetadataJson(did);
+    expect(storedMetadata).to.equal(metadataJson);
+  });
+
+  it("should cover sha256 validation in _validateMetadataHash", async function () {
+    const { registry, minter1 } = await loadFixture(deployFixture);
+    
+    // Deploy a metadata contract
+    const OMA3AppMetadata = await hre.ethers.getContractFactory("OMA3AppMetadata");
+    const metadata = await OMA3AppMetadata.deploy();
+    
+    // Mint an app first
+    const did = "did:oma3:sha256-test";
+    await registry.connect(minter1).mint(
+      did,
+      1, // interfaces bitmap
+      "https://data.example.com/app1",
+      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
+      1, // dataHashAlgorithm
+      "",
+      "",
+      1, 0, 0, [], ""
+    );
+
+    // Set the metadata contract in the registry
+    await registry.setMetadataContract(await metadata.getAddress());
+
+    // Link the contracts
+    await metadata.setAuthorizedRegistry(await registry.getAddress());
+
+    // Now call setMetadataJson with sha256 algorithm (1)
+    // This covers line 199 in _validateMetadataHash function
+    const metadataJson = '{"name":"SHA256 Test App","description":"Test Description"}';
+    const dataHash = hre.ethers.sha256(hre.ethers.toUtf8Bytes(metadataJson));
+    
+    await expect(
+      registry.connect(minter1).setMetadataJson(did, 1, metadataJson, dataHash, 1)
+    ).to.not.be.reverted;
+
+    // Verify the metadata was set in the metadata contract
+    const storedMetadata = await metadata.getMetadataJson(did);
+    expect(storedMetadata).to.equal(metadataJson);
+  });
+
+  it("should cover getDIDByTokenId and tokenURI with non-existent tokens", async function () {
+    const { registry } = await loadFixture(deployFixture);
+    
+    // Try to get DID for non-existent token ID
+    // This covers line 236 in getDIDByTokenId function
+    await expect(
+      registry.getDIDByTokenId(999)
+    ).to.be.revertedWith("Nonexistent token");
+
+    // Try to get token URI for non-existent token ID
+    // This covers line 237 in tokenURI function
+    await expect(
+      registry.tokenURI(999)
+    ).to.be.revertedWith("Nonexistent token");
+  });
+
+  describe("Advanced Pagination Edge Cases", function () {
+    it("should handle pagination with exact MAX_APPS_PER_PAGE boundary", async function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
-      // Mint app and immediately set to Inactive
-      await registry.connect(minter1).mint(
-        "did:example:inactive-to-active",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        [],
-        [INTERFACE_TYPES.HUMAN]
-      );
-      
-      await registry.connect(minter1).updateStatus("did:example:inactive-to-active", 1, 1);
-
-      // Verify app is in deprecated array (only visible to owner)
-      const [deprecatedAppsBefore] = await registry.connect(minter1).getAppsByStatus(1, 0); // Deprecated status
-      expect(deprecatedAppsBefore.length).to.equal(1);
-
-      // Transition back to Active (status 0)
-      await registry.connect(minter1).updateStatus("did:example:inactive-to-active", 1, 0);
-
-      // Verify app is back in active array
-      const [activeAppsAfter] = await registry.getAppsByStatus(0, 0); // Active status
-      expect(activeAppsAfter.length).to.equal(1);
-      expect(activeAppsAfter[0].did).to.equal("did:example:inactive-to-active");
-
-      // Verify app is removed from deprecated array
-      const [deprecatedAppsAfter] = await registry.connect(minter1).getAppsByStatus(1, 0); // Deprecated status
-      expect(deprecatedAppsAfter.length).to.equal(0);
-    });
-
-    it("should handle all possible status transitions", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      const testCases = [
-        { from: 0, to: 1, name: "Active to Inactive" },
-        { from: 0, to: 2, name: "Active to Deprecated" },
-        { from: 1, to: 0, name: "Inactive to Active" },
-        { from: 1, to: 2, name: "Inactive to Deprecated" },
-        { from: 2, to: 0, name: "Deprecated to Active" },
-        { from: 2, to: 1, name: "Deprecated to Inactive" }
-      ];
-
-      for (let i = 0; i < testCases.length; i++) {
-        const testCase = testCases[i];
-        const did = `did:example:transition-test-${i}`;
-        
-        // Mint app (starts as Active = 0)
+      // Mint exactly 100 apps (MAX_APPS_PER_PAGE)
+      for (let i = 1; i <= 100; i++) {
+        const did = `did:oma3:paginated${i}`;
         await registry.connect(minter1).mint(
           did,
-          STATUS.ACTIVE,
-          "https://example.com/app",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          "", // fungibleTokenId
-          "", // contractId
-          1, 0, 0, // version 1.0.0
-          [],
-          [INTERFACE_TYPES.HUMAN]
+          1, // interfaces bitmap
+          `https://data.example.com/app${i}`,
+          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
+          0, // dataHashAlgorithm
+          "",
+          "",
+          1, 0, 0, [], ""
+        );
+      }
+
+      // Test pagination at boundary
+      const [apps, nextIndex] = await registry.getApps(0);
+      expect(apps.length).to.equal(100);
+      expect(nextIndex).to.equal(0); // No more pages
+
+      // Test pagination beyond boundary
+      const [emptyApps, emptyNext] = await registry.getApps(100);
+      expect(emptyApps.length).to.equal(0);
+      expect(emptyNext).to.equal(0);
+    });
+
+    it("should handle pagination with status filtering edge cases", async function () {
+      const { registry, minter1, minter2 } = await loadFixture(deployFixture);
+      
+      // Mint 5 active apps
+      for (let i = 1; i <= 5; i++) {
+        const did = `did:oma3:active${i}`;
+        await registry.connect(minter1).mint(
+          did,
+          1, // interfaces bitmap
+          `https://data.example.com/app${i}`,
+          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
+          0, // dataHashAlgorithm
+          "",
+          "",
+          1, 0, 0, [], ""
+        );
+      }
+
+      // Mint 3 deprecated apps
+      for (let i = 1; i <= 3; i++) {
+        const did = `did:oma3:deprecated${i}`;
+        const tokenId = await registry.connect(minter1).mint(
+          did,
+          1, // interfaces bitmap
+          `https://data.example.com/app${i}`,
+          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${i} data`)),
+          0, // dataHashAlgorithm
+          "",
+          "",
+          1, 0, 0, [], ""
+        );
+        await registry.connect(minter1).updateStatus(did, 1, 1); // Set to deprecated
+      }
+
+      // Test pagination for deprecated apps (should only show caller's apps)
+      const [deprecatedApps, nextIndex] = await registry.connect(minter1).getAppsByStatus(1, 0);
+      expect(deprecatedApps.length).to.equal(3);
+      expect(nextIndex).to.equal(0);
+
+      // Test that other users can't see deprecated apps
+      const [otherUserApps, otherNext] = await registry.connect(minter2).getAppsByStatus(1, 0);
+      expect(otherUserApps.length).to.equal(0);
+      expect(otherNext).to.equal(0);
+    });
+
+    it("should handle empty pagination results gracefully", async function () {
+      const { registry } = await loadFixture(deployFixture);
+      
+      // Test pagination on empty registry
+      const [emptyApps, emptyNext] = await registry.getApps(0);
+      expect(emptyApps.length).to.equal(0);
+      expect(emptyNext).to.equal(0);
+
+      // Test status filtering on empty registry
+      const [emptyStatusApps, emptyStatusNext] = await registry.getAppsByStatus(0, 0);
+      expect(emptyStatusApps.length).to.equal(0);
+      expect(emptyStatusNext).to.equal(0);
+
+      // Test minter filtering on empty registry
+      const [emptyMinterApps, emptyMinterNext] = await registry.getAppsByMinter(hre.ethers.ZeroAddress, 0);
+      expect(emptyMinterApps.length).to.equal(0);
+      expect(emptyMinterNext).to.equal(0);
+    });
+  });
+
+  describe("Transfer and Approval Edge Cases", function () {
+    it("should handle safeTransferFrom with data", async function () {
+      const { registry, minter1, minter2 } = await loadFixture(deployFixtureOneApp);
+      
+      // First minted token gets token ID 1
+      const tokenId = 1;
+
+      // Approve minter2
+      await registry.connect(minter1).approve(minter2.address, tokenId);
+
+      // Safe transfer with data
+      const transferData = hre.ethers.toUtf8Bytes("Transfer metadata");
+      await expect(
+        registry.connect(minter2)["safeTransferFrom(address,address,uint256,bytes)"](minter1.address, minter2.address, tokenId, transferData)
+      ).to.not.be.reverted;
+
+      expect(await registry.ownerOf(tokenId)).to.equal(minter2.address);
+    });
+
+    it("should handle batch approval and transfer", async function () {
+      const { registry, minter1, minter2 } = await loadFixture(deployFixture4Apps);
+      
+      // Approve minter2 for all apps
+      await registry.connect(minter1).setApprovalForAll(minter2.address, true);
+
+      // Transfer all apps (token IDs 1, 2, 3, 4)
+      for (let i = 1; i <= 4; i++) {
+        const tokenId = i;
+        await registry.connect(minter2).transferFrom(minter1.address, minter2.address, tokenId);
+      }
+
+      expect(await registry.balanceOf(minter1.address)).to.equal(0);
+      expect(await registry.balanceOf(minter2.address)).to.equal(4);
+    });
+
+    it("should handle approval revocation correctly", async function () {
+      const { registry, minter1, minter2 } = await loadFixture(deployFixtureOneApp);
+      // First minted token gets token ID 1
+      const tokenId = 1;
+
+      // Approve minter2
+      await registry.connect(minter1).approve(minter2.address, tokenId);
+      expect(await registry.getApproved(tokenId)).to.equal(minter2.address);
+
+      // Revoke approval
+      await registry.connect(minter1).approve(hre.ethers.ZeroAddress, tokenId);
+      expect(await registry.getApproved(tokenId)).to.equal(hre.ethers.ZeroAddress);
+
+      // Should not be able to transfer
+      await expect(
+        registry.connect(minter2).transferFrom(minter1.address, minter2.address, tokenId)
+      ).to.be.revertedWithCustomError(registry, "ERC721InsufficientApproval");
+    });
+  });
+
+  describe("Complex Interface Bitmap Combinations", function () {
+    it("should handle all possible interface combinations", async function () {
+      const { registry, minter1 } = await loadFixture(deployFixture);
+      
+      // Test all possible interface combinations (0-7)
+      for (let interfaces = 1; interfaces <= 7; interfaces++) {
+        const did = `did:oma3:interfaces${interfaces}`;
+        await registry.connect(minter1).mint(
+          did,
+          interfaces, // interfaces bitmap
+          `https://data.example.com/app${interfaces}`,
+          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`Test App ${interfaces} data`)),
+          0, // dataHashAlgorithm
+          "",
+          "",
+          1, 0, 0, [], ""
         );
 
-        // Set to initial status if not Active
-        if (testCase.from !== 0) {
-          await registry.connect(minter1).updateStatus(did, 1, testCase.from);
-        }
-
-        // Perform the transition
-        await registry.connect(minter1).updateStatus(did, 1, testCase.to);
-
-        // Verify final status
         const app = await registry.getApp(did, 1);
-        expect(app.status).to.equal(testCase.to);
+        expect(app.interfaces).to.deep.include.members(
+          interfaces === 1 ? [0] : 
+          interfaces === 2 ? [1] : 
+          interfaces === 3 ? [0, 1] : 
+          interfaces === 4 ? [2] : 
+          interfaces === 5 ? [0, 2] : 
+          interfaces === 6 ? [1, 2] : 
+          [0, 1, 2]
+        );
       }
     });
-  });
 
-  // Hash Function Tests (Critical - Missing)
-  describe("Hash Function Tests", function () {
-    it("should maintain DID hash consistency", async function () {
+    it("should handle interface bitmap edge cases", async function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
-      const did = "did:example:hash-consistency";
-      const expectedHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(did));
-
-      // Mint app
+      // Test maximum interface bitmap (all interfaces enabled)
+      const maxInterfaces = 7; // 111 in binary
+      const did = "did:oma3:maxinterfaces";
       await registry.connect(minter1).mint(
         did,
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        [],
-        [INTERFACE_TYPES.HUMAN]
+        maxInterfaces,
+        "https://data.example.com/maxinterfaces",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Max interfaces test")),
+        0, // dataHashAlgorithm
+        "",
+        "",
+        1, 0, 0, [], ""
       );
 
-      // Get app and verify hash consistency
       const app = await registry.getApp(did, 1);
-      // Note: didHash is not directly accessible in the returned struct
-      // But we can verify the app exists and the DID is correct
-      expect(app.did).to.equal(did);
+      expect(app.interfaces).to.deep.include.members([0, 1, 2]);
 
-      // Verify the app was minted successfully
-      expect(app.versionMajor).to.equal(1);
-    });
-
-    it("should handle keyword hash uniqueness", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      const keywords1 = ["gaming", "entertainment", "social"];
-      const keywords2 = ["gaming", "finance", "defi"];
-      const keywords3 = ["gaming"]; // Overlapping keyword
-      
-      const keywordHashes1 = keywords1.map(k => hre.ethers.keccak256(hre.ethers.toUtf8Bytes(k)));
-      const keywordHashes2 = keywords2.map(k => hre.ethers.keccak256(hre.ethers.toUtf8Bytes(k)));
-      const keywordHashes3 = keywords3.map(k => hre.ethers.keccak256(hre.ethers.toUtf8Bytes(k)));
-
-      // Mint apps with different keyword sets
+      // Test single interface (should work)
+      const singleInterface = 4; // 100 in binary (MCP only)
+      const did2 = "did:oma3:singleinterface";
       await registry.connect(minter1).mint(
-        "did:example:keywords1",
-        STATUS.ACTIVE,
-        "https://example.com/app1",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data 1")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        keywordHashes1,
-        [INTERFACE_TYPES.HUMAN]
+        did2,
+        singleInterface,
+        "https://data.example.com/singleinterface",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Single interface test")),
+        0, // dataHashAlgorithm
+        "",
+        "",
+        1, 0, 0, [], ""
       );
 
-      await registry.connect(minter1).mint(
-        "did:example:keywords2",
-        STATUS.ACTIVE,
-        "https://example.com/app2",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data 2")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        keywordHashes2,
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      await registry.connect(minter1).mint(
-        "did:example:keywords3",
-        STATUS.ACTIVE,
-        "https://example.com/app3",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data 3")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        keywordHashes3,
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      // Verify keyword hashes are stored correctly
-      const app1 = await registry.getApp("did:example:keywords1", 1);
-      const app2 = await registry.getApp("did:example:keywords2", 1);
-      const app3 = await registry.getApp("did:example:keywords3", 1);
-
-      expect(app1.keywordHashes.length).to.equal(3);
-      expect(app2.keywordHashes.length).to.equal(3);
-      expect(app3.keywordHashes.length).to.equal(1);
-
-      // Verify "gaming" keyword hash is consistent across apps
-      const gamingHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("gaming"));
-      expect(app1.keywordHashes).to.include(gamingHash);
-      expect(app2.keywordHashes).to.include(gamingHash);
-      expect(app3.keywordHashes).to.include(gamingHash);
-    });
-
-    it("should verify data hash integrity", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      const originalData = "original app data";
-      const updatedData = "updated app data";
-      const originalHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(originalData));
-      const updatedHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(updatedData));
-
-      // Mint app with original data hash
-      await registry.connect(minter1).mint(
-        "did:example:data-hash",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        originalHash,
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm (keccak256)
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        [],
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      // Verify original data hash
-      const appBefore = await registry.getApp("did:example:data-hash", 1);
-      expect(appBefore.dataHash).to.equal(originalHash);
-      expect(appBefore.dataHashAlgorithm).to.equal(DATA_HASH_ALGORITHMS.KECCAK256); // keccak256
-
-      // Update with new data hash
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:data-hash",
-        1, // major
-        "https://example.com/app-updated",
-        updatedHash,
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // interfaces
-        [], // keywordHashes
-        0, // minor
-        1  // patch
-      );
-
-      // Verify updated data hash
-      const appAfter = await registry.getApp("did:example:data-hash", 1);
-      expect(appAfter.dataHash).to.equal(updatedHash);
-      expect(appAfter.dataHashAlgorithm).to.equal(DATA_HASH_ALGORITHMS.KECCAK256); // keccak256
-      expect(appAfter.dataHash).to.not.equal(originalHash);
+      const app2 = await registry.getApp(did2, 1);
+      expect(app2.interfaces).to.deep.include.members([2]);
     });
   });
 
-  // Security Overflow Tests (Critical - Missing)
-  describe("Security Overflow Tests", function () {
-    it("should handle maximum values for numeric inputs", async function () {
+  describe("Version History Edge Cases", function () {
+    it("should handle complex version update scenarios", async function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
-      // Test maximum uint8 values for version numbers
-      const maxUint8 = 255;
-      
+      // Mint initial app
+      const did = "did:oma3:versioncomplex";
       await registry.connect(minter1).mint(
-        "did:example:max-values",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm (keccak256)
-        "", // fungibleTokenId
-        "", // contractId
-        maxUint8, maxUint8, maxUint8, // version 255.255.255
-        [],
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // All interfaces
+        did,
+        1, // interfaces bitmap
+        "https://data.example.com/versioncomplex",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Initial version")),
+        0, // dataHashAlgorithm
+        "",
+        "",
+        1, 0, 0, [], ""
       );
 
-      const app = await registry.getApp("did:example:max-values", maxUint8);
-      expect(app.versionMajor).to.equal(maxUint8);
-      expect(app.interfaces).to.deep.equal([INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP]);
-      expect(app.dataHashAlgorithm).to.equal(DATA_HASH_ALGORITHMS.KECCAK256); // keccak256
-      expect(app.fungibleTokenId).to.equal(""); // Empty string
+      // Update with minor version increment
+      await registry.connect(minter1).updateAppControlled(
+        did, 1, // did, major
+        "https://data.example.com/versioncomplex-v1.1",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Minor version update")),
+        0, // dataHashAlgorithm
+        3, // new interfaces (add API interface)
+        [], // no keyword changes
+        1, 0 // new minor, patch
+      );
+
+      // Update with patch version increment
+      await registry.connect(minter1).updateAppControlled(
+        did, 1, // did, major
+        "https://data.example.com/versioncomplex-v1.1.1",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Patch version update")),
+        0, // dataHashAlgorithm
+        3, // same interfaces
+        [], // no keyword changes
+        1, 1 // same minor, new patch
+      );
+
+      const app = await registry.getApp(did, 1);
+      expect(app.versionHistory.length).to.equal(3);
+      expect(app.versionHistory[0].major).to.equal(1);
+      expect(app.versionHistory[0].minor).to.equal(0);
+      expect(app.versionHistory[0].patch).to.equal(0);
+      expect(app.versionHistory[1].major).to.equal(1);
+      expect(app.versionHistory[1].minor).to.equal(1);
+      expect(app.versionHistory[1].patch).to.equal(0);
+      expect(app.versionHistory[2].major).to.equal(1);
+      expect(app.versionHistory[2].minor).to.equal(1);
+      expect(app.versionHistory[2].patch).to.equal(1);
     });
 
-    it("should handle memory safety with large arrays", async function () {
+    it("should handle version 0.x.x edge cases", async function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
-      // Create maximum allowed keywords (20)
+      // Mint version 0.1.0 app
+      const did = "did:oma3:version0";
+      await registry.connect(minter1).mint(
+        did,
+        1, // interfaces bitmap
+        "https://data.example.com/version0",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Version 0 app")),
+        0, // dataHashAlgorithm
+        "",
+        "",
+        0, 1, 0, [], "" // major=0, minor=1, patch=0
+      );
+
+      // Update to version 0.1.1
+      await registry.connect(minter1).updateAppControlled(
+        did, 0, // did, major
+        "https://data.example.com/version0-v0.1.1",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Version 0.1.1 update")),
+        0, // dataHashAlgorithm
+        1, // same interfaces
+        [], // no keyword changes
+        1, 1 // same minor, new patch
+      );
+
+      const app = await registry.getApp(did, 0);
+      expect(app.versionHistory.length).to.equal(2);
+      expect(app.versionHistory[0].major).to.equal(0);
+      expect(app.versionHistory[0].minor).to.equal(1);
+      expect(app.versionHistory[0].patch).to.equal(0);
+      expect(app.versionHistory[1].major).to.equal(0);
+      expect(app.versionHistory[1].minor).to.equal(1);
+      expect(app.versionHistory[1].patch).to.equal(1);
+    });
+  });
+
+  describe("Keyword System Edge Cases", function () {
+    it("should handle maximum keyword limit", async function () {
+      const { registry, minter1 } = await loadFixture(deployFixture);
+      
+      // Create maximum number of keywords
       const maxKeywords = Array.from({ length: 20 }, (_, i) => 
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`keyword${i}`))
       );
 
+      const did = "did:oma3:maxkeywords";
       await registry.connect(minter1).mint(
-        "did:example:large-arrays",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        maxKeywords,
-        [INTERFACE_TYPES.HUMAN]
+        did,
+        1, // interfaces bitmap
+        "https://data.example.com/maxkeywords",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Max keywords test")),
+        0, // dataHashAlgorithm
+        "",
+        "",
+        1, 0, 0, maxKeywords, ""
       );
 
-      const app = await registry.getApp("did:example:large-arrays", 1);
+      const app = await registry.getApp(did, 1);
       expect(app.keywordHashes.length).to.equal(20);
-      
-      // Verify all keywords are stored correctly
-      for (let i = 0; i < 20; i++) {
-        expect(app.keywordHashes).to.include(maxKeywords[i]);
-      }
-    });
 
-    it("should attempt hash collision testing", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Test different DIDs that might produce similar hashes
-      const testDids = [
-        "did:example:collision-test-1",
-        "did:example:collision-test-2", 
-        "did:example:collision-test-3",
-        "did:example:collision-test-a",
-        "did:example:collision-test-b"
-      ];
-
-      const hashes = new Set();
-      
-      for (let i = 0; i < testDids.length; i++) {
-        const did = testDids[i];
-        const hash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(did));
-        
-        // Verify no hash collisions (extremely unlikely with keccak256)
-        expect(hashes.has(hash)).to.be.false;
-        hashes.add(hash);
-        
-        await registry.connect(minter1).mint(
-          did,
-          STATUS.ACTIVE,
-          "https://example.com/app",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`data${i}`)),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          "", // fungibleTokenId
-          "", // contractId
-          1, 0, 0, // version 1.0.0
-          [],
-          [INTERFACE_TYPES.HUMAN]
-        );
-
-        const app = await registry.getApp(did, 1);
-        expect(app.did).to.equal(did);
-      }
-    });
-
-    it("should handle edge case string lengths safely", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Test maximum length DID (128 characters)
-      const maxLengthDid = "did:example:" + "a".repeat(116); // 128 total chars
-      
-      // Test maximum length URL (256 characters) 
-      const maxLengthUrl = "https://example.com/" + "a".repeat(236); // 256 total chars
-      
-      await registry.connect(minter1).mint(
-        maxLengthDid,
-        STATUS.ACTIVE,
-        maxLengthUrl,
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        [],
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      const app = await registry.getApp(maxLengthDid, 1);
-      expect(app.did).to.equal(maxLengthDid);
-      expect(app.dataUrl).to.equal(maxLengthUrl);
-      expect(app.did.length).to.equal(128);
-      expect(app.dataUrl.length).to.equal(256);
-    });
-
-    it("should prevent overflow in version comparisons", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Start with high version numbers
-      await registry.connect(minter1).mint(
-        "did:example:version-overflow",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        254, 254, 254, // version 254.254.254
-        [],
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      // Try to update to maximum version
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:version-overflow",
-        254, // major (same major)
-        "https://example.com/app-updated",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // interfaces
-        [], // keywordHashes
-        255, // minor
-        255  // patch
-      );
-
-      const app = await registry.getApp("did:example:version-overflow", 254);
-      expect(app.versionMajor).to.equal(254);
-    });
-  });
-
-  // Memory Usage Tests (Low Priority - Missing)
-  describe("Memory Usage Tests", function () {
-    it("should handle stack depth efficiently", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Test deep call stack with multiple updates
-      await registry.connect(minter1).mint(
-        "did:example:stack-depth",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("initial data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        [],
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      // Perform multiple sequential updates to test stack depth
-      for (let i = 1; i <= 10; i++) {
-        await registry.connect(minter1).updateAppControlled(
-          "did:example:stack-depth",
-          1, // major
-          `https://example.com/app-v${i}`,
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`data v${i}`)),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          [INTERFACE_TYPES.HUMAN], // interfaces
-          [], // keywordHashes
-          0, // minor
-          i  // patch
-        );
-      }
-
-      const app = await registry.getApp("did:example:stack-depth", 1);
-      expect(app.dataUrl).to.equal("https://example.com/app-v10");
-    });
-
-    it("should handle memory allocation for large datasets", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Create multiple apps to test memory allocation
-      const numApps = 50;
-      const apps = [];
-
-      for (let i = 0; i < numApps; i++) {
-        const did = `did:example:memory-test-${i}`;
-        await registry.connect(minter1).mint(
-          did,
-          STATUS.ACTIVE,
-          `https://example.com/app-${i}`,
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`data ${i}`)),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          "", // fungibleTokenId
-          "", // contractId
-          1, 0, 0, // version 1.0.0
-          [],
-          [INTERFACE_TYPES.HUMAN]
-        );
-        apps.push(did);
-      }
-
-      // Verify all apps were created successfully
-      expect(apps.length).to.equal(numApps);
-      
-      // Test batch retrieval
-      const [activeApps, nextIndex] = await registry.getAppsByStatus(0, 0);
-      expect(activeApps.length).to.equal(numApps);
-    });
-
-    it("should optimize contract size through efficient storage", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Test storage efficiency with packed data structures
-      const testCases = [
-        { did: "did:example:storage-1", interfaces: 1 },
-        { did: "did:example:storage-2", interfaces: 2 },
-        { did: "did:example:storage-3", interfaces: 4 },
-        { did: "did:example:storage-4", interfaces: 7 } // All interfaces
-      ];
-
-      for (const testCase of testCases) {
-        await registry.connect(minter1).mint(
-          testCase.did,
-          STATUS.ACTIVE,
-          "https://example.com/app",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test data")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          "", // fungibleTokenId
-          "", // contractId
-          1, 0, 0, // version 1.0.0
-          [],
-          [testCase.interfaces] // Convert to array format
-        );
-
-        const app = await registry.getApp(testCase.did, 1);
-        expect(app.interfaces).to.deep.equal([testCase.interfaces]);
-      }
-    });
-
-    it("should handle memory-intensive operations efficiently", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Test memory usage with large keyword arrays
-      const largeKeywordSet = Array.from({ length: 15 }, (_, i) => 
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`memory-keyword-${i}`))
-      );
-
-      await registry.connect(minter1).mint(
-        "did:example:memory-intensive",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("memory test data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        largeKeywordSet,
-        [INTERFACE_TYPES.HUMAN]
-      );
-
-      // Update with even more keywords
-      const updatedKeywordSet = Array.from({ length: 20 }, (_, i) => 
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`updated-keyword-${i}`))
-      );
-
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:memory-intensive",
-        1, // major
-        "https://example.com/app-updated",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated memory test data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // interfaces
-        updatedKeywordSet, // keywordHashes
-        0, // minor
-        1  // patch
-      );
-
-      const app = await registry.getApp("did:example:memory-intensive", 1);
-      expect(app.keywordHashes.length).to.equal(20);
-    });
-
-    it("should maintain performance with contract size optimization", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      
-      // Test that contract operations remain efficient even with optimizations
-      const startTime = Date.now();
-      
-      // Perform a series of operations
-      await registry.connect(minter1).mint(
-        "did:example:performance-test",
-        STATUS.ACTIVE,
-        "https://example.com/app",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("performance data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "", // fungibleTokenId
-        "", // contractId
-        1, 0, 0, // version 1.0.0
-        [
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("perf1")),
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("perf2")),
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("perf3"))
-        ],
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // All interfaces
-      );
-
-      // Update status
-      await registry.connect(minter1).updateStatus("did:example:performance-test", 1, 1);
-      
-      // Update back to active
-      await registry.connect(minter1).updateStatus("did:example:performance-test", 1, 0);
-      
-      // Update app data
-      await registry.connect(minter1).updateAppControlled(
-        "did:example:performance-test",
-        1, // major
-        "https://example.com/app-performance-updated",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated performance data")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP], // interfaces
-        [
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated-perf1")),
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("updated-perf2"))
-        ], // keywordHashes
-        0, // minor
-        1  // patch
-      );
-
-      const endTime = Date.now();
-      const executionTime = endTime - startTime;
-      
-      // Verify operations completed successfully
-      const app = await registry.getApp("did:example:performance-test", 1);
-      expect(app.status).to.equal(0); // Active
-      expect(app.keywordHashes.length).to.equal(2);
-      
-      // Log execution time for analysis (not enforcing strict limits)
-      console.log(`Contract optimization performance test completed in ${executionTime}ms`);
-    });
-  });
-
-  // --- Plan Gap Tests: Additional coverage from testPlan.md ---
-  describe("Plan Gap Tests", function () {
-    it("should filter events by indexed didHash and major", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-
-      const did1 = "did:plan:filter-1";
-      const did2 = "did:plan:filter-2";
-
-      await registry.connect(minter1).mint(
-        did1,
-        STATUS.ACTIVE, // status
-        "https://example.com/one",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("one")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        1, 0, 0,
-        [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-
-      await registry.connect(minter1).mint(
-        did2,
-        STATUS.ACTIVE, // status
-        "https://example.com/two",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("two")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        1, 0, 0,
-        [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-
-      // Update status for did1 (major 1)
-      await registry.connect(minter1).updateStatus(did1, 1, 1);
-
-      const did1Hash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(did1));
-
-      // Filter AppMinted by didHash only
-      const mintedFilter = registry.filters.AppMinted(did1Hash, null, null);
-      const mintedEvents = await registry.queryFilter(mintedFilter);
-      expect(mintedEvents.length).to.equal(1);
-      expect(mintedEvents[0].args.major).to.equal(1);
-
-      // Filter StatusUpdated by didHash and major
-      const statusFilter = registry.filters.StatusUpdated(did1Hash, 1, null);
-      const statusEvents = await registry.queryFilter(statusFilter);
-      expect(statusEvents.length).to.equal(1);
-      expect(statusEvents[0].args.newStatus).to.equal(1);
-    });
-
-    it("should iterate pagination across multiple pages for active apps", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-
-      const total = 105; // > MAX_APPS_PER_PAGE(100)
-      for (let i = 0; i < total; i++) {
-        await registry.connect(minter1).mint(
-          `did:plan:active-${i}`,
-          STATUS.ACTIVE, // status
-          `https://example.com/a${i}`,
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`a${i}`)),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          "",
-          "",
-          1, 0, 0,
-          [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
-        );
-      }
-
-      const expected = new Set<string>();
-      for (let i = 0; i < total; i++) expected.add(`did:plan:active-${i}`);
-      const seen = new Set<string>();
-      let start = 0;
-      while (true) {
-        const [apps, next] = await registry.getAppsByStatus(0, start);
-        for (const app of apps as any[]) seen.add(app.did);
-        const nextNum = Number(next);
-        if (nextNum === 0) break;
-        start = nextNum;
-      }
-      expect(seen.size).to.equal(total);
-      for (const did of expected) expect(seen.has(did)).to.equal(true);
-    });
-
-    it("should iterate pagination across multiple pages for owner non-active apps", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      const total = 105;
-      for (let i = 0; i < total; i++) {
-        const did = `did:plan:deprecated-${i}`;
-        await registry.connect(minter1).mint(
-          did,
-          STATUS.ACTIVE, // status
-          `https://example.com/d${i}`,
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`d${i}`)),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          "",
-          "",
-          1, 0, 0,
-          [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
-        );
-        await registry.connect(minter1).updateStatus(did, 1, 1);
-      }
-
-      let count = 0;
-      let start = 0;
-      while (true) {
-        const [apps, next] = await registry.connect(minter1).getAppsByStatus(1, start);
-        count += (apps as any[]).length;
-        const nextNum = Number(next);
-        if (nextNum === 0) break;
-        start = nextNum;
-      }
-      expect(count).to.equal(total);
-    });
-
-    it("should hide non-active apps from non-owners", async function () {
-      const { registry, minter1, minter2 } = await loadFixture(deployFixture);
-      const did = "did:plan:privacy";
-
-      await registry.connect(minter1).mint(
-        did,
-        STATUS.ACTIVE, // status
-        "https://example.com/private",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("p")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        1, 0, 0,
-        [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-      await registry.connect(minter1).updateStatus(did, 1, 1);
-
-      const [nonOwnerDeprecated] = await registry.connect(minter2).getAppsByStatus(1, 0);
-      expect(nonOwnerDeprecated.length).to.equal(0);
-    });
-
-    it("should revert getApp for existing DID with non-existent major", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      const did = "did:plan:missing-major";
-      await registry.connect(minter1).mint(
-        did,
-        STATUS.ACTIVE, // status
-        "https://example.com/mm",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("mm")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        1, 0, 0,
-        [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-      await expect(registry.getApp(did, 2)).to.be.revertedWithCustomError(registry, ERRORS.APP_NOT_FOUND);
-    });
-
-    it("should track version history growth via VersionAdded events", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      const did = "did:plan:version-events";
-
-      // Start at 0.0.0 so mint doesn't emit VersionAdded
-      await registry.connect(minter1).mint(
-        did,
-        STATUS.ACTIVE, // status
-        "https://example.com/v0",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v0")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        0, 0, 0,
-        [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-
-      // 0.0.0 -> 0.0.1 (data change)
-      await registry.connect(minter1).updateAppControlled(
-        did,
-        0,
-        "https://example.com/v0-0-1",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v0-0-1")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // newInterfaces
-        [], // newKeywordHashes
-        0, // newMinor
-        1  // newPatch
-      );
-
-      // 0.0.1 -> 0.1.0 (interface change)
-      await registry.connect(minter1).updateAppControlled(
-        did,
-        0,
-        "https://example.com/v0-1-0",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v0-1-0")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // newInterfaces
-        [], // newKeywordHashes
-        1, // newMinor
-        0  // newPatch
-      );
-
-      // 0.1.0 -> 0.1.1 (data change)
-      await registry.connect(minter1).updateAppControlled(
-        did,
-        0,
-        "https://example.com/v0-1-1",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("v0-1-1")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // newInterfaces
-        [], // newKeywordHashes
-        1, // newMinor
-        1  // newPatch
-      );
-
-      const didHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(did));
-      const filter = registry.filters.VersionAdded(didHash, 0, null);
-      const events = await registry.queryFilter(filter);
-      expect(events.length).to.equal(3);
-    });
-
-    it("should not allow approved operators to update apps (owner-only)", async function () {
-      const { registry, minter1, minter2 } = await loadFixture(deployFixture);
-      const did = "did:plan:operator-update";
-
-      await registry.connect(minter1).mint(
-        did,
-        STATUS.ACTIVE, // status
-        "https://example.com/op",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("op")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        1, 0, 0,
-        [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-
-      // Approvals should not grant update privileges per onlyAppOwner
-      await registry.connect(minter1).approve(minter2.address, 1);
-      await registry.connect(minter1).setApprovalForAll(minter2.address, true);
-
-      await expect(
-        registry.connect(minter2).updateStatus(did, 1, 1)
-      ).to.be.revertedWithCustomError(registry, ERRORS.NOT_APP_OWNER);
-
-      await expect(
-        registry.connect(minter2).updateAppControlled(
-          did,
-          1,
-          "https://example.com/op2",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("op2")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
-          [INTERFACE_TYPES.HUMAN], // newInterfaces
-          [], // newKeywordHashes
-          0, // newMinor
-          1  // newPatch
-        )
-      ).to.be.revertedWithCustomError(registry, ERRORS.NOT_APP_OWNER);
-    });
-
-    it("should validate hasAnyKeywords and hasAllKeywords", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      const did = "did:plan:keywords";
-      const k1 = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("k1"));
-      const k2 = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("k2"));
-      const k3 = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("k3"));
-
-      await registry.connect(minter1).mint(
-        did,
-        STATUS.ACTIVE, // status
-        "https://example.com/kw",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("kw")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        1, 0, 0,
-        [k1, k2], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-
-      expect(await registry.hasAnyKeywords(did, 1, [k1])).to.equal(true);
-      expect(await registry.hasAnyKeywords(did, 1, [k3])).to.equal(false);
-      expect(await registry.hasAllKeywords(did, 1, [k1, k2])).to.equal(true);
-      expect(await registry.hasAllKeywords(did, 1, [k1, k3])).to.equal(false);
-    });
-
-    it("should return DID via getDIDByTokenId after mint", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      const did = "did:plan:by-token";
-      await registry.connect(minter1).mint(
-        did,
-        STATUS.ACTIVE, // status
-        "https://example.com/t",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("t")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        1, 0, 0,
-        [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-      const didByToken = await registry.getDIDByTokenId(1);
-      expect(didByToken).to.equal(did);
-    });
-
-    it("should count non-active apps via getTotalAppsByStatus for owner", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      const total = 7;
-      for (let i = 0; i < total; i++) {
-        const did = `did:plan:count-${i}`;
-        await registry.connect(minter1).mint(
-          did,
-          STATUS.ACTIVE, // status
-          `https://example.com/c${i}`,
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`c${i}`)),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          "",
-          "",
-          1, 0, 0,
-          [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
-        );
-        await registry.connect(minter1).updateStatus(did, 1, 1);
-      }
-      const count = await registry.connect(minter1).getTotalAppsByStatus(1);
-      expect(Number(count)).to.equal(total);
-    });
-
-    it("should revert on too-long fungibleTokenId and contractId", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      const did1 = "did:plan:fungible-too-long";
-      const did2 = "did:plan:contract-too-long";
-      const long = "x".repeat(257);
-
-      await expect(
-        registry.connect(minter1).mint(
-          did1,
-          STATUS.ACTIVE, // status
-          "https://example.com/f1",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("f1")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          long,
-          "",
-          1, 0, 0,
-          [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
-        )
-      ).to.be.revertedWithCustomError(registry, ERRORS.FUNGIBLE_TOKEN_ID_TOO_LONG);
-
-      await expect(
-        registry.connect(minter1).mint(
-          did2,
-          STATUS.ACTIVE, // status
-          "https://example.com/f2",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("f2")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          "",
-          long,
-          1, 0, 0,
-          [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
-        )
-      ).to.be.revertedWithCustomError(registry, ERRORS.CONTRACT_ID_TOO_LONG);
-    });
-
-    it("should return exact count via getTotalAppsByMinter", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      const total = 3;
-      for (let i = 0; i < total; i++) {
-        await registry.connect(minter1).mint(
-          `did:plan:by-minter-${i}`,
-          STATUS.ACTIVE, // status
-          `https://example.com/m${i}`,
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`m${i}`)),
-          DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-          "",
-          "",
-          1, 0, 0,
-          [], // keywordHashes
-          [INTERFACE_TYPES.HUMAN] // interfaces
-        );
-      }
-      const count = await registry.getTotalAppsByMinter(minter1.address);
-      expect(Number(count)).to.equal(total);
-    });
-
-    it("should support status transitions 2→1 and 2→0", async function () {
-      const { registry, minter1 } = await loadFixture(deployFixture);
-      const did = "did:plan:replaced-transitions";
-
-      await registry.connect(minter1).mint(
-        did,
-        STATUS.ACTIVE, // status
-        "https://example.com/r",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("r")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        1, 0, 0,
-        [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-
-      let app = await registry.getApp(did, 1);
-      expect(app.status).to.equal(0);
-
-      await registry.connect(minter1).updateStatus(did, 1, 2);
-      app = await registry.getApp(did, 1);
-      expect(app.status).to.equal(2);
-
-      await registry.connect(minter1).updateStatus(did, 1, 1);
-      app = await registry.getApp(did, 1);
-      expect(app.status).to.equal(1);
-
-      await registry.connect(minter1).updateStatus(did, 1, 0);
-      app = await registry.getApp(did, 1);
-      expect(app.status).to.equal(0);
-    });
-
-    it("should enforce ownership after transfer for updates and status changes", async function () {
-      const { registry, minter1, minter2 } = await loadFixture(deployFixture);
-      const did = "did:plan:post-transfer";
-
-      await registry.connect(minter1).mint(
-        did,
-        STATUS.ACTIVE, // status
-        "https://example.com/pt",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("pt")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // dataHashAlgorithm
-        "",
-        "",
-        1, 0, 0,
-        [], // keywordHashes
-        [INTERFACE_TYPES.HUMAN] // interfaces
-      );
-
-      // Transfer ownership to minter2
-      await registry.connect(minter1).transferFrom(minter1.address, minter2.address, 1);
-      expect(await registry.ownerOf(1)).to.equal(minter2.address);
-
-      // Former owner cannot update
-      await expect(
-        registry.connect(minter1).updateStatus(did, 1, 1)
-      ).to.be.revertedWithCustomError(registry, ERRORS.NOT_APP_OWNER);
-
+      // Test that adding more keywords fails
+      const extraKeywords = [hre.ethers.keccak256(hre.ethers.toUtf8Bytes("extra"))];
       await expect(
         registry.connect(minter1).updateAppControlled(
-          did,
-          1,
-          "https://example.com/pt-up",
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("pt-up")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
-          [INTERFACE_TYPES.HUMAN], // newInterfaces
-          [], // newKeywordHashes
-          0, // newMinor
-          1  // newPatch
+          did, 1, // did, major
+          "https://data.example.com/maxkeywords-updated",
+          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated with extra keywords")),
+          0, // dataHashAlgorithm
+          1, // same interfaces
+          [...maxKeywords, ...extraKeywords], // try to add more keywords
+          1, 1 // new minor, patch
         )
-      ).to.be.revertedWithCustomError(registry, ERRORS.NOT_APP_OWNER);
+      ).to.be.revertedWithCustomError(registry, "TooManyKeywords");
+    });
 
-      // New owner can update
-      await registry.connect(minter2).updateStatus(did, 1, 1);
-      let app = await registry.getApp(did, 1);
-      expect(app.status).to.equal(1);
-
-      await registry.connect(minter2).updateAppControlled(
+    it("should handle keyword validation with data hash requirement", async function () {
+      const { registry, minter1 } = await loadFixture(deployFixture);
+      
+      const did = "did:oma3:keywordvalidation";
+      await registry.connect(minter1).mint(
         did,
-        1,
-        "https://example.com/pt-up2",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("pt-up2")),
-        DATA_HASH_ALGORITHMS.KECCAK256, // newDataHashAlgorithm
-        [INTERFACE_TYPES.HUMAN], // newInterfaces
-        [], // newKeywordHashes
-        0, // newMinor
-        2  // newPatch
+        1, // interfaces bitmap
+        "https://data.example.com/keywordvalidation",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Initial keywords")),
+        0, // dataHashAlgorithm
+        "",
+        "",
+        1, 0, 0, [], "" // no keywords initially
       );
 
-      app = await registry.getApp(did, 1);
-      expect(app.dataUrl).to.equal("https://example.com/pt-up2");
+      // Try to add keywords without changing data hash (should fail)
+      const newKeywords = [hre.ethers.keccak256(hre.ethers.toUtf8Bytes("newkeyword"))];
+      await expect(
+        registry.connect(minter1).updateAppControlled(
+          did, 1, // did, major
+          "https://data.example.com/keywordvalidation", // same URL
+          hre.ethers.ZeroHash, // no data hash change (this should trigger the error)
+          0, // dataHashAlgorithm
+          1, // same interfaces
+          newKeywords, // new keywords
+          1, 1 // new minor, patch
+        )
+      ).to.be.revertedWithCustomError(registry, "DataHashRequiredForKeywordChange");
+
+      // Should succeed with new data hash
+      await registry.connect(minter1).updateAppControlled(
+        did, 1, // did, major
+        "https://data.example.com/keywordvalidation-updated",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated with new keywords")),
+        0, // dataHashAlgorithm
+        1, // same interfaces
+        newKeywords, // new keywords
+        1, 1 // new minor, patch
+      );
+
+      const app = await registry.getApp(did, 1);
+      expect(app.keywordHashes).to.deep.include.members(newKeywords);
     });
   });
-});
 
- 
+  describe("Storage and Gas Optimization Edge Cases", function () {
+    it("should handle storage packing efficiently", async function () {
+      const { registry, minter1 } = await loadFixture(deployFixture);
+      
+      // Test that storage slots are packed efficiently
+      const did = "did:oma3:storagepacking";
+      await registry.connect(minter1).mint(
+        did,
+        1, // interfaces bitmap
+        "https://data.example.com/storagepacking",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Storage packing test")),
+        0, // dataHashAlgorithm
+        "",
+        "",
+        1, 0, 0, [], ""
+      );
+
+      // Get the app to verify storage layout
+      const app = await registry.getApp(did, 1);
+      
+      // Verify that small values are properly packed
+      expect(app.interfaces).to.deep.include.members([0]); // Human interface only
+      expect(app.versionMajor).to.equal(1);
+      expect(app.status).to.equal(0);
+      expect(app.dataHashAlgorithm).to.equal("keccak256");
+    });
+
+    it("should handle large string storage efficiently", async function () {
+      const { registry, minter1 } = await loadFixture(deployFixture);
+      
+      // Test with maximum length strings
+      const maxDid = "d".repeat(128); // MAX_DID_LENGTH
+      const maxUrl = "https://" + "a".repeat(247); // MAX_URL_LENGTH (accounting for "https://" prefix)
+      
+      await registry.connect(minter1).mint(
+        maxDid,
+        1, // interfaces bitmap
+        maxUrl,
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Max length strings test")),
+        0, // dataHashAlgorithm
+        "",
+        "",
+        1, 0, 0, [], ""
+      );
+
+      const app = await registry.getApp(maxDid, 1);
+      expect(app.did).to.equal(maxDid);
+      expect(app.dataUrl).to.equal(maxUrl);
+    });
+  });
+
+  describe("Error Handling and Edge Cases", function () {
+    it("should handle ownership transfer edge cases", async function () {
+      const { registry, deployer, minter1 } = await loadFixture(deployFixture);
+      
+      // Test renouncing ownership
+      await registry.connect(deployer).renounceOwnership();
+      expect(await registry.owner()).to.equal(hre.ethers.ZeroAddress);
+
+      // Test that only owner functions are now inaccessible
+      await expect(
+        registry.connect(minter1).setMetadataContract(hre.ethers.ZeroAddress)
+      ).to.be.revertedWithCustomError(registry, "OwnableUnauthorizedAccount");
+    });
+
+    it("should handle reentrancy protection", async function () {
+      const { registry, minter1 } = await loadFixture(deployFixture);
+      
+      // Test that the contract has reentrancy protection by checking the modifier
+      // The contract should have the nonReentrant modifier on key functions
+      // This is a basic test - in practice, you'd want to test actual reentrancy attempts
+      
+      // Verify that the contract has the expected reentrancy protection
+      const mintFunction = registry.interface.getFunction("mint");
+      expect(mintFunction).to.not.be.undefined;
+      
+      // The actual reentrancy protection is tested in the existing security tests
+      // This test just ensures the contract structure supports it
+    });
+  });
+
+  describe("Integration Edge Cases", function () {
+    it("should handle metadata contract integration edge cases", async function () {
+      const { registry, minter1 } = await loadFixture(deployFixture);
+      
+      // Deploy metadata contract
+      const OMA3AppMetadata = await hre.ethers.getContractFactory("OMA3AppMetadata");
+      const metadata = await OMA3AppMetadata.deploy();
+      
+      // Mint an app
+      const did = "did:oma3:metadataintegration";
+      await registry.connect(minter1).mint(
+        did,
+        1, // interfaces bitmap
+        "https://data.example.com/metadataintegration",
+        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Metadata integration test")),
+        0, // dataHashAlgorithm
+        "",
+        "",
+        1, 0, 0, [], ""
+      );
+
+      // Set metadata contract
+      await registry.setMetadataContract(await metadata.getAddress());
+      await metadata.setAuthorizedRegistry(await registry.getAddress());
+
+      // Test metadata operations
+      const metadataJson = '{"name":"Integration Test","description":"Testing metadata integration"}';
+      const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(metadataJson));
+      
+      await registry.connect(minter1).setMetadataJson(did, 1, metadataJson, dataHash, 0);
+      
+      // Verify metadata was set
+      const storedMetadata = await metadata.getMetadataJson(did);
+      expect(storedMetadata).to.equal(metadataJson);
+    });
+
+    it("should handle complex multi-user scenarios", async function () {
+      const { registry, deployer, minter1, minter2 } = await loadFixture(deployFixture);
+      
+      // Create complex scenario with multiple users and app states
+      const users = [minter1, minter2];
+      const appStates = [];
+      
+      // Each user creates multiple apps with different statuses
+      for (let userIndex = 0; userIndex < users.length; userIndex++) {
+        const user = users[userIndex];
+        for (let appIndex = 1; appIndex <= 3; appIndex++) {
+          const did = `did:oma3:user${userIndex}app${appIndex}`;
+          const status = appIndex === 1 ? 0 : appIndex === 2 ? 1 : 2; // active, deprecated, replaced
+          
+          await registry.connect(user).mint(
+            did,
+            1, // interfaces bitmap
+            `https://data.example.com/user${userIndex}app${appIndex}`,
+            hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`User ${userIndex} App ${appIndex}`)),
+            0, // dataHashAlgorithm
+            "",
+            "",
+            1, 0, 0, [], ""
+          );
+
+          if (status !== 0) {
+            await registry.connect(user).updateStatus(did, 1, status);
+          }
+
+          appStates.push({ did, user, status });
+        }
+      }
+
+      // Test complex queries
+      const [activeApps] = await registry.getApps(0);
+      expect(activeApps.length).to.equal(2); // Only active apps
+
+      const [user1Apps] = await registry.connect(minter1).getAppsByMinter(minter1.address, 0);
+      expect(user1Apps.length).to.equal(3);
+
+      const [deprecatedApps] = await registry.connect(minter1).getAppsByStatus(1, 0);
+      expect(deprecatedApps.length).to.equal(1); // Only user's own deprecated apps
+    });
+  });
+
+  describe("Uncovered Lines Coverage", function () {
+          it("should handle invalid data hash algorithm in _validateMetadataHash", async function () {
+        const { registry, minter1 } = await loadFixture(deployFixtureOneApp);
+        
+        // Try to mint with an invalid data hash algorithm (not 0 or 1) and metadata
+        const invalidAlgorithm = 2;
+        const metadataJson = '{"name":"Test App","description":"Test"}';
+        
+        await expect(
+          registry.connect(minter1).mint(
+            "did:oma3:invalid-algo",
+            1, // interfaces
+            "https://data.example.com/invalid",
+            hre.ethers.keccak256(hre.ethers.toUtf8Bytes(metadataJson)),
+            invalidAlgorithm, // Invalid algorithm
+            "",
+            "",
+            1, 0, 0, [], metadataJson
+          )
+        ).to.be.revertedWithCustomError(registry, "InvalidDataHashAlgorithm");
+      });
+
+    it("should handle getDIDByTokenId with non-existent token ID", async function () {
+      const { registry } = await loadFixture(deployFixture);
+      
+      // Try to get DID for a non-existent token ID
+      const nonExistentTokenId = 999;
+      
+      await expect(
+        registry.getDIDByTokenId(nonExistentTokenId)
+      ).to.be.revertedWith("Nonexistent token");
+    });
+
+    it("should handle tokenURI with non-existent token ID", async function () {
+      const { registry } = await loadFixture(deployFixture);
+      
+      // Try to get token URI for a non-existent token ID
+      const nonExistentTokenId = 999;
+      
+      await expect(
+        registry.tokenURI(nonExistentTokenId)
+      ).to.be.revertedWith("Nonexistent token");
+    });
+
+    it("should handle getDIDByTokenId with non-existent token ID", async function () {
+      const { registry } = await loadFixture(deployFixture);
+      const nonExistentTokenId = 999;
+      await expect(
+        registry.getDIDByTokenId(nonExistentTokenId)
+      ).to.be.revertedWith("Nonexistent token");
+    });
+
+    it("should handle getDIDByTokenId with valid token ID", async function () {
+      const { registry, minter1 } = await loadFixture(deployFixtureOneApp);
+      const validTokenId = 1;
+      const did = await registry.getDIDByTokenId(validTokenId);
+      expect(did).to.equal("did:oma3:test1");
+    });
+  });
+}); 

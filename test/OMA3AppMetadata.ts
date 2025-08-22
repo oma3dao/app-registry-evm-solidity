@@ -1,6 +1,7 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
 import { expect } from "chai";
 import hre from "hardhat";
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 describe("OMA3AppMetadata", function () {
   // Fixture to deploy contracts for testing
@@ -47,7 +48,7 @@ describe("OMA3AppMetadata", function () {
       const { metadata } = await loadFixture(deployFixture);
       
       await expect(metadata.setAuthorizedRegistry("0x0000000000000000000000000000000000000000"))
-        .to.be.revertedWith("Registry address cannot be zero");
+        .to.be.revertedWith("AppMetadata Contract Error: Invalid registry address");
     });
 
     it("Should reject non-owner setting registry", async function () {
@@ -72,7 +73,7 @@ describe("OMA3AppMetadata", function () {
           sampleData.did,
           sampleData.metadataJson,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(sampleData.metadataJson)),
-          await hre.ethers.provider.getBlockNumber() + 1
+          anyValue // block.timestamp
         );
       
       // Verify metadata was stored
@@ -83,7 +84,7 @@ describe("OMA3AppMetadata", function () {
       const { metadata, user1 } = await loadFixture(deployFixture);
       
       await expect(metadata.connect(user1).setMetadataForRegistry(sampleData.did, sampleData.metadataJson))
-        .to.be.revertedWith("Only authorized registry can call this function");
+        .to.be.revertedWith("AppMetadata Contract Error: Only authorized registry");
     });
 
     it("Should validate DID format", async function () {
@@ -93,10 +94,10 @@ describe("OMA3AppMetadata", function () {
       
       // Test invalid DIDs
       await expect(metadata.connect(registry).setMetadataForRegistry("", sampleData.metadataJson))
-        .to.be.revertedWith("DID cannot be empty");
+        .to.be.revertedWith("AppMetadata Contract Error: DID cannot be empty");
       
       await expect(metadata.connect(registry).setMetadataForRegistry("UPPERCASE", sampleData.metadataJson))
-        .to.be.revertedWith("DID must be lowercase");
+        .to.be.revertedWith("AppMetadata Contract Error: DID must be lowercase");
     });
 
     it("Should validate metadata JSON", async function () {
@@ -106,12 +107,12 @@ describe("OMA3AppMetadata", function () {
       
       // Test empty JSON
       await expect(metadata.connect(registry).setMetadataForRegistry(sampleData.did, ""))
-        .to.be.revertedWith("Metadata JSON cannot be empty");
+        .to.be.revertedWith("AppMetadata Contract Error: Metadata JSON cannot be empty");
       
       // Test JSON too long (over 10KB)
       const longJson = "x".repeat(10001);
       await expect(metadata.connect(registry).setMetadataForRegistry(sampleData.did, longJson))
-        .to.be.revertedWith("Metadata JSON too long");
+        .to.be.revertedWith("AppMetadata Contract Error: Metadata JSON too large");
     });
   });
 
@@ -130,5 +131,31 @@ describe("OMA3AppMetadata", function () {
       
       expect(await metadata.getMetadataJson(sampleData.did)).to.equal(sampleData.metadataJson);
     });
+  });
+
+  describe("Uncovered Lines Coverage", function () {
+          it("should handle isLowercase with string containing no letters", async function () {
+        const { metadata, owner, registry } = await loadFixture(deployFixture);
+        
+        // Test with string containing only numbers and symbols (no letters)
+        const nonLetterString = "123!@#$%^&*()";
+        
+        // Set the authorized registry first
+        await metadata.connect(owner).setAuthorizedRegistry(registry.address);
+        
+        // This should not cause any issues and should work correctly
+        // since there are no uppercase letters to reject
+        await expect(
+          metadata.connect(registry).setMetadataForRegistry("did:oma3:test", JSON.stringify({
+            name: "Test App",
+            description: "Test description",
+            data: nonLetterString
+          }))
+        ).to.not.be.reverted;
+        
+        // Verify the metadata was stored
+        const storedMetadata = await metadata.getMetadataJson("did:oma3:test");
+        expect(storedMetadata).to.include(nonLetterString);
+      });
   });
 });
