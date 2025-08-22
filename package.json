@@ -26,7 +26,8 @@
   "homepage": "https://github.com/oma3dao/app-registry-evm-solidity#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.19"
+    "hardhat": "^2.22.19",
+    "solidity-coverage": "^0.8.16"
   },
   "dependencies": {
     "@ethersproject/hardware-wallets": "^5.8.0",

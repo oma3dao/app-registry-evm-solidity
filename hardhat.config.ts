@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import { config as dotenvConfig } from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
+import "solidity-coverage";
 
 // Load environment variables from .env file
 dotenvConfig();
