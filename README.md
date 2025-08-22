@@ -4,6 +4,8 @@ A production-ready ERC721-based registry with semantic versioning, efficient que
 
 This repository implements the Application Registry actor described in the Inter World Portaling System specification for identity.
 
+**This project now defaults to hardware wallet deployment for your security.**
+
 ## License and Participation
 
 - Code is licensed under [MIT](./LICENSE)
@@ -327,8 +329,32 @@ Only these environment variables are used:
    ```
 
 2. **Deploy to Celo Alfajores** (only necessary to deploy a new contract):
+
+   **🔐 SECURE DEPLOYMENT OPTIONS:**
    ```bash
-   npx hardhat run scripts/deploy.ts --network celoAlfajores
+   # Install hardware wallet support first
+   npm install @ethersproject/hardware-wallets@5.8.0
+   ```
+
+   **Option A: Single Registry Contract**
+   ```bash
+   # Hardware wallet (secure default)
+   npm run deploy --network celoAlfajores
+   
+   # SSH file (legacy - less secure)
+   npm run deploy:ssh --network celoAlfajores
+   ```
+
+   **Option B: Complete System (Registry + Metadata + Linking)**
+   ```bash
+   # Hardware wallet (secure default)
+   npm run deploy:system --network celoAlfajores
+   
+   # SSH file (legacy - less secure)  
+   npm run deploy:system:ssh --network celoAlfajores
+   
+   # Production mode with hardware wallet
+   npm run deploy:system:production --network celoAlfajores
    ```
 
 3. **Verify the contract** (optional):

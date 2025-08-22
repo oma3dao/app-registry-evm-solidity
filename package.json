@@ -7,8 +7,11 @@
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy.ts",
+    "deploy:ssh": "npx hardhat run scripts/deploy.ts -- --ssh-key",
     "deploy:system": "npx hardhat run scripts/deploySystem.ts",
+    "deploy:system:ssh": "npx hardhat run scripts/deploySystem.ts -- --ssh-key",
     "deploy:system:test": "npx hardhat run scripts/deploySystem.ts -- --test",
+    "deploy:system:production": "npx hardhat run scripts/deploySystem.ts -- --production",
     "clean": "npx hardhat clean"
   },
   "repository": {
@@ -26,6 +29,7 @@
     "hardhat": "^2.22.19"
   },
   "dependencies": {
+    "@ethersproject/hardware-wallets": "^5.8.0",
     "@openzeppelin/contracts": "^5.2.0",
     "dotenv": "^16.4.7",
     "thirdweb": "^5.93.8"
