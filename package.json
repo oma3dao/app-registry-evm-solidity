@@ -12,7 +12,8 @@
     "deploy:system:ssh": "npx hardhat run scripts/deploySystem.ts -- --ssh-key",
     "deploy:system:test": "npx hardhat run scripts/deploySystem.ts -- --test",
     "deploy:system:production": "npx hardhat run scripts/deploySystem.ts -- --production",
-    "clean": "npx hardhat clean"
+    "clean": "npx hardhat clean",
+    "coverage": "npx hardhat coverage"
   },
   "repository": {
     "type": "git",
