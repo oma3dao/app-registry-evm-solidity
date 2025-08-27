@@ -1,10 +1,13 @@
 import { ethers, network } from "hardhat";
+import { getSecureSigner, verifyBytecode, logTransactionForVerification } from "./signer-utils";
+import type { Signer } from "ethers";
 
 // Parse command line arguments
 const args = process.argv.slice(2);
 const isProduction = args.includes("--production") || args.includes("-p");
 const shouldLinkContracts = !args.includes("--no-link");
 const testConnection = args.includes("--test");
+const useSSHKey = args.includes("--ssh-key");
 
 interface DeploymentResult {
   registry: any;
@@ -13,16 +16,23 @@ interface DeploymentResult {
   timestamp: string;
 }
 
-async function deployRegistry(): Promise<any> {
-  console.log("📦 Deploying OMA3AppRegistry...");
+async function deployRegistry(signer: Signer): Promise<any> {
+  console.log("Deploying OMA3AppRegistry...");
   
   try {
-    const OMA3AppRegistry = await ethers.getContractFactory("OMA3AppRegistry");
+    const OMA3AppRegistry = await ethers.getContractFactory("OMA3AppRegistry", signer);
+    
+    // Log transaction for verification
+    await logTransactionForVerification(OMA3AppRegistry, "OMA3AppRegistry");
+    
     const registry = await OMA3AppRegistry.deploy();
     await registry.waitForDeployment();
 
     const address = await registry.getAddress();
     console.log(`✅ OMA3AppRegistry deployed to: ${address}`);
+    
+    // Verify bytecode
+    await verifyBytecode(address, OMA3AppRegistry.bytecode, "OMA3AppRegistry");
     
     // Wait for confirmations
     console.log("Waiting for block confirmations...");
@@ -35,16 +45,23 @@ async function deployRegistry(): Promise<any> {
   }
 }
 
-async function deployMetadata(): Promise<any> {
-  console.log("📦 Deploying OMA3AppMetadata...");
+async function deployMetadata(signer: Signer): Promise<any> {
+  console.log("Deploying OMA3AppMetadata...");
   
   try {
-    const OMA3AppMetadata = await ethers.getContractFactory("OMA3AppMetadata");
+    const OMA3AppMetadata = await ethers.getContractFactory("OMA3AppMetadata", signer);
+    
+    // Log transaction for verification
+    await logTransactionForVerification(OMA3AppMetadata, "OMA3AppMetadata");
+    
     const metadata = await OMA3AppMetadata.deploy();
     await metadata.waitForDeployment();
 
     const address = await metadata.getAddress();
     console.log(`✅ OMA3AppMetadata deployed to: ${address}`);
+    
+    // Verify bytecode
+    await verifyBytecode(address, OMA3AppMetadata.bytecode, "OMA3AppMetadata");
     
     // Wait for confirmations
     console.log("Waiting for block confirmations...");
@@ -58,7 +75,7 @@ async function deployMetadata(): Promise<any> {
 }
 
 async function linkContracts(registry: any, metadata: any): Promise<void> {
-  console.log("🔗 Linking contracts...");
+  console.log("Linking contracts...");
   
   try {
     const registryAddress = await registry.getAddress();
@@ -82,7 +99,7 @@ async function linkContracts(registry: any, metadata: any): Promise<void> {
 }
 
 async function testIntegration(registry: any, metadata: any): Promise<void> {
-  console.log("🧪 Testing integration...");
+  console.log("Testing integration...");
   
   try {
     // Test that registry can call metadata
@@ -116,7 +133,7 @@ async function saveDeploymentInfo(result: DeploymentResult): Promise<void> {
   const registryAddress = await registry.getAddress();
   const metadataAddress = await metadata.getAddress();
   
-  console.log("\n🎉 DEPLOYMENT COMPLETE!");
+  console.log("\n✅ DEPLOYMENT COMPLETE!");
   console.log("==============================");
   console.log(`Network: ${network}`);
   console.log(`Timestamp: ${timestamp}`);
@@ -124,11 +141,11 @@ async function saveDeploymentInfo(result: DeploymentResult): Promise<void> {
   console.log(`Metadata: ${metadataAddress}`);
   console.log("==============================");
   
-  console.log("\n📝 Environment Variables:");
+  console.log("\nEnvironment Variables:");
   console.log(`export APP_REGISTRY_ADDRESS=${registryAddress}`);
   console.log(`export APP_METADATA_ADDRESS=${metadataAddress}`);
   
-  console.log("\n🔧 Next Steps:");
+  console.log("\nNext Steps:");
   console.log("1. Set the environment variables above");
   console.log("2. Update your .env file or deployment configuration");
   console.log("3. Test the deployment with Hardhat tasks");
@@ -139,33 +156,40 @@ async function saveDeploymentInfo(result: DeploymentResult): Promise<void> {
 
 async function main() {
   const networkName = network.name;
-  console.log(`\n🚀 Deploying OMA3 Application System to: ${networkName}`);
+  console.log(`\nDeploying OMA3 Application System to: ${networkName}`);
   console.log(`Mode: ${isProduction ? "PRODUCTION" : "DEVELOPMENT"}`);
   console.log(`Link contracts: ${shouldLinkContracts ? "YES" : "NO"}`);
   console.log(`Test integration: ${testConnection ? "YES" : "NO"}`);
+  console.log(`Security: ${useSSHKey ? "SSH Key (--ssh-key)" : "Hardware Wallet (secure default)"}`);
 
-  // Check if private key is loaded
-  if (!process.env.PRIVATE_KEY) {
-    throw new Error("Private key not found. Please check ~/.ssh/test-evm-deployment-key");
-  }
-  console.log("✅ Private key loaded successfully");
-  
   try {
+    // Get secure signer
+    const { signer, address: deployerAddress, method } = await getSecureSigner(useSSHKey);
+    console.log(`Deployer: ${deployerAddress} (${method})`);
+    
     // Phase 1: Deploy contracts
-    const registry = await deployRegistry();
-    const metadata = await deployMetadata();
+    console.log("\nPhase 1: Secure Contract Deployment");
+    if (!useSSHKey) {
+      console.log("Please confirm transactions on your Ledger device");
+    }
+    
+    const registry = await deployRegistry(signer);
+    const metadata = await deployMetadata(signer);
     
     // Phase 2: Link contracts (optional)
     if (shouldLinkContracts) {
+      console.log("\nPhase 2: Contract Integration");
       await linkContracts(registry, metadata);
     }
     
     // Phase 3: Test integration (optional)
     if (testConnection) {
+      console.log("\nPhase 3: Integration Testing");
       await testIntegration(registry, metadata);
     }
     
     // Phase 4: Display results
+    console.log("\nPhase 4: Deployment Summary");
     await saveDeploymentInfo({
       registry,
       metadata,

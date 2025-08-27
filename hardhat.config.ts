@@ -33,10 +33,40 @@ import "./tasks/inherited/ownable";
 import "./tasks/metadata/getmetadatajson";
 import "./tasks/metadata/setmetadatajson";
 
-// Load deployment key from SSH directory
+// Load deployment key ONLY from SSH directory (no .env fallback)
 const deploymentKeyPath = path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
-if (fs.existsSync(deploymentKeyPath)) {
-  dotenvConfig({ path: deploymentKeyPath });
+
+function loadPrivateKeyFromSshFile(filePath: string): string | undefined {
+  try {
+    if (!fs.existsSync(filePath)) return undefined;
+    const raw = fs.readFileSync(filePath, 'utf8').trim();
+    if (!raw) return undefined;
+
+    // Support either raw hex or a single-line PRIVATE_KEY=... format
+    const match = raw.match(/^\s*PRIVATE_KEY\s*=\s*(.+)\s*$/);
+    let key = match ? match[1].trim() : raw;
+
+    // Normalize: strip 0x prefix if present
+    key = key.replace(/^0x/i, '');
+
+    // Must be 64 hex characters
+    if (!/^[0-9a-fA-F]{64}$/.test(key)) {
+      console.warn("Invalid key format in ~/.ssh/test-evm-deployment-key. Expected 64 hex chars.");
+      return undefined;
+    }
+
+    return `0x${key}`;
+  } catch (err) {
+    console.warn("Failed to read ~/.ssh/test-evm-deployment-key:", (err as Error).message);
+    return undefined;
+  }
+}
+
+const privateKeyFromSsh = loadPrivateKeyFromSshFile(deploymentKeyPath);
+
+// Expose for scripts that currently read process.env.PRIVATE_KEY
+if (privateKeyFromSsh) {
+  process.env.PRIVATE_KEY = privateKeyFromSsh;
 }
 
 // Network-specific contract addresses
@@ -74,7 +104,7 @@ const config: HardhatUserConfig = {
     thirdwebTestnet: {
       url: "https://38df867c9941afedf972308db796e2b4.rpc.thirdweb.com",
       chainId: 894538,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
       gasPrice: "auto",
       gas: "auto",
       timeout: 60000
@@ -82,7 +112,7 @@ const config: HardhatUserConfig = {
     celoAlfajores: {
       url: "https://alfajores-forno.celo-testnet.org",
       chainId: 44787,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
       gasPrice: "auto",
       gas: "auto",
       timeout: 60000
