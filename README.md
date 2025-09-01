@@ -4,7 +4,11 @@ A production-ready ERC721-based registry with semantic versioning, efficient que
 
 This repository implements the Application Registry actor described in the Inter World Portaling System specification for identity.
 
-**This project now defaults to hardware wallet deployment for your security.**
+## ⚠️ Deployment Security Notice
+
+**DEVELOPMENT ONLY**: The Hardhat deployment tasks in this repository are for development and testing purposes only.
+
+**FOR PRODUCTION**: Use [Thirdweb Dashboard](https://thirdweb.com/contracts/deploy) for secure mainnet and production testnet deployments to eliminate supply chain attack risks.
 
 ## License and Participation
 
@@ -252,116 +256,110 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
 
 ### Deploying the Contract
 
+## ⚠️ CRITICAL: Development vs Production Deployment
+
+### For Development/Testing ONLY:
+
+Use the Hardhat tasks for local development and testing:
+
 1. **Setup environment**:
    ```bash
    # Install dependencies
    npm install
    
-   # Private key is loaded automatically from ~/.ssh/test-evm-deployment-key
-   # Accepted formats (one line):
-   #   - PRIVATE_KEY=0x<64-hex>
-   #   - <64-hex> (raw, without 0x) 
-   # The loader normalizes to 0x-prefixed hex and validates length/charset.
-
-   # Create the SSH key file if it doesn't exist
+   # Create private key file for development
    mkdir -p ~/.ssh
-   # Option A: env-style
    echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
-   # Option B: raw hex (no 0x)
-   # echo "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
-
-   # Secure permissions
    chmod 600 ~/.ssh/test-evm-deployment-key
+   ```
 
-## Security and Private Key Management
+### For Production/Mainnet:
 
-### Private Key Policy
+**🚨 DO NOT USE HARDHAT TASKS FOR PRODUCTION 🚨**
 
-This project follows a **strict security policy** for private key management:
+Use [Thirdweb Dashboard](https://thirdweb.com/contracts/deploy) instead:
 
-**✅ Recommended: Secure storage and permissions**
-- Private keys should be stored in `~/.ssh/test-evm-deployment-key`
-- File permissions MUST be 600 (owner read/write only)
-- Use a password manager or OS keychain to store the source key securely. If you encrypt the file, decrypt it to plaintext before running Hardhat (the project does not prompt for decryption).
+1. **Compile contracts**: `npm run compile`
+2. **Upload to Thirdweb Dashboard**: Use the compiled artifacts from `artifacts/contracts/`
+3. **Deploy securely**: Through Thirdweb's secure infrastructure
+4. **Verify deployment**: Using dashboard tools
 
-**❌ NEVER ALLOWED: Plain text in .env files**
-- No `PRIVATE_KEY=` entries in any `.env` files
-- No `.env.private_key` files
-- No unencrypted private key storage
+**Why Thirdweb for Production?**
+- ✅ Eliminates supply chain attack risks
+- ✅ Secure remote execution environment  
+- ✅ Professional security infrastructure
+- ✅ Hardware wallet support via WalletConnect
+- ✅ No local private key exposure
 
-### Security Setup
+### Production Deployment with Factory Contract
 
-**⚠️ IMPORTANT: Use secp256k1 keys for EVM, not ed25519**
+For production, use the `OMA3SystemFactory` contract for secure deployment:
+
+1. **Prepare deployment**:
+   ```bash
+   npm run prepare:factory
+   ```
+
+2. **Deploy via Thirdweb Dashboard**:
+   - Upload `artifacts/contracts/OMA3SystemFactory.sol/OMA3SystemFactory.json`
+   - Deploy the factory (no constructor parameters needed)
+   - Call `deploySystem(0)` to deploy both contracts with linking
+   - Note the registry and metadata addresses from the deployment event
+
+**Factory Benefits**:
+- ✅ **Atomic deployment** - Both contracts deployed and linked in one transaction
+- ✅ **Deterministic addresses** - Predictable contract addresses  
+- ✅ **No circular dependency** - Factory handles the linking automatically
+- ✅ **Ownership transfer** - You become the owner of both contracts
+- ✅ **Minimal audit surface** - Simple factory logic, focus audit on main contracts
+
+## Development Deployment Instructions
+
+### ⚠️ DEVELOPMENT ONLY - NOT FOR PRODUCTION
+
+The following instructions are for **development and testing purposes only**. 
+
+**For production deployments, use [Thirdweb Dashboard](https://thirdweb.com/contracts/deploy).**
+
+### Development Private Key Setup
+
+For development testing, you need a private key file:
 
 ```bash
-# 1. DO NOT generate ed25519 keys - EVM uses secp256k1
-# Instead, create the SSH file directly for your existing EVM private key
-
-# 2. Set secure permissions
-chmod 600 ~/.ssh/test-evm-deployment-key*
-
-# 3. Export your EVM private key to the SSH file
-# Format: Just the hex string without '0x' prefix
-# Example for a secp256k1 private key:
-echo "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
-
-# 4. Verify the key format (should be 64 hex characters)
-cat ~/.ssh/test-evm-deployment-key
-# Should show: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
-
-# 5. Verify your key file exists and has correct permissions
-ls -la ~/.ssh/test-evm-deployment-key
+# Create development private key file (use a test key, not your real funds!)
+mkdir -p ~/.ssh
+echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
+chmod 600 ~/.ssh/test-evm-deployment-key
 ```
 
-### Environment Variables
+### Development Deployment Commands
 
-Only these environment variables are used:
-- `PRIVATE_KEY` - Set automatically from `~/.ssh/test-evm-deployment-key`; values from `.env` files are ignored
-- `REPORT_GAS` - Gas reporting toggle
-- `HOME` - System variable (used to locate ~/.ssh/test-evm-deployment-key)
+**Deploy to testnet for development**:
 
-**Never store private keys in:**
-- `.env` files
-- `.env.local` files
-- Repository code
-- Docker containers
-- CI/CD pipelines
-   ```
-
-2. **Deploy to Celo Alfajores** (only necessary to deploy a new contract):
-
-   **🔐 SECURE DEPLOYMENT OPTIONS:**
    ```bash
-   # Install hardware wallet support first
-   npm install @ethersproject/hardware-wallets@5.8.0
-   ```
-
-   **Option A: Single Registry Contract**
-   ```bash
-   # Hardware wallet (secure default)
-   npm run deploy --network celoAlfajores
+   # Deploy both Registry and Metadata contracts with linking
+   npm run deploy:system -- --network celoAlfajores
    
-   # SSH file (legacy - less secure)
-   npm run deploy:ssh --network celoAlfajores
+   # Or deploy just the Registry contract
+   npm run deploy:registry -- --network celoAlfajores
    ```
 
-   **Option B: Complete System (Registry + Metadata + Linking)**
+**Verify contracts on explorer** (optional):
    ```bash
-   # Hardware wallet (secure default)
-   npm run deploy:system --network celoAlfajores
-   
-   # SSH file (legacy - less secure)  
-   npm run deploy:system:ssh --network celoAlfajores
-   
-   # Production mode with hardware wallet
-   npm run deploy:system:production --network celoAlfajores
+   # Set API key 
+   export CELOSCAN_API_KEY=your_api_key_here
+
+   # Verify contracts using addresses from deployment output
+   npx hardhat verify --network celoAlfajores <REGISTRY_ADDRESS>
+   npx hardhat verify --network celoAlfajores <METADATA_ADDRESS>
    ```
 
-3. **Verify the contract** (optional):
-   ```bash
-   npx hardhat verify --network celoAlfajores <CONTRACT_ADDRESS>
-   ```
-4. Make note of the new contract address and update other projects accordingly
+### Important Development Notes
+
+- ⚠️ **Development only**: These commands are for testing and development
+- ⚠️ **Use test funds**: Don't use real funds for development deployments  
+- ⚠️ **Production warning**: Never use these commands for mainnet or production testnets
+- ✅ **For production**: Use [Thirdweb Dashboard](https://thirdweb.com/contracts/deploy) instead
 
 ### Interacting with the Contract
 

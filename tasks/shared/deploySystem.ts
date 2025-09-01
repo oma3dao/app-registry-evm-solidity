@@ -1,13 +1,6 @@
-import { ethers, network } from "hardhat";
-import { getSecureSigner, verifyBytecode, logTransactionForVerification } from "./signer-utils";
 import type { Signer } from "ethers";
-
-// Parse command line arguments
-const args = process.argv.slice(2);
-const isProduction = args.includes("--production") || args.includes("-p");
-const shouldLinkContracts = !args.includes("--no-link");
-const testConnection = args.includes("--test");
-const useSSHKey = args.includes("--ssh-key");
+import type { HardhatRuntimeEnvironment } from "hardhat/types";
+import { getSecureSigner, verifyBytecode, logTransactionForVerification } from "./signer-utils";
 
 interface DeploymentResult {
   registry: any;
@@ -16,28 +9,18 @@ interface DeploymentResult {
   timestamp: string;
 }
 
-async function deployRegistry(signer: Signer): Promise<any> {
+async function deployRegistry(hre: HardhatRuntimeEnvironment, signer: Signer): Promise<any> {
   console.log("Deploying OMA3AppRegistry...");
-  
   try {
-    const OMA3AppRegistry = await ethers.getContractFactory("OMA3AppRegistry", signer);
-    
-    // Log transaction for verification
-    await logTransactionForVerification(OMA3AppRegistry, "OMA3AppRegistry");
-    
+    const OMA3AppRegistry = await hre.ethers.getContractFactory("OMA3AppRegistry", signer);
+    await logTransactionForVerification(hre, OMA3AppRegistry, "OMA3AppRegistry");
     const registry = await OMA3AppRegistry.deploy();
     await registry.waitForDeployment();
-
     const address = await registry.getAddress();
     console.log(`✅ OMA3AppRegistry deployed to: ${address}`);
-    
-    // Verify bytecode
-    await verifyBytecode(address, OMA3AppRegistry.bytecode, "OMA3AppRegistry");
-    
-    // Wait for confirmations
+    await verifyBytecode(hre, address, "OMA3AppRegistry");
     console.log("Waiting for block confirmations...");
     await registry.deploymentTransaction()?.wait(3);
-    
     return registry;
   } catch (error: any) {
     console.error("❌ Registry deployment failed:", error.message);
@@ -45,28 +28,18 @@ async function deployRegistry(signer: Signer): Promise<any> {
   }
 }
 
-async function deployMetadata(signer: Signer): Promise<any> {
+async function deployMetadata(hre: HardhatRuntimeEnvironment, signer: Signer): Promise<any> {
   console.log("Deploying OMA3AppMetadata...");
-  
   try {
-    const OMA3AppMetadata = await ethers.getContractFactory("OMA3AppMetadata", signer);
-    
-    // Log transaction for verification
-    await logTransactionForVerification(OMA3AppMetadata, "OMA3AppMetadata");
-    
+    const OMA3AppMetadata = await hre.ethers.getContractFactory("OMA3AppMetadata", signer);
+    await logTransactionForVerification(hre, OMA3AppMetadata, "OMA3AppMetadata");
     const metadata = await OMA3AppMetadata.deploy();
     await metadata.waitForDeployment();
-
     const address = await metadata.getAddress();
     console.log(`✅ OMA3AppMetadata deployed to: ${address}`);
-    
-    // Verify bytecode
-    await verifyBytecode(address, OMA3AppMetadata.bytecode, "OMA3AppMetadata");
-    
-    // Wait for confirmations
+    await verifyBytecode(hre, address, "OMA3AppMetadata");
     console.log("Waiting for block confirmations...");
     await metadata.deploymentTransaction()?.wait(3);
-    
     return metadata;
   } catch (error: any) {
     console.error("❌ Metadata deployment failed:", error.message);
@@ -76,21 +49,15 @@ async function deployMetadata(signer: Signer): Promise<any> {
 
 async function linkContracts(registry: any, metadata: any): Promise<void> {
   console.log("Linking contracts...");
-  
   try {
     const registryAddress = await registry.getAddress();
     const metadataAddress = await metadata.getAddress();
-    
-    // Registry → Metadata
     console.log("Setting metadata contract in registry...");
     const setMetadataTx = await registry.setMetadataContract(metadataAddress);
     await setMetadataTx.wait();
-    
-    // Metadata ← Registry  
     console.log("Authorizing registry in metadata contract...");
     const authorizeTx = await metadata.setAuthorizedRegistry(registryAddress);
     await authorizeTx.wait();
-    
     console.log("✅ Contracts linked successfully");
   } catch (error: any) {
     console.error("❌ Contract linking failed:", error.message);
@@ -100,28 +67,16 @@ async function linkContracts(registry: any, metadata: any): Promise<void> {
 
 async function testIntegration(registry: any, metadata: any): Promise<void> {
   console.log("Testing integration...");
-  
   try {
-    // Test that registry can call metadata
-    const testDid = "did:oma3:test-integration";
-    const testJson = JSON.stringify({ test: true, timestamp: Date.now() });
-    
-    console.log("Testing registry → metadata call...");
-    
-    // This should work if contracts are properly linked
     const metadataAddress = await registry.metadataContract();
     const authorizedRegistry = await metadata.authorizedRegistry();
-    
     console.log(`Registry knows metadata at: ${metadataAddress}`);
     console.log(`Metadata authorized registry: ${authorizedRegistry}`);
-    
-    if (metadataAddress === await metadata.getAddress() && 
-        authorizedRegistry === await registry.getAddress()) {
+    if (metadataAddress === await metadata.getAddress() && authorizedRegistry === await registry.getAddress()) {
       console.log("✅ Integration test PASSED - contracts are properly linked");
     } else {
       console.log("❌ Integration test FAILED - contracts not properly linked");
     }
-    
   } catch (error: any) {
     console.log("❌ Integration test FAILED:", error.message);
   }
@@ -129,10 +84,8 @@ async function testIntegration(registry: any, metadata: any): Promise<void> {
 
 async function saveDeploymentInfo(result: DeploymentResult): Promise<void> {
   const { registry, metadata, network, timestamp } = result;
-  
   const registryAddress = await registry.getAddress();
   const metadataAddress = await metadata.getAddress();
-  
   console.log("\n✅ DEPLOYMENT COMPLETE!");
   console.log("==============================");
   console.log(`Network: ${network}`);
@@ -140,11 +93,9 @@ async function saveDeploymentInfo(result: DeploymentResult): Promise<void> {
   console.log(`Registry: ${registryAddress}`);
   console.log(`Metadata: ${metadataAddress}`);
   console.log("==============================");
-  
   console.log("\nEnvironment Variables:");
   console.log(`export APP_REGISTRY_ADDRESS=${registryAddress}`);
   console.log(`export APP_METADATA_ADDRESS=${metadataAddress}`);
-  
   console.log("\nNext Steps:");
   console.log("1. Set the environment variables above");
   console.log("2. Update your .env file or deployment configuration");
@@ -154,41 +105,32 @@ async function saveDeploymentInfo(result: DeploymentResult): Promise<void> {
   console.log(`npx hardhat get-metadata-json --did "did:oma3:example" --network ${network}`);
 }
 
-async function main() {
-  const networkName = network.name;
+export async function runSystemDeployment(hre: HardhatRuntimeEnvironment, options: {
+  shouldLinkContracts: boolean;
+  testConnection: boolean;
+}): Promise<void> {
+  const networkName = hre.network.name;
+  const isProductionNetwork = ["celo", "mainnet", "ethereum", "polygon", "arbitrum", "base"].includes(networkName);
   console.log(`\nDeploying OMA3 Application System to: ${networkName}`);
-  console.log(`Mode: ${isProduction ? "PRODUCTION" : "DEVELOPMENT"}`);
-  console.log(`Link contracts: ${shouldLinkContracts ? "YES" : "NO"}`);
-  console.log(`Test integration: ${testConnection ? "YES" : "NO"}`);
-  console.log(`Security: ${useSSHKey ? "SSH Key (--ssh-key)" : "Hardware Wallet (secure default)"}`);
+  console.log(`Mode: ${isProductionNetwork ? "PRODUCTION" : "DEVELOPMENT"}`);
+  console.log(`Link contracts: ${options.shouldLinkContracts ? "YES" : "NO"}`);
+  console.log(`Test integration: ${options.testConnection ? "YES" : "NO"}`);
+  console.log(`Security: SSH Key (development only)`);
 
   try {
-    // Get secure signer
-    const { signer, address: deployerAddress, method } = await getSecureSigner(useSSHKey);
+    const { signer, address: deployerAddress, method } = await getSecureSigner(hre);
     console.log(`Deployer: ${deployerAddress} (${method})`);
-    
-    // Phase 1: Deploy contracts
     console.log("\nPhase 1: Secure Contract Deployment");
-    if (!useSSHKey) {
-      console.log("Please confirm transactions on your Ledger device");
-    }
-    
-    const registry = await deployRegistry(signer);
-    const metadata = await deployMetadata(signer);
-    
-    // Phase 2: Link contracts (optional)
-    if (shouldLinkContracts) {
+    const registry = await deployRegistry(hre, signer);
+    const metadata = await deployMetadata(hre, signer);
+    if (options.shouldLinkContracts) {
       console.log("\nPhase 2: Contract Integration");
       await linkContracts(registry, metadata);
     }
-    
-    // Phase 3: Test integration (optional)
-    if (testConnection) {
+    if (options.testConnection) {
       console.log("\nPhase 3: Integration Testing");
       await testIntegration(registry, metadata);
     }
-    
-    // Phase 4: Display results
     console.log("\nPhase 4: Deployment Summary");
     await saveDeploymentInfo({
       registry,
@@ -196,16 +138,13 @@ async function main() {
       network: networkName,
       timestamp: new Date().toISOString()
     });
-
+    console.log("\nTip: Verify contracts on the explorer (recommended):");
+    console.log(`npx hardhat verify --network ${networkName} ${await registry.getAddress()}`);
+    console.log(`npx hardhat verify --network ${networkName} ${await metadata.getAddress()}`);
   } catch (error: any) {
     console.error("❌ Deployment failed:", error.message);
     throw error;
   }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+

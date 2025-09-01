@@ -19,6 +19,8 @@ import "./tasks/registry/tokenUri";
 import "./tasks/registry/totalSupply";
 import "./tasks/registry/hasKeywords";
 import "./tasks/registry/getAppsByStatus";
+import "./tasks/deploy/system";
+import "./tasks/deploy/registry";
 
 // Import task files - Legacy tasks
 import "./tasks/legacy/getAppLegacy";
@@ -33,8 +35,8 @@ import "./tasks/inherited/ownable";
 import "./tasks/metadata/getmetadatajson";
 import "./tasks/metadata/setmetadatajson";
 
-// Load deployment key ONLY from SSH directory (no .env fallback)
-const deploymentKeyPath = path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
+// Load deployment key from configurable SSH file path
+const deploymentKeyPath = process.env.DEPLOYMENT_KEY_PATH || path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
 
 function loadPrivateKeyFromSshFile(filePath: string): string | undefined {
   try {
@@ -132,6 +134,21 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined
+  },
+  etherscan: {
+    apiKey: {
+      celoAlfajores: process.env.CELOSCAN_API_KEY || ""
+    },
+    customChains: [
+      {
+        network: "celoAlfajores",
+        chainId: 44787,
+        urls: {
+          apiURL: "https://api-alfajores.celoscan.io/api",
+          browserURL: "https://alfajores.celoscan.io"
+        }
+      }
+    ]
   }
 };
 

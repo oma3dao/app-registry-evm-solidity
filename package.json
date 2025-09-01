@@ -6,12 +6,10 @@
   "scripts": {
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
-    "deploy": "npx hardhat run scripts/deploy.ts",
-    "deploy:ssh": "npx hardhat run scripts/deploy.ts -- --ssh-key",
-    "deploy:system": "npx hardhat run scripts/deploySystem.ts",
-    "deploy:system:ssh": "npx hardhat run scripts/deploySystem.ts -- --ssh-key",
-    "deploy:system:test": "npx hardhat run scripts/deploySystem.ts -- --test",
-    "deploy:system:production": "npx hardhat run scripts/deploySystem.ts -- --production",
+    "deploy:registry": "npx hardhat deploy-registry",
+    "deploy:system": "npx hardhat deploy-system",
+    "prepare:factory": "npx hardhat run scripts/prepare-factory-deployment.ts",
+    "deploy:production": "echo 'Use Thirdweb Dashboard for production deployment. Run: npm run prepare:factory'",
     "clean": "npx hardhat clean",
     "coverage": "npx hardhat coverage"
   },
@@ -31,7 +29,6 @@
     "solidity-coverage": "^0.8.16"
   },
   "dependencies": {
-    "@ethersproject/hardware-wallets": "^5.8.0",
     "@openzeppelin/contracts": "^5.2.0",
     "dotenv": "^16.4.7",
     "thirdweb": "^5.93.8"
