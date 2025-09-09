@@ -1,0 +1,103 @@
+{
+  "name": "File Manager MCP Server",
+  "description": "A Model Context Protocol server that provides file system operations for AI agents. Enables secure file reading, writing, directory traversal, and file management capabilities through standardized MCP tools and resources.",
+  "publisher": "DevTools Collective",
+  "owner": "eip155:1:0x742d35Cc6Ab6b7ab7ab7ab7ab7ab7ab7ab7ab7ab",
+  "external_url": "https://github.com/devtools/file-manager-mcp",
+  "keywords": [
+    "mcp",
+    "file-manager",
+    "filesystem",
+    "tools",
+    "automation",
+    "ai-agent",
+    "productivity"
+  ],
+  "legalUrl": "https://github.com/devtools/file-manager-mcp/blob/main/LICENSE",
+  "supportUrl": "https://github.com/devtools/file-manager-mcp/issues",
+  "interfaceVersions": [
+    "mcp-1.0"
+  ],
+  "mcp": {
+    "tools": [
+      {
+        "name": "read_file",
+        "description": "Read the contents of a file",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to the file to read"
+            }
+          },
+          "required": ["path"]
+        }
+      },
+      {
+        "name": "write_file",
+        "description": "Write content to a file",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to the file to write"
+            },
+            "content": {
+              "type": "string",
+              "description": "Content to write to the file"
+            }
+          },
+          "required": ["path", "content"]
+        }
+      },
+      {
+        "name": "list_directory",
+        "description": "List contents of a directory",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to the directory to list"
+            }
+          },
+          "required": ["path"]
+        }
+      }
+    ],
+    "resources": [
+      {
+        "uri": "file://workspace",
+        "name": "Workspace Files",
+        "description": "Access to workspace file system"
+      }
+    ],
+    "prompts": [
+      {
+        "name": "file_operations_guide",
+        "description": "Guide for common file operations",
+        "arguments": [
+          {
+            "name": "operation_type",
+            "description": "Type of file operation needed"
+          }
+        ]
+      }
+    ],
+    "transport": {
+      "http": {
+        "url": "https://mcp-server.example.com/file-manager",
+        "method": "POST"
+      }
+    },
+    "authentication": {
+      "oauth2": {
+        "authUrl": "https://auth.example.com/oauth/authorize",
+        "tokenUrl": "https://auth.example.com/oauth/token",
+        "scopes": ["filesystem.read", "filesystem.write"]
+      }
+    }
+  }
+}

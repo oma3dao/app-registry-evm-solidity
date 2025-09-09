@@ -78,8 +78,8 @@ export const NETWORK_CONTRACTS = {
     metadata: "0x"  // TODO: Set after deployment
   },
   celoAlfajores: {
-    registry: "0x", // TODO: Set after deployment
-    metadata: "0x"  // TODO: Set after deployment
+    registry: "0x1a58589a9989C7E84128938Af06ede00593cFE31",
+    metadata: "0x24B0B17adb13DB2146995480e0114b2c93Df217f"
   },
   hardhat: {
     registry: "0x", // Will be set automatically during local deployment

@@ -1,0 +1,38 @@
+{
+  "name": "Weather Data API",
+  "description": "A comprehensive weather data service providing real-time weather information, forecasts, and historical data. Access current conditions, 7-day forecasts, weather alerts, and climate data for any location worldwide through our RESTful API.",
+  "publisher": "WeatherTech Solutions",
+  "owner": "eip155:1:0x742d35Cc6Ab6b7ab7ab7ab7ab7ab7ab7ab7ab7ab",
+  "external_url": "https://weatherapi.example.com",
+  "keywords": [
+    "weather",
+    "api",
+    "forecast",
+    "climate",
+    "data",
+    "real-time",
+    "meteorology"
+  ],
+  "legalUrl": "https://weatherapi.example.com/terms",
+  "supportUrl": "https://weatherapi.example.com/support",
+  "interfaceVersions": [
+    "v1.0",
+    "v1.1",
+    "v2.0-beta"
+  ],
+  "endpoint": {
+    "url": "https://api.weathertech.example.com/v2",
+    "format": "openapi",
+    "schemaUrl": "https://api.weathertech.example.com/v2/openapi.json"
+  },
+  "payments": [
+    {
+      "type": "x402",
+      "chains": ["eip155:1", "eip155:8453"]
+    },
+    {
+      "type": "manual",
+      "url": "https://weatherapi.example.com/pricing"
+    }
+  ]
+}

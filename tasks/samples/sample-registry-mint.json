@@ -1,0 +1,13 @@
+{
+  "did": "did:oma3:example-app",
+  "interfaces": "1",
+  "dataurl": "https://example.com/app/metadata.json",
+  "fungibletokenid": "",
+  "contractid": "",
+  "major": "1",
+  "minor": "0", 
+  "patch": "0",
+  "keywords": "example,demo,sample",
+  "description": "General sample configuration for minting an app. Use with interface-specific metadata samples.",
+  "usage": "npx hardhat mint --did 'did:oma3:example-app' --interfaces 1 --dataurl 'https://example.com/app/metadata.json' --keywords 'example,demo,sample'"
+}

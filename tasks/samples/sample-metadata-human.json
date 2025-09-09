@@ -1,0 +1,91 @@
+{
+  "name": "OMA3 World Explorer",
+  "description": "A next-generation metaverse exploration platform that enables users to discover, visit, and interact with virtual worlds across the open metaverse. Experience seamless world portaling, social interactions, and immersive 3D environments with full cross-platform support.",
+  "summary": "Explore and connect virtual worlds in the open metaverse",
+  "publisher": "OMA3 Foundation",
+  "owner": "eip155:1:0x742d35Cc6Ab6b7ab7ab7ab7ab7ab7ab7ab7ab7ab",
+  "image": "https://oma3.org/assets/world-explorer-icon.png",
+  "external_url": "https://world.oma3.org",
+  "screenshotUrls": [
+    "https://oma3.org/assets/screenshots/world-explorer-1.png",
+    "https://oma3.org/assets/screenshots/world-explorer-2.png",
+    "https://oma3.org/assets/screenshots/world-explorer-3.png"
+  ],
+  "videoUrls": [
+    "https://oma3.org/assets/videos/world-explorer-trailer.mp4",
+    "https://oma3.org/assets/videos/world-explorer-demo.mp4"
+  ],
+  "3dAssetUrls": [
+    "https://oma3.org/assets/3d/world-explorer-preview.glb"
+  ],
+  "keywords": [
+    "metaverse",
+    "virtual worlds", 
+    "3d",
+    "social",
+    "exploration",
+    "cross-platform",
+    "immersive",
+    "portaling"
+  ],
+  "legalUrl": "https://world.oma3.org/legal",
+  "supportUrl": "https://world.oma3.org/support",
+  "iwpsPortalUrl": "https://world.oma3.org/iwps-portal",
+  "platforms": {
+    "web": {
+      "launchUrl": "https://world.oma3.org/play",
+      "supported": ["WebGL", "WebXR"]
+    },
+    "ios": {
+      "downloadUrl": "https://apps.apple.com/app/oma3-world-explorer/id123456789",
+      "launchUrl": "oma3worlds://launch",
+      "supported": ["iPhone", "iPad", "VisionPro"]
+    },
+    "android": {
+      "downloadUrl": "https://play.google.com/store/apps/details?id=org.oma3.worldexplorer",
+      "launchUrl": "oma3worlds://launch",
+      "supported": ["ARMv8", "x86_64"]
+    },
+    "windows": {
+      "downloadUrl": "https://apps.microsoft.com/store/detail/oma3-world-explorer/9NBLGGH4R315",
+      "launchUrl": "oma3worlds://launch",
+      "supported": ["x64", "ARM64"]
+    },
+    "macos": {
+      "downloadUrl": "https://apps.apple.com/app/oma3-world-explorer/id123456789?mt=12",
+      "launchUrl": "oma3worlds://launch",
+      "supported": ["Intel", "Apple Silicon"]
+    },
+    "meta": {
+      "downloadUrl": "https://www.meta.com/experiences/oma3-world-explorer/1234567890",
+      "launchUrl": "oculus://launch/1234567890"
+    },
+    "ps5": {
+      "downloadUrl": "https://store.playstation.com/en-us/product/UP9000-CUSA12345_00-YOURGAME0000000"
+    },
+    "xbox": {
+      "downloadUrl": "https://www.microsoft.com/store/apps/9NBLGGH4R315"
+    },
+    "nintendo": {
+      "downloadUrl": "https://www.nintendo.com/store/products/your-game-name-switch/"
+    }
+  },
+  "binaries": [{
+    "downloadUrl": "https://releases.oma3.org/world-explorer/v1.0.0/oma3-world-explorer-windows-x64.exe",
+    "os": "windows",
+    "architecture": "x64",
+    "binaryHash": "0x4a0d479bd5db8c5c9e8f7f9c8d8b6f5c4d8e7f9c8d8b6f5c4d8e7f9c8d8b6f9e",
+    "binaryHashAlgorithm": "sha256",
+    "binarySizeBytes": 157286400,
+    "otherHashes": [
+      {
+        "hash": "0xe05ac4bb8f6d9c7a8e6f5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a",
+        "algo": "blake3"
+      }
+    ],
+    "sig": {
+      "sigUrl": "https://releases.oma3.org/world-explorer/v1.0.0/oma3-world-explorer-windows-x64.exe.sig",
+      "sigAlgorithm": "x509"
+    }
+  }]
+}

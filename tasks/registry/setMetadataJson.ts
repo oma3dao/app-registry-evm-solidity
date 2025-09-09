@@ -12,15 +12,14 @@ interface TaskArgs {
   algorithm?: string;
 }
 
-// Task for setting metadata via the registry contract (the proper way)
-task("setmetadatajson", "Set app metadata via registry contract")
+task("set-metadata-json", "Set metadata JSON for an existing app via registry contract")
   .addParam("did", "The DID identifier for the app")
   .addOptionalParam("major", "The major version number", "1")
-  .addOptionalParam("jsonfile", "Path to JSON file containing metadata or JSON string", "tasks/metadata/sample-metadata.json")
+  .addOptionalParam("jsonfile", "Path to JSON file containing metadata or JSON string", "tasks/samples/sample-metadata-human.json")
   .addOptionalParam("hash", "Pre-computed hash of the metadata (will auto-calculate if not provided)")
   .addOptionalParam("algorithm", "Hash algorithm: 'keccak256' or 'sha256'", "keccak256")
   .setAction(async (taskArgs: TaskArgs, hre: HardhatRuntimeEnvironment) => {
-    const { did, major = "1", jsonfile = "tasks/metadata/sample-metadata.json", hash, algorithm = "keccak256" } = taskArgs;
+    const { did, major = "1", jsonfile = "tasks/samples/sample-metadata-human.json", hash, algorithm = "keccak256" } = taskArgs;
     const majorVersion = parseInt(major, 10);
     
     try {
@@ -31,7 +30,6 @@ task("setmetadatajson", "Set app metadata via registry contract")
       console.log("Major version:", majorVersion);
       console.log("Hash algorithm:", algorithm);
 
-      // Get registry contract
       const { contract: registry } = await getRegistryContract(hre);
 
       // Get JSON metadata - either from file or directly from the parameter
@@ -95,7 +93,6 @@ task("setmetadatajson", "Set app metadata via registry contract")
           dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(metadataJson));
           dataHashAlgorithm = 0;
         } else if (algorithm === "sha256") {
-          // Note: Hardhat doesn't have built-in sha256, but we can use ethers
           const crypto = require('crypto');
           dataHash = "0x" + crypto.createHash('sha256').update(metadataJson, 'utf8').digest('hex');
           dataHashAlgorithm = 1;
@@ -105,7 +102,7 @@ task("setmetadatajson", "Set app metadata via registry contract")
         console.log(`Calculated ${algorithm} hash: ${dataHash}`);
       }
 
-      // Check if app exists
+      // Check if app exists and verify ownership
       try {
         const app = await registry.getApp(did, majorVersion);
         console.log(`App found - Owner: ${app.minter}`);
@@ -115,11 +112,11 @@ task("setmetadatajson", "Set app metadata via registry contract")
           throw new Error(`You don't own this app. Owner: ${app.minter}, You: ${signer.address}`);
         }
         
-        console.log("✅ Ownership verified. Updating metadata...");
+        console.log("✅ Ownership verified. Setting metadata...");
         
       } catch (error: any) {
         if (error.message.includes("App not found")) {
-          throw new Error(`App with DID "${did}" and major version ${majorVersion} not found. Register the app first.`);
+          throw new Error(`App with DID "${did}" and major version ${majorVersion} not found. Mint the app first using the 'mint' task.`);
         } else {
           throw error;
         }
@@ -141,74 +138,12 @@ task("setmetadatajson", "Set app metadata via registry contract")
       const receipt = await tx.wait();
       console.log(`Transaction confirmed in block ${receipt?.blockNumber}`);
       
-      displayTaskCompletion(true, "Metadata updated successfully via registry contract");
-      console.log("✅ This tests the real user flow - registry → metadata contract");
+      displayTaskCompletion(true, "Metadata set successfully via registry contract");
+      console.log("✅ Metadata stored on-chain through the metadata contract");
 
     } catch (error: any) {
       console.error("Error setting metadata:", error.message);
       displayTaskCompletion(false, "Failed to set metadata");
-      throw error;
-    }
-  });
-
-// Helper task to register a new app with metadata in one step
-task("registerapp", "Register a new app with metadata")
-  .addParam("did", "The DID identifier for the app")
-  .addParam("interfaces", "Interface bitmap (1=human, 2=api, 4=mcp)", "1")
-  .addOptionalParam("dataurl", "Data URL for off-chain metadata", "")
-  .addOptionalParam("jsonfile", "Path to JSON file for on-chain metadata", "")
-  .addOptionalParam("contractid", "CAIP-10 contract address", "")
-  .addOptionalParam("tokenid", "CAIP-19 fungible token ID", "")
-  .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-    const { did, interfaces, dataurl = "", jsonfile = "", contractid = "", tokenid = "" } = taskArgs;
-    
-    try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Register New App", hre.network.name, signer.address);
-
-      const { contract: registry } = await getRegistryContract(hre);
-      
-      // Get metadata if provided
-      let metadataJson = "";
-      let dataHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-      
-      if (jsonfile) {
-        console.log(`Reading metadata from: ${jsonfile}`);
-        const resolvedPath = path.resolve(jsonfile);
-        const fileContent = fs.readFileSync(resolvedPath, 'utf8');
-        metadataJson = fileContent.trim();
-        JSON.parse(metadataJson); // Validate
-        
-        // Calculate hash
-        dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(metadataJson));
-        console.log(`Metadata hash: ${dataHash}`);
-      }
-
-      console.log("Registering app...");
-      const tx = await registry.mint(
-        did,
-        parseInt(interfaces),
-        dataurl,
-        dataHash,
-        0, // keccak256
-        tokenid,
-        contractid,
-        1, // major version
-        0, // minor version  
-        0, // patch version
-        [], // keyword hashes
-        metadataJson
-      );
-      
-      console.log(`Transaction hash: ${tx.hash}`);
-      const receipt = await tx.wait();
-      console.log(`Transaction confirmed in block ${receipt?.blockNumber}`);
-      
-      displayTaskCompletion(true, "App registered successfully with metadata");
-
-    } catch (error: any) {
-      console.error("Error registering app:", error.message);
-      displayTaskCompletion(false, "Failed to register app");
       throw error;
     }
   });
