@@ -22,18 +22,12 @@ import "./tasks/registry/getAppsByStatus";
 import "./tasks/deploy/system";
 import "./tasks/deploy/registry";
 
-// Import task files - Legacy tasks
-import "./tasks/legacy/getAppLegacy";
-import "./tasks/legacy/getAppsLegacy";
-import "./tasks/legacy/getAppsByMinterLegacy";
-
 // Import task files - Inherited functions
 import "./tasks/inherited/erc721";
 import "./tasks/inherited/ownable";
 
-// Import task files - Metadata tasks  
+// Import task files - Metadata tasks
 import "./tasks/metadata/getmetadatajson";
-import "./tasks/metadata/setmetadatajson";
 
 // Load deployment key from configurable SSH file path
 const deploymentKeyPath = process.env.DEPLOYMENT_KEY_PATH || path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');

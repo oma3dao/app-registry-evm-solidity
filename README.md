@@ -17,7 +17,10 @@ This repository implements the Application Registry actor described in the Inter
 
 ## Architecture Overview
 
-The OMA3AppRegistry is an ERC721 contract where each token represents a unique (DID, major version) combination. This design enables:
+The OMA3 system consists of two main components working together:
+
+### **OMA3AppRegistry** - Application Registration & NFT Management
+An ERC721 contract where each token represents a unique (DID, major version) combination. This design enables:
 
 - **Semantic Versioning**: Full semver support (major.minor.patch) with controlled upgrade paths
 - **ERC721 Compatibility**: Standard NFT interfaces for marketplace integration and ownership management
@@ -25,11 +28,56 @@ The OMA3AppRegistry is an ERC721 contract where each token represents a unique (
 - **Gas Optimization**: Packed structs and efficient array operations
 - **Extensible Design**: Future-proof architecture supporting new interface types and algorithms
 
+### **OMA3ResolverWithStore** - OMATrust DID Ownership & Data Integrity System
+A resolver contract that provides the foundation for decentralized identity and trust management:
+
+- **DID Ownership Resolution**: Authoritative determination of who controls a DID
+- **Data Hash Attestation**: Cryptographic proof of data integrity for app manifests
+- **Issuer Authorization**: Allowlist of trusted attestation providers
+- **EIP-712 Delegated Operations**: Secure off-chain signature-based attestations
+- **Maturation Windows**: 48-hour maturation period for ownership changes to prevent attacks
+- **Future-Proof Interfaces**: Stable interfaces designed for long-term compatibility with future hub systems
+
+### **Integration Model: Attestation-First Development**
+
+**🔒 Security Requirement**: Developers must obtain DID ownership attestations before registering applications in the registry. This ensures only legitimate DID controllers can mint applications for their identities.
+
+**Workflow**:
+1. Developer obtains DID ownership and DataURL attestations from authorized issuer
+2. Resolver validates ownership and DataURL during application minting
+3. Registry mints ERC721 token for verified (DID, major version) combination
+4. Ongoing DataURL integrity validated through resolver's attestation system
+
 ## Core Concepts
+
+### OMATrust System - DID Ownership & Data Integrity
+
+The OMATrust system provides the foundational trust layer for the OMA3 ecosystem:
+
+#### **DID Ownership Resolution**
+- **Decentralized Identifiers (DIDs)**: Globally unique identifiers controlled by cryptographic keys
+- **Ownership Attestations**: Cryptographic proofs linking DIDs to controlling wallet addresses
+- **Authorized Issuers**: Allowlisted entities that can create valid ownership attestations
+- **Maturation Period**: 48-hour delay for ownership changes to prevent malicious takeovers
+
+#### **Data Hash Attestation System**
+- **Data Integrity**: Cryptographic hashes proving the authenticity of application manifests
+- **Immediate Validation**: Data attestations are valid immediately (no maturation period)
+- **Issuer Authorization**: Only authorized issuers can attest to data hash validity
+- **Ephemeral Storage**: Focused on current validity rather than historical records
+
+#### **Permanent Interfaces for Future Compatibility**
+The resolver implements stable interfaces designed for long-term compatibility:
+
+- **`IOMA3Resolver`**: Core resolution functions (`currentOwner`, `isDataHashValid`)
+- **`IOMA3DidOwnershipAttestationStore`**: DID ownership management with EIP-712 support
+- **`IOMA3DataUrlAttestationStore`**: Data integrity attestation management
+
+These interfaces ensure smooth migration to future hub systems that may store both on-chain and off-chain attestations.
 
 ### Applications and Versioning
 
-- **DID (Decentralized Identifier)**: Immutable unique identifier for an application
+- **DID (Decentralized Identifier)**: Immutable unique identifier for an application, validated through OMATrust
 - **Major Versions**: Breaking changes require new NFT (new token ID)
 - **Minor Versions**: Backward-compatible interface additions
 - **Patch Versions**: Backward-compatible bug fixes and metadata updates
@@ -43,12 +91,20 @@ Each ERC721 token represents one major version of an application:
 
 ### Key Features
 
+#### **Registry Features**
 - **Interface Bitmap**: Supports human, API, and MCP interfaces (combinable)
 - **Status Management**: Active, deprecated, or replaced applications
 - **Keyword Tagging**: Hash-based keyword system for discoverability
-- **Off-chain Data**: URL + hash for integrity verification
+- **Off-chain Data**: URL + hash for integrity verification through OMATrust
 - **Registration Tracking**: Block/timestamp tracking for event log queries
 - **Optional Metadata Storage**: Integrate with OMA3AppMetadata for on-chain JSON storage
+
+#### **OMATrust Security Features**
+- **DID Ownership Validation**: Ensures only legitimate DID controllers can register applications
+- **Data Integrity Verification**: Cryptographic proof of application manifest authenticity  
+- **Authorized Issuer Network**: Decentralized trust through multiple authorized attestation providers
+- **Attack Prevention**: Maturation windows and replay protection prevent malicious ownership changes
+- **EIP-712 Compliance**: Industry-standard signature verification for off-chain operations
 
 ## Smart Contract API
 
@@ -72,6 +128,17 @@ function mint(
     string memory metadataJson         // Optional: JSON to store on-chain via metadata contract
 ) external nonReentrant returns (uint256 tokenId)
 ```
+
+**🔒 OMATrust Security Integration**: Before minting succeeds, the registry validates:
+
+1. **DID Ownership**: Caller must have valid ownership attestation for the DID via `OMA3ResolverWithStore.currentOwner()`
+2. **Data Integrity**: The `dataHash` must be attested as valid via `OMA3ResolverWithStore.isDataHashValid()`  
+3. **Issuer Authorization**: Only developers with attestations from authorized issuers can mint
+
+**Prerequisites for Developers**:
+1. Obtain DID ownership attestation from an authorized issuer
+2. Ensure your application manifest data hash is attested by an authorized issuer
+3. Wait for maturation period (48 hours) if ownership recently changed
 
 **Note**: The `metadataJson` parameter is optional. If provided and a metadata contract is configured, the JSON will be stored on-chain for guaranteed availability. If empty or no metadata contract is set, only the `dataUrl` and `dataHash` are used for off-chain metadata reference.
 
@@ -203,15 +270,20 @@ event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 in
 
 ### Current Deployment
 
-The OMA3AppRegistry contract is currently deployed on the Celo Alfajores testnet:
+#### **OMA3AppRegistry** (ERC721 Application Registry)
 - **Network**: Celo Alfajores Testnet
 - **Contract Address**: 0x1a58589a9989C7E84128938Af06ede00593cFE31  // 0xE2d601F18166F6632f80d2Fa0Ab474B6d251D400
-- **Legacy Contract Addres**: 0xb493465Bcb2151d5b5BaD19d87f9484c8B8A8e83
+- **Legacy Contract Address**: 0xb493465Bcb2151d5b5BaD19d87f9484c8B8A8e83
 
-The OMA3AppMetadata contract is currently deployed on the Celo Alfajores testnet:
+#### **OMA3AppMetadata** (On-chain JSON Storage)
 - **Network**: Celo Alfajores Testnet
 - **Contract Address**: 0x24B0B17adb13DB2146995480e0114b2c93Df217f 
-- **Legacy Contract Addres**: 0x9f1f5559b6D08eC855cafaCD76D9ae69c41169C9
+- **Legacy Contract Address**: 0x9f1f5559b6D08eC855cafaCD76D9ae69c41169C9
+
+#### **OMA3ResolverWithStore** (OMATrust DID & Data Validation)
+- **Network**: Celo Alfajores Testnet  
+- **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
+- **Purpose**: DID ownership resolution and data hash attestation validation
 
 ### Contract ABI
 
@@ -230,7 +302,9 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
 # Or manually open the file and copy the "abi" array
 ```
 
-### Testing the Contract
+### Testing the Contract System
+
+#### **Registry Testing**
 
 1. Change the MAX_APPS_PER_PAGE to 4 for testing by modifying the contract:
    ```solidity
@@ -243,9 +317,9 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
    npx hardhat compile
    ```
 
-3. Run tests
+3. Run registry tests
    ```bash
-   npx hardhat test
+   npx hardhat test test/OMA3AppRegistry.ts
    ```
 
 4. Change the MAX_APPS_PER_PAGE back to production values:
@@ -258,6 +332,64 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
    ```bash
    npx hardhat compile
    ```
+
+#### **OMATrust Resolver Testing**
+
+The OMATrust resolver system includes comprehensive test suites:
+
+##### **🚀 Automated Test Runner (Recommended)**
+
+Use the convenient test runner script for organized testing with clear progress reporting:
+
+```bash
+# Show all available test configurations
+npx ts-node scripts/run-resolver-tests.ts
+
+# Run all resolver tests
+npx ts-node scripts/run-resolver-tests.ts all
+
+# Run specific test categories
+npx ts-node scripts/run-resolver-tests.ts core         # Core functionality only
+npx ts-node scripts/run-resolver-tests.ts integration  # Integration tests only
+npx ts-node scripts/run-resolver-tests.ts deployment   # Deployment tests
+npx ts-node scripts/run-resolver-tests.ts issuers      # Issuer management
+npx ts-node scripts/run-resolver-tests.ts ownership    # Ownership attestations
+npx ts-node scripts/run-resolver-tests.ts data         # Data hash attestations
+npx ts-node scripts/run-resolver-tests.ts delegated    # EIP-712 delegated ops
+npx ts-node scripts/run-resolver-tests.ts gas          # With gas reporting
+npx ts-node scripts/run-resolver-tests.ts coverage     # With coverage
+```
+
+**Test Runner Benefits**:
+- ✅ **Clear Progress**: Progress reporting with emojis and status messages
+- ✅ **Organized Categories**: 13 pre-configured test categories
+- ✅ **Error Handling**: Helpful error messages and configuration validation
+- ✅ **Gas & Coverage**: Built-in support for gas reporting and coverage analysis
+
+##### **Manual Test Execution**
+
+For direct hardhat test execution:
+
+```bash
+# Run all resolver tests manually
+npx hardhat test test/OMA3ResolverWithStore.ts test/OMA3ResolverIntegration.ts
+
+# Run specific test categories with grep
+npx hardhat test test/OMA3ResolverWithStore.ts --grep "Deployment"
+npx hardhat test test/OMA3ResolverWithStore.ts --grep "Issuer Authorization"
+npx hardhat test test/OMA3ResolverWithStore.ts --grep "EIP-712 Delegated"
+
+# Run with gas reporting
+REPORT_GAS=true npx hardhat test test/OMA3ResolverWithStore.ts
+```
+
+**Test Coverage**:
+- ✅ **28+ Core Tests**: Deployment, access control, attestations
+- ✅ **Integration Tests**: Complex scenarios and time-based testing  
+- ✅ **Security Tests**: EIP-712 signatures, replay protection, access control
+- ✅ **Edge Cases**: Expiry handling, maturation windows, error conditions
+
+See `test/README.md` for detailed testing guide and `test/TESTING_SUMMARY.md` for current status.
 
 ### Deploying the Contract
 
@@ -386,23 +518,82 @@ npx hardhat getAppsByMinter --minter <ADDRESS> --start 0 --registry <CONTRACT_AD
 
 ## Usage Examples
 
-### JavaScript/Web3 Integration
+### **🌐 Frontend Applications (Recommended for Most Developers)**
 
-#### Minting an Application
+For 99% of developers, use the web applications instead of coding directly:
+
+#### **Application Registration**
+**🚀 [appregistry.oma3.org](https://appregistry.oma3.org)**
+- **User-friendly interface** for registering and managing OMA3 applications
+- **Visual workflow** for DID attestation and application minting
+- **Guided process** ensures all OMATrust requirements are met
+- **No coding required** - just fill out forms and connect your wallet
+
+#### **Reputation & Attestations**  
+**⭐ [reputation.oma3.org](https://reputation.oma3.org)**
+- **Create attestations** for DID ownership and data integrity
+- **Manage reputation** and extended attestations via EAS integration
+- **Issuer interface** for authorized attestation providers
+- **Community tools** for reviews, endorsements, and certifications
+
+#### **Why Use the Frontend?**
+- ✅ **No technical knowledge required** - intuitive web interface
+- ✅ **Automatic validation** - ensures all requirements are met
+- ✅ **Integrated workflow** - handles OMATrust attestations seamlessly  
+- ✅ **Real-time feedback** - immediate error checking and guidance
+- ✅ **Mobile friendly** - works on all devices
+- ✅ **Community features** - discover and interact with other developers
+
+---
+
+### **💻 Programmatic Integration (Advanced Users)**
+
+For developers who need programmatic access or custom integrations, refer to the code examples below and the [app-registry-evm-solidity GitHub repository](https://github.com/oma3dao/app-registry-evm-solidity) for complete implementation details.
+
+### **JavaScript/Web3 Integration**
+
+> **💡 Note**: Most developers should use [appregistry.oma3.org](https://appregistry.oma3.org) instead of coding directly. The examples below are for advanced programmatic integration.
+
+#### **Complete Integration: OMATrust + Registry**
 
 ```javascript
+// 1. First, ensure you have OMATrust attestations
+const resolver = new ethers.Contract(resolverAddress, resolverABI, signer);
+const registry = new ethers.Contract(registryAddress, registryABI, signer);
+
+// Check if you have valid DID ownership
+const didHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("did:example:123"));
+const currentOwner = await resolver.currentOwner(didHash);
+
+if (currentOwner !== signerAddress) {
+  throw new Error("You must have DID ownership attestation before minting");
+}
+
+// Check if your data hash is attested
+const metadataContent = JSON.stringify({
+  name: "My Gaming App",
+  description: "A Web3 gaming application",
+  icon: "https://example.com/icon.png"
+});
+const dataHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(metadataContent));
+const isDataValid = await resolver.isDataHashValid(didHash, dataHash);
+
+if (!isDataValid) {
+  throw new Error("Your data hash must be attested by an authorized issuer");
+}
+
+// 2. Now you can mint the application
 const interfaces = 5; // 1 (human) + 4 (mcp) = human + mcp interfaces
 const keywordHashes = [
   ethers.utils.keccak256(ethers.utils.toUtf8Bytes("gaming")),
   ethers.utils.keccak256(ethers.utils.toUtf8Bytes("web3"))
 ];
 
-// Option 1: Off-chain metadata (IPFS/Arweave/HTTP)
 const tx = await registry.mint(
-  "did:example:123",           // DID
+  "did:example:123",           // DID (must match your attestation)
   interfaces,                  // Interface bitmap
   "ipfs://QmHash...",          // Data URL
-  dataHash,                    // Data hash
+  dataHash,                    // Data hash (must be attested)
   0,                          // keccak256 algorithm
   "",                         // No fungible token
   "",                         // No contract
@@ -410,31 +601,37 @@ const tx = await registry.mint(
   0,                          // Minor version 0
   0,                          // Patch version 0
   keywordHashes,              // Keywords
-  ""                          // No on-chain metadata
+  metadataContent             // Optional: store JSON on-chain
 );
 
-// Option 2: On-chain metadata storage
-const metadataJson = JSON.stringify({
-  name: "My Gaming App",
-  description: "A Web3 gaming application",
-  icon: "https://example.com/icon.png"
-});
-
-const tx = await registry.mint(
-  "did:example:123",           // DID
-  interfaces,                  // Interface bitmap
-  "https://api.registry.com/metadata/did:example:123", // Data URL points to registry API
-  ethers.utils.keccak256(ethers.utils.toUtf8Bytes(metadataJson)), // Hash of JSON
-  0,                          // keccak256 algorithm
-  "",                         // No fungible token
-  "",                         // No contract
-  1,                          // Major version 1
-  0,                          // Minor version 0
-  0,                          // Patch version 0
-  keywordHashes,              // Keywords
-  metadataJson                // Store JSON on-chain
-);
+console.log("Application minted successfully:", tx.hash);
 ```
+
+#### **Getting OMATrust Attestations**
+
+```javascript
+// For authorized issuers to create attestations
+const resolver = new ethers.Contract(resolverAddress, resolverABI, issuerSigner);
+
+// 1. Attest DID ownership
+const controllerBytes32 = ethers.utils.zeroPad(developerAddress, 32);
+const expiresAt = 0; // Non-expiring
+await resolver.upsertDirect(didHash, controllerBytes32, expiresAt);
+
+// 2. Attest data hash
+const dataHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(metadataContent));
+await resolver.attestDataHash(didHash, dataHash, expiresAt);
+
+console.log("Attestations created for developer");
+```
+
+#### **Beyond Core Trust: Extended Attestations**
+
+The resolver contract only handles **DID ownership** and **data URL integrity**. For other OMATrust attestations (cybersecurity audits, user reviews, reputation scores, etc.):
+
+- **Frontend**: Use **[reputation.oma3.org](https://reputation.oma3.org)** for user-friendly attestation management
+- **Technical Details**: See [rep-attestation-tools-evm-solidity](https://github.com/oma3dao/rep-attestation-tools-evm-solidity) and [rep-attestation-frontend](https://github.com/oma3dao/rep-attestation-frontend) repositories
+- **Technology**: Built on proven attestation services (EAS, BAS, etc.) on various chains
 
 #### Updating an Application
 
@@ -504,6 +701,76 @@ await registry.mint(did, interfaces, dataUrl, keccak256(json), 0, "", "", 1, 0, 
 - **Future-proof**: Migrate between storage methods
 - **Cost-effective**: Pay for on-chain storage only when needed
 - **Reliable**: Registry works with or without metadata contract
+
+---
+
+## Ecosystem Integration & Future Migration
+
+### **Proven Attestation Service Integration**
+
+For attestations beyond core DID ownership and data integrity, the OMA3 ecosystem integrates with proven attestation services such as [EAS (Ethereum Attestation Service)](https://attest.sh/) and [BAS (Base Attestation Service)](https://github.com/base-org/bas) deployed on various chains:
+
+#### **Index Function: DID → Recipient Mapping**
+```solidity
+// Helper function for EAS integration
+function didToRecipient(string memory didString) public pure returns (bytes32) {
+    return keccak256(abi.encodePacked("did:", didString));
+}
+```
+
+**Usage Pattern**:
+- **Core Trust**: OMATrust resolver handles DID ownership and data integrity
+- **Extended Attestations**: Use proven attestation services (EAS, BAS, etc.) for reputation, certifications, endorsements, reviews, etc.
+- **Indexing**: Use `didToRecipient(did)` as the recipient field in attestation services
+- **Discovery**: Query attestation services by recipient to find all attestations for a DID
+
+#### **Examples of Extended Attestations**:
+- **Reputation Scores**: Developer track record and community standing
+- **Security Audits**: Third-party security assessment results
+- **User Reviews**: Community feedback and ratings
+- **Compliance Certifications**: Regulatory or industry standard compliance
+- **Integration Approvals**: Platform-specific authorization attestations
+
+### **Future Hub Migration Path**
+
+The OMATrust resolver system is designed for seamless migration to future hub systems:
+
+#### **Stable Interface Guarantee**
+The resolver implements permanent interfaces that will be maintained across all future versions:
+- `IOMA3Resolver` - Core resolution functions
+- `IOMA3DidOwnershipAttestationStore` - Ownership management  
+- `IOMA3DataUrlAttestationStore` - Data integrity validation
+
+#### **Hub System Evolution**
+```
+Current: OMA3ResolverWithStore (On-chain only)
+    ↓
+Future: OMA3Hub (Hybrid on-chain + off-chain)
+    ↓  
+Advanced: OMA3FederatedHub (Multi-chain + decentralized storage)
+```
+
+**Migration Benefits**:
+- ✅ **Zero Downtime**: New hubs implement same interfaces
+- ✅ **Backward Compatibility**: Existing integrations continue working
+- ✅ **Enhanced Features**: Access to off-chain attestations, multi-chain support
+- ✅ **Gradual Migration**: Migrate at your own pace, no forced upgrades
+- ✅ **Data Preservation**: All existing attestations preserved and accessible
+
+#### **Future Hub Capabilities**
+- **Hybrid Storage**: Both on-chain and off-chain attestation support
+- **Multi-chain Resolution**: Cross-chain DID ownership and attestation validation
+- **Decentralized Storage**: IPFS, Arweave, and other decentralized storage integration
+- **Advanced Queries**: Complex attestation discovery and filtering
+- **Federation**: Inter-hub communication and attestation sharing
+
+### **Developer Integration Strategy**
+
+**Recommended Approach**:
+1. **Build on Interfaces**: Always use `IOMA3Resolver` interface, never direct contract calls
+2. **Plan for Hybrid**: Design systems to handle both on-chain and off-chain attestations
+3. **Index with EAS**: Use EAS for extended attestations with DID-based indexing
+4. **Stay Updated**: Monitor for hub system announcements and migration guides
 
 ---
 

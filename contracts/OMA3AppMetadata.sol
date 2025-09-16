@@ -100,9 +100,9 @@ contract OMA3AppMetadata is Ownable {
     /// @param str The string to check
     /// @return True if the string is all lowercase or contains no letters
     function isLowercase(string memory str) internal pure returns (bool) {
-        bytes memory b = bytes(str);
-        for (uint i = 0; i < b.length; i++) {
-            if (b[i] >= 0x41 && b[i] <= 0x5A) {
+        bytes memory strBytes = bytes(str);
+        for (uint256 index = 0; index < strBytes.length; index++) {
+            if (strBytes[index] >= 0x41 && strBytes[index] <= 0x5A) {
                 return false;
             }
         }

@@ -5,6 +5,16 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+// Interface for ownership resolver
+interface IOMA3OwnershipResolver {
+    function currentOwner(bytes32 didHash) external view returns (address);
+}
+
+// Interface for data URL attestation resolver
+interface IOMA3DataUrlResolver {
+    function isDataHashValid(bytes32 didHash, bytes32 dataHash) external view returns (bool);
+}
+
 // Interface for metadata contract
 interface IOMA3AppMetadata {
     function setMetadataForRegistry(string memory did, string memory metadataJson) external;
@@ -102,6 +112,10 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     // Metadata contract integration
     IOMA3AppMetadata public metadataContract;
 
+    // Resolvers for ownership and data validation
+    IOMA3OwnershipResolver public ownershipResolver;
+    IOMA3DataUrlResolver public dataUrlResolver;
+
 
     // Constants
     uint256 private constant MAX_DID_LENGTH = 128;
@@ -133,6 +147,16 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     function setMetadataContract(address _metadataContract) external onlyOwner {
         require(_metadataContract != address(0), "Invalid metadata contract address");
         metadataContract = IOMA3AppMetadata(_metadataContract);
+    }
+
+    function setOwnershipResolver(address _resolver) external onlyOwner {
+        require(_resolver != address(0), "Invalid ownership resolver address");
+        ownershipResolver = IOMA3OwnershipResolver(_resolver);
+    }
+
+    function setDataUrlResolver(address _resolver) external onlyOwner {
+        require(_resolver != address(0), "Invalid data URL resolver address");
+        dataUrlResolver = IOMA3DataUrlResolver(_resolver);
     }
 
     /**
@@ -328,16 +352,28 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         if (bytes(fungibleTokenId).length > MAX_URL_LENGTH) revert FungibleTokenIdTooLong(bytes(fungibleTokenId).length);
         if (bytes(contractId).length > MAX_URL_LENGTH) revert ContractIdTooLong(bytes(contractId).length);
         _validateKeywords(keywordHashes);
-        
+
         // Note: dataHashAlgorithm validation removed to allow future algorithm extensions
 
         // DID + Major version uniqueness and fungible token consistency validation
         bytes32 didHash = getDidHash(didString);
+
+        // Resolver validations (if resolvers are set)
+        if (address(ownershipResolver) != address(0)) {
+            // Check ownership: caller must be the current DID owner
+            address didOwner = ownershipResolver.currentOwner(didHash);
+            require(didOwner == msg.sender, "NOT_DID_OWNER");
+        }
+
+        if (address(dataUrlResolver) != address(0)) {
+            // Check data hash: must be attested by trusted oracle
+            require(dataUrlResolver.isDataHashValid(didHash, dataHash), "DATA_HASH_NOT_ATTESTED");
+        }
         
         // Check if this specific (DID, major) combination already exists
         if (_didMajorToToken[didHash][initialVersionMajor] != 0) {
             revert DIDMajorAlreadyExists(didString, initialVersionMajor);
-        }
+        }   
         
         // Check fungible token consistency for existing DIDs
         string memory existingFungibleTokenId = _didToFungibleTokenId[didHash];
