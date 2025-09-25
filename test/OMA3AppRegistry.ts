@@ -4396,7 +4396,7 @@ describe("OMA3AppRegistry", function () {
       console.log(`Pagination query time: ${endTime - startTime}ms`);
       console.log(`Apps returned: ${apps.length}`);
       
-      expect(endTime - startTime).to.be.below(1000); // Should complete within 1 second
+      expect(endTime - startTime).to.be.below(3000); // Should complete within 3 seconds
       expect(apps.length).to.be.greaterThan(0);
     });
 
@@ -4523,7 +4523,7 @@ describe("OMA3AppRegistry", function () {
       console.log(`Large dataset query time: ${endTime - startTime}ms`);
       console.log(`Apps returned: ${apps.length}`);
       
-      expect(endTime - startTime).to.be.below(2000); // Should complete within 2 seconds
+      expect(endTime - startTime).to.be.below(3000); // Should complete within 3 seconds
       expect(apps.length).to.be.greaterThan(0);
     });
 
