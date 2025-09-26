@@ -115,7 +115,7 @@ describe("OMA3 System - Security Tests", function () {
                 dataHash, // same data hash
                 0, // keccak256
                 0, // no interface changes
-                [], // no keyword changes
+                [], // no trait changes
                 0, // no minor change
                 1  // patch increment
             )).to.be.revertedWithCustomError(registry, "NotAppOwner");
@@ -214,7 +214,7 @@ describe("OMA3 System - Security Tests", function () {
                 dataHash, // same data hash
                 0, // keccak256
                 0, // no interface changes
-                [], // no keyword changes
+                [], // no trait changes
                 0, // no minor change
                 1  // patch increment
             )).to.not.be.reverted;
@@ -571,7 +571,7 @@ describe("OMA3 System - Security Tests", function () {
                 "token",
                 "contract",
                 1, 1, 1, // conservative max versions
-                [], // empty keywords
+                [], // empty traits
                 metadataJson
             )).to.not.be.reverted;
         });
@@ -601,7 +601,7 @@ describe("OMA3 System - Security Tests", function () {
                 "token",
                 "contract",
                 0, 0, 0, // min versions
-                [], // empty keywords
+                [], // empty traits
                 metadataJson
             )).to.be.revertedWithCustomError(registry, "InterfacesCannotBeEmpty");
         });

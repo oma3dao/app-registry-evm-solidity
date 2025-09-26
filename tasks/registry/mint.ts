@@ -15,13 +15,13 @@ interface TaskArgs {
   major?: string;
   minor?: string;
   patch?: string;
-  keywords?: string;
+  traits?: string;
   jsonfile?: string;
 }
 
 task("mint", "Mint a new application NFT")
   .addParam("did", "The DID identifier for the app")
-  .addParam("interfaces", "Interface bitmap (1=human, 2=api, 4=mcp)", "1")
+  .addParam("interfaces", "Interface bitmap (0=human, 2=api, 4=smart contract)", "0")
   .addParam("dataurl", "URL to off-chain metadata")
   .addOptionalParam("datahash", "Hash of the off-chain data (auto-calculated if not provided)")
   .addOptionalParam("algorithm", "Hash algorithm: 'keccak256' or 'sha256'", "keccak256")
@@ -30,7 +30,7 @@ task("mint", "Mint a new application NFT")
   .addOptionalParam("major", "Initial major version", "1")
   .addOptionalParam("minor", "Initial minor version", "0")
   .addOptionalParam("patch", "Initial patch version", "0")
-  .addOptionalParam("keywords", "Comma-separated keywords for tagging", "")
+  .addOptionalParam("traits", "Comma-separated traits for tagging", "")
   .addOptionalParam("jsonfile", "Path to JSON file for on-chain metadata (empty to skip)", "")
   .setAction(async (taskArgs: TaskArgs, hre: HardhatRuntimeEnvironment) => {
     const { 
@@ -44,7 +44,7 @@ task("mint", "Mint a new application NFT")
       major = "1",
       minor = "0", 
       patch = "0",
-      keywords = "",
+      traits = "",
       jsonfile = ""
     } = taskArgs;
     
@@ -68,19 +68,19 @@ task("mint", "Mint a new application NFT")
 
       const { contract: registry } = await getRegistryContract(hre);
 
-      // Parse keywords
-      const keywordHashes: string[] = [];
-      if (keywords) {
-        const keywordList = keywords.split(",").map(k => k.trim());
-        console.log("\nKeywords:");
-        for (const keyword of keywordList) {
-          if (keyword.startsWith("0x")) {
-            keywordHashes.push(keyword);
-            console.log(`  "${keyword}" (already hashed)`);
+      // Parse traits
+      const traitHashes: string[] = [];
+      if (traits) {
+        const traitList = traits.split(",").map(k => k.trim());
+        console.log("\nTraits:");
+        for (const trait of traitList) {
+          if (trait.startsWith("0x")) {
+            traitHashes.push(trait);
+            console.log(`  "${trait}" (already hashed)`);
           } else {
-            const hash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(keyword));
-            keywordHashes.push(hash);
-            console.log(`  "${keyword}" → ${hash}`);
+            const hash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(trait));
+            traitHashes.push(hash);
+            console.log(`  "${trait}" → ${hash}`);
           }
         }
       }
@@ -153,7 +153,7 @@ task("mint", "Mint a new application NFT")
         majorVersion,
         minorVersion,
         patchVersion,
-        keywordHashes,
+        traitHashes,
         metadataJson
       );
       

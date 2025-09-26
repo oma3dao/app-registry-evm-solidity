@@ -9,7 +9,7 @@ interface TaskArgs {
   datahash?: string;
   algorithm?: string;
   interfaces?: string;
-  keywords?: string;
+  traits?: string;
   minor?: string;
   patch?: string;
 }
@@ -20,8 +20,8 @@ task("update-app-controlled", "Update all fields of an app (comprehensive update
   .addOptionalParam("dataurl", "New data URL", "")
   .addOptionalParam("datahash", "New data hash (hex)", "0x0000000000000000000000000000000000000000000000000000000000000000")
   .addOptionalParam("algorithm", "Hash algorithm: 'keccak256' or 'sha256'", "keccak256")
-  .addOptionalParam("interfaces", "New interface bitmap (1=human, 2=api, 4=mcp)", "1")
-  .addOptionalParam("keywords", "Comma-separated keyword hashes", "")
+  .addOptionalParam("interfaces", "New interface bitmap (0=human, 2=api, 4=smart contract)", "0")
+  .addOptionalParam("traits", "Comma-separated trait hashes", "")
   .addOptionalParam("minor", "New minor version", "0")
   .addOptionalParam("patch", "New patch version", "0")
   .setAction(async (taskArgs: TaskArgs, hre: HardhatRuntimeEnvironment) => {
@@ -31,8 +31,8 @@ task("update-app-controlled", "Update all fields of an app (comprehensive update
       dataurl = "", 
       datahash = "0x0000000000000000000000000000000000000000000000000000000000000000",
       algorithm = "keccak256",
-      interfaces = "1",
-      keywords = "",
+      interfaces = "0",
+      traits = "",
       minor = "0",
       patch = "0"
     } = taskArgs;
@@ -76,20 +76,20 @@ task("update-app-controlled", "Update all fields of an app (comprehensive update
         }
       }
 
-      // Parse keywords
-      const keywordHashes: string[] = [];
-      if (keywords) {
-        const keywordList = keywords.split(",").map(k => k.trim());
-        for (const keyword of keywordList) {
-          if (keyword.startsWith("0x")) {
-            keywordHashes.push(keyword);
+      // Parse traits
+      const traitHashes: string[] = [];
+      if (traits) {
+        const traitList = traits.split(",").map(k => k.trim());
+        for (const trait of traitList) {
+          if (trait.startsWith("0x")) {
+            traitHashes.push(trait);
           } else {
-            // Hash the keyword
-            keywordHashes.push(hre.ethers.keccak256(hre.ethers.toUtf8Bytes(keyword)));
+            // Hash the trait
+            traitHashes.push(hre.ethers.keccak256(hre.ethers.toUtf8Bytes(trait)));
           }
         }
-        console.log(`Keywords: ${keywordList.join(", ")}`);
-        console.log(`Keyword hashes: ${keywordHashes.join(", ")}`);
+        console.log(`Traits: ${traitList.join(", ")}`);
+        console.log(`Trait hashes: ${traitHashes.join(", ")}`);
       }
 
       console.log("Sending update transaction...");
@@ -100,7 +100,7 @@ task("update-app-controlled", "Update all fields of an app (comprehensive update
         datahash,
         dataHashAlgorithm,
         interfacesBitmap,
-        keywordHashes,
+        traitHashes,
         minorVersion,
         patchVersion
       );

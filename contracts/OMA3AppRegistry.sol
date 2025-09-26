@@ -36,11 +36,11 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
 
     // App struct optimized for gas efficiency
     // Immutable fields: minter, versionMajor, did, fungibleTokenId, contractId
-    // Mutable fields: interfaces, status, dataHashAlgorithm, dataHash, dataUrl, versionHistory, keywordHashes
+    // Mutable fields: interfaces, status, dataHashAlgorithm, dataHash, dataUrl, versionHistory, traitHashes
     struct App {
         // Slot 1 (32 bytes)
         address minter;                // 20 bytes - Original creator/minter (immutable)
-        uint16 interfaces;             // 2 bytes - Interface bitmap (1=human, 2=api, 4=mcp. Can combine: 5=human+mcp) (mutable)
+        uint16 interfaces;             // 2 bytes - Interface bitmap (0=human, 2=api, 4=smart contract. Can combine) (mutable)
         uint8 versionMajor;            // 1 byte - Major version number of this NFT (immutable)
         uint8 status;                  // 1 byte - Status (0=active, 1=deprecated, 2=replaced)
         uint8 dataHashAlgorithm;       // 1 byte - Hash algorithm (0=keccak256, 1=sha256)
@@ -54,7 +54,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         string contractId;             // CAIP-10 contract address (immutable)
         string dataUrl;                // URL to off-chain data
         Version[] versionHistory;      // Array of version structs
-        bytes32[] keywordHashes;       // Array of keyword hashes
+        bytes32[] traitHashes;         // Array of trait hashes
     }
 
     // Custom errors for gas efficiency
@@ -66,7 +66,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     error DataUrlCannotBeEmpty();                 // Data URL cannot be empty
     error FungibleTokenIdTooLong(uint256 length); // Fungible token ID exceeds MAX_URL_LENGTH
     error ContractIdTooLong(uint256 length);      // Contract ID exceeds MAX_URL_LENGTH
-    error TooManyKeywords(uint256 count);         // Keyword array exceeds MAX_KEYWORDS limit
+    error TooManyTraits(uint256 count);           // Trait array exceeds MAX_TRAITS limit
     error AppNotFound(string did, uint8 major);   // No app found for the given DID and major version
     error NotAppOwner(string did, uint8 major);   // Caller is not the owner of this app version
     error InvalidVersion(uint8 major, uint8 minor, uint8 patch); // Attempted to add a version that is not higher than the last
@@ -78,7 +78,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     error InterfaceRemovalNotAllowed(uint16 current, uint16 attempted); // Interface changes must be additive only
     error NoChangesSpecified();                  // No changes detected in update call
     error DIDHashNotFound(bytes32 didHash);     // No app found for the given DID hash
-    error DataHashRequiredForKeywordChange();   // New data hash required when updating keywords
+    error DataHashRequiredForTraitChange();     // New data hash required when updating traits
     error DataHashMismatch(bytes32 computed, bytes32 provided); // Computed hash doesn't match provided dataHash
 
 
@@ -120,7 +120,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     // Constants
     uint256 private constant MAX_DID_LENGTH = 128;
     uint256 private constant MAX_URL_LENGTH = 256;
-    uint256 private constant MAX_KEYWORDS = 20;
+    uint256 private constant MAX_TRAITS = 20;
     uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
     //uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
 
@@ -135,7 +135,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     event StatusUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 newStatus, uint256 timestamp);
     event DataUrlUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, string newDataUrl, bytes32 newDataHash, uint8 dataHashAlgorithm);
     event VersionAdded(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 minor, uint8 patch);
-    event KeywordsUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, bytes32[] newKeywordHashes);
+    event TraitsUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, bytes32[] newTraitHashes);
     event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint16 newInterfaces);
 
     constructor() ERC721("OMA3 App Registry", "OMA3APP") Ownable(msg.sender) {}
@@ -190,12 +190,12 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Validate keyword constraints (shared by mint and update functions)
-     * @param keywordHashes Array of keyword hashes to validate
+     * @dev Validate trait constraints (shared by mint and update functions)
+     * @param traitHashes Array of trait hashes to validate
      */
-    function _validateKeywords(bytes32[] memory keywordHashes) internal pure {
-        if (keywordHashes.length > MAX_KEYWORDS) {
-            revert TooManyKeywords(keywordHashes.length);
+    function _validateTraits(bytes32[] memory traitHashes) internal pure {
+        if (traitHashes.length > MAX_TRAITS) {
+            revert TooManyTraits(traitHashes.length);
         }
     }
 
@@ -325,7 +325,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
      * @param initialVersionMajor Initial version major number
      * @param initialVersionMinor Initial version minor number  
      * @param initialVersionPatch Initial version patch number
-     * @param keywordHashes Array of keyword hashes for tagging
+     * @param traitHashes Array of trait hashes for tagging
      * @param metadataJson Optional JSON metadata to store on-chain (empty string to skip)
      * @return tokenId The newly minted token ID
      */
@@ -340,7 +340,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         uint8 initialVersionMajor,
         uint8 initialVersionMinor,
         uint8 initialVersionPatch,
-        bytes32[] memory keywordHashes,
+        bytes32[] memory traitHashes,
         string memory metadataJson
     ) external nonReentrant returns (uint256) {
         // Validations
@@ -351,7 +351,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         if (bytes(dataUrl).length > MAX_URL_LENGTH) revert DataUrlTooLong(bytes(dataUrl).length);
         if (bytes(fungibleTokenId).length > MAX_URL_LENGTH) revert FungibleTokenIdTooLong(bytes(fungibleTokenId).length);
         if (bytes(contractId).length > MAX_URL_LENGTH) revert ContractIdTooLong(bytes(contractId).length);
-        _validateKeywords(keywordHashes);
+        _validateTraits(traitHashes);
 
         // Note: dataHashAlgorithm validation removed to allow future algorithm extensions
 
@@ -415,7 +415,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             contractId: contractId,
             dataUrl: dataUrl,
             versionHistory: versions,
-            keywordHashes: keywordHashes
+            traitHashes: traitHashes
         });
 
         // Store mappings
@@ -432,9 +432,9 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             registrationTimestamp[didHash] = block.timestamp;
         }
 
-        // Emit keyword event (bulk)
-        if (keywordHashes.length > 0) {
-            emit KeywordsUpdated(didHash, initialVersionMajor, tokenId, keywordHashes);
+        // Emit trait event (bulk)
+        if (traitHashes.length > 0) {
+            emit TraitsUpdated(didHash, initialVersionMajor, tokenId, traitHashes);
         }
 
         // Store metadata on-chain if provided
@@ -538,18 +538,18 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
 
 
     /**
-     * @dev Update app data, interfaces, and/or keywords with controlled versioning
+     * @dev Update app data, interfaces, and/or traits with controlled versioning
      * @param didString The DID as string
      * @param major The major version of the app to update
      * @param newDataUrl New data URL (empty string "" = no change)
-     * @param newDataHash New data hash (bytes32(0) = no change, REQUIRED if keywords change)
+     * @param newDataHash New data hash (bytes32(0) = no change, REQUIRED if traits change)
      * @param newDataHashAlgorithm New hash algorithm (current value = no change)
      * @param newInterfaces New interfaces bitmap (0 = no change, >0 = new interfaces)
-     * @param newKeywordHashes New keyword hashes (empty array [] = no change)
+     * @param newTraitHashes New trait hashes (empty array [] = no change)
      * @param newMinor New minor version (must be > current if interfaces change)
-     * @param newPatch New patch version (must be > current if data/keyword changes, unless minor++)
-     * @notice Keyword changes require new data hash for auditability
-     * @notice Interface changes require minor increment, data/keyword changes require patch increment
+     * @param newPatch New patch version (must be > current if data/trait changes, unless minor++)
+     * @notice Trait changes require new data hash for auditability
+     * @notice Interface changes require minor increment, data/trait changes require patch increment
      */
     function updateAppControlled(
         string memory didString,
@@ -558,7 +558,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         bytes32 newDataHash,
         uint8 newDataHashAlgorithm,
         uint16 newInterfaces,
-        bytes32[] memory newKeywordHashes,
+        bytes32[] memory newTraitHashes,
         uint8 newMinor,
         uint8 newPatch
     ) external onlyAppOwner(didString, major) nonReentrant {
@@ -579,10 +579,10 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         
         bool hasInterfaceChanges = (newInterfaces != 0 && newInterfaces != app.interfaces);
         
-        bool hasKeywordChanges = (newKeywordHashes.length > 0);
+        bool hasTraitChanges = (newTraitHashes.length > 0);
         
         // Must have at least one change
-        if (!hasDataChanges && !hasInterfaceChanges && !hasKeywordChanges) {
+        if (!hasDataChanges && !hasInterfaceChanges && !hasTraitChanges) {
             revert NoChangesSpecified();
         }
         
@@ -602,8 +602,8 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             }
         }
         
-        if (hasDataChanges || hasKeywordChanges) {
-            // Rule 3: Data OR keyword changes require patch++ UNLESS minor++
+        if (hasDataChanges || hasTraitChanges) {
+            // Rule 3: Data OR trait changes require patch++ UNLESS minor++
             if (newMinor <= currentVersion.minor && newPatch <= currentVersion.patch) {
                 revert PatchIncrementRequired(currentVersion.patch, newPatch);
             }
@@ -616,12 +616,12 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             // Note: dataHashAlgorithm validation removed to allow future algorithm extensions
         }
         
-        // Validate keyword constraints if updating
-        if (hasKeywordChanges) {
-            _validateKeywords(newKeywordHashes);
-            // Require new data hash for keyword changes (auditability)
+        // Validate trait constraints if updating
+        if (hasTraitChanges) {
+            _validateTraits(newTraitHashes);
+            // Require new data hash for trait changes (auditability)
             if (newDataHash == bytes32(0)) {
-                revert DataHashRequiredForKeywordChange();
+                revert DataHashRequiredForTraitChange();
             }
         }
         
@@ -638,9 +638,9 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             emit InterfacesUpdated(didHash, major, tokenId, newInterfaces);
         }
         
-        if (hasKeywordChanges) {
-            app.keywordHashes = newKeywordHashes;
-            emit KeywordsUpdated(didHash, major, tokenId, newKeywordHashes);
+        if (hasTraitChanges) {
+            app.traitHashes = newTraitHashes;
+            emit TraitsUpdated(didHash, major, tokenId, newTraitHashes);
         }
         
         // Add new version to history
@@ -665,41 +665,41 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Check if an app has any of the specified keywords
+     * @dev Check if an app has any of the specified traits
      * @param didString The DID as string
-     * @param keywords Array of keyword hashes to check
-     * @return bool True if the app has at least one of the keywords
+     * @param traits Array of trait hashes to check
+     * @return bool True if the app has at least one of the traits
      */
-    function hasAnyKeywords(string memory didString, uint8 major, bytes32[] memory keywords) external view returns (bool) {
+    function hasAnyTraits(string memory didString, uint8 major, bytes32[] memory traits) external view returns (bool) {
         uint256 tokenId = _resolveToken(didString, major);
         if (tokenId == 0) revert AppNotFound(didString, major);
         
-        bytes32[] memory appKeywords = _apps[tokenId].keywordHashes;
+        bytes32[] memory appTraits = _apps[tokenId].traitHashes;
         
-        for (uint256 i = 0; i < keywords.length; i++) {
-            for (uint256 j = 0; j < appKeywords.length; j++) {
-                if (keywords[i] == appKeywords[j]) return true;
+        for (uint256 i = 0; i < traits.length; i++) {
+            for (uint256 j = 0; j < appTraits.length; j++) {
+                if (traits[i] == appTraits[j]) return true;
             }
         }
         return false;
     }
 
     /**
-     * @dev Check if an app has all of the specified keywords
+     * @dev Check if an app has all of the specified traits
      * @param didString The DID as string
-     * @param keywords Array of keyword hashes to check
-     * @return bool True if the app has all of the keywords
+     * @param traits Array of trait hashes to check
+     * @return bool True if the app has all of the traits
      */
-    function hasAllKeywords(string memory didString, uint8 major, bytes32[] memory keywords) external view returns (bool) {
+    function hasAllTraits(string memory didString, uint8 major, bytes32[] memory traits) external view returns (bool) {
         uint256 tokenId = _resolveToken(didString, major);
         if (tokenId == 0) revert AppNotFound(didString, major);
         
-        bytes32[] memory appKeywords = _apps[tokenId].keywordHashes;
+        bytes32[] memory appTraits = _apps[tokenId].traitHashes;
         
-        for (uint256 i = 0; i < keywords.length; i++) {
+        for (uint256 i = 0; i < traits.length; i++) {
             bool found = false;
-            for (uint256 j = 0; j < appKeywords.length; j++) {
-                if (keywords[i] == appKeywords[j]) {
+            for (uint256 j = 0; j < appTraits.length; j++) {
+                if (traits[i] == appTraits[j]) {
                     found = true;
                     break;
                 }
