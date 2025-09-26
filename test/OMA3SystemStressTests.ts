@@ -180,7 +180,7 @@ describe("OMA3 System - Stress Tests and Performance", function () {
                     newDataHash, // new data hash
                     0, // keccak256
                     0, // no interface changes
-                    [], // no keyword changes
+                    [], // no trait changes
                     0, // no minor change
                     1  // patch increment
                 ));
@@ -469,12 +469,12 @@ describe("OMA3 System - Stress Tests and Performance", function () {
     });
 
     describe("Memory and Gas Optimization", function () {
-        it("Should handle maximum keyword arrays efficiently", async function () {
+        it("Should handle maximum trait arrays efficiently", async function () {
             const { registry, resolver, issuer, user1 } = await loadFixture(deploySystemFixture);
 
-            // Create maximum number of keywords (20)
-            const maxKeywords = Array.from({ length: 20 }, (_, i) => 
-                ethers.keccak256(ethers.toUtf8Bytes(`keyword${i}`))
+            // Create maximum number of traits (20)
+            const maxTraits = Array.from({ length: 20 }, (_, i) => 
+                ethers.keccak256(ethers.toUtf8Bytes(`trait${i}`))
             );
 
             const did = "did:web:test.com";
@@ -482,7 +482,7 @@ describe("OMA3 System - Stress Tests and Performance", function () {
             const metadataJson = JSON.stringify({ name: "Test App" });
             const dataHash = ethers.keccak256(ethers.toUtf8Bytes(metadataJson));
 
-            // Mint with maximum keywords (no resolver validation needed)
+            // Mint with maximum traits (no resolver validation needed)
             await expect(registry.connect(user1).mint(
                 did,
                 1, // interfaces
@@ -492,13 +492,13 @@ describe("OMA3 System - Stress Tests and Performance", function () {
                 "token",
                 "contract",
                 1, 0, 0, // version
-                maxKeywords,
+                maxTraits,
                 metadataJson
             )).to.not.be.reverted;
 
-            // Verify keywords were stored
+            // Verify traits were stored
             const app = await registry.getApp(did, 1);
-            expect(app.keywordHashes).to.have.length(20);
+            expect(app.traitHashes).to.have.length(20);
         });
 
         it("Should handle large metadata JSON efficiently", async function () {

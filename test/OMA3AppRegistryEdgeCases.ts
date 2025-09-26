@@ -146,7 +146,7 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
                 dataHash,
                 0, // keccak256
                 3, // new interfaces (1 + 2)
-                [], // no keyword changes
+                [], // no trait changes
                 1, // minor increment required for interface changes
                 0  // patch reset to 0 for minor increment
             );
@@ -192,7 +192,7 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
                 newDataHash,
                 0, // keccak256
                 1, // no interface changes
-                [], // no keyword changes
+                [], // no trait changes
                 0, // no minor change
                 1  // patch increment
             );
@@ -207,8 +207,8 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
         });
     });
 
-    describe("Keyword System Edge Cases", function () {
-        it("Should handle keyword updates with data hash requirement", async function () {
+    describe("Trait System Edge Cases", function () {
+        it("Should handle trait updates with data hash requirement", async function () {
             const { registry, user1 } = await loadFixture(deployRegistryFixture);
 
             const did = "did:web:test.com";
@@ -230,7 +230,7 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
             );
 
             const newDataHash = ethers.keccak256(ethers.toUtf8Bytes("new data"));
-            const newKeywords = [ethers.keccak256(ethers.toUtf8Bytes("newkeyword"))];
+            const newTraits = [ethers.keccak256(ethers.toUtf8Bytes("newkeyword"))];
 
             // Update with keyword changes (should require data hash)
             await registry.connect(user1).updateAppControlled(
@@ -240,15 +240,15 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
                 newDataHash,
                 0, // keccak256
                 1, // no interface changes
-                newKeywords, // keyword changes
+                newTraits, // trait changes
                 0, // no minor change
                 1  // patch increment
             );
 
             // Verify the update
             const app = await registry.getApp(did, 1);
-            expect(app.keywordHashes.length).to.equal(1);
-            expect(app.keywordHashes[0]).to.equal(newKeywords[0]);
+            expect(app.traitHashes.length).to.equal(1);
+            expect(app.traitHashes[0]).to.equal(newTraits[0]);
             // Check version history instead of direct fields
             expect(app.versionHistory.length).to.be.greaterThan(0);
             const latestVersion = app.versionHistory[app.versionHistory.length - 1];
@@ -276,7 +276,7 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
                 metadataJson
             );
 
-            const newKeywords = [ethers.keccak256(ethers.toUtf8Bytes("newkeyword"))];
+            const newTraits = [ethers.keccak256(ethers.toUtf8Bytes("newkeyword"))];
 
             // Update with keyword changes without data hash (should fail)
             await expect(registry.connect(user1).updateAppControlled(
@@ -286,10 +286,10 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
                 ethers.ZeroHash, // zero data hash (should trigger error)
                 0, // keccak256
                 1, // no interface changes
-                newKeywords, // keyword changes
+                newTraits, // trait changes
                 0, // no minor change
                 1  // patch increment
-            )).to.be.revertedWithCustomError(registry, "DataHashRequiredForKeywordChange");
+            )).to.be.revertedWithCustomError(registry, "DataHashRequiredForTraitChange");
         });
     });
 

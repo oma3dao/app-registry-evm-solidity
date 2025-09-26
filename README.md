@@ -131,7 +131,7 @@ function mint(
     uint8 initialVersionMajor,         // Initial major version
     uint8 initialVersionMinor,         // Initial minor version
     uint8 initialVersionPatch,         // Initial patch version
-    bytes32[] memory keywordHashes,    // Keyword hashes for tagging
+    bytes32[] memory traitHashes,      // Trait hashes for tagging
     string memory metadataJson         // Optional: JSON to store on-chain via metadata contract
 ) external nonReentrant returns (uint256 tokenId)
 ```
@@ -159,7 +159,7 @@ function updateAppControlled(
     bytes32 newDataHash,               // New data hash (bytes32(0) = no change)
     uint8 newDataHashAlgorithm,        // New hash algorithm
     uint16 newInterfaces,              // New interfaces (0 = no change)
-    bytes32[] memory newKeywordHashes, // New keywords (empty = no change)
+    bytes32[] memory newTraitHashes,   // New traits (empty = no change)
     uint8 newMinor,                    // New minor version
     uint8 newPatch                     // New patch version
 ) external onlyAppOwner(didString, major) nonReentrant
@@ -237,13 +237,13 @@ function getTotalAppsByMinter(address minter)
 - `getAppsByMinter(minter, 1)` returns apps at positions 1-2 (apps with token IDs 2, 3)
 - The apps themselves still have token IDs 1, 2, 3 regardless of pagination
 
-#### Keyword Filtering
+#### Trait Filtering
 
 ```solidity
-function hasAnyKeywords(string memory didString, uint8 major, bytes32[] memory keywords) 
+function hasAnyTraits(string memory didString, uint8 major, bytes32[] memory traits) 
     external view returns (bool)
 
-function hasAllKeywords(string memory didString, uint8 major, bytes32[] memory keywords) 
+function hasAllTraits(string memory didString, uint8 major, bytes32[] memory traits) 
     external view returns (bool)
 ```
 
@@ -252,7 +252,7 @@ function hasAllKeywords(string memory didString, uint8 major, bytes32[] memory k
 The contract enforces semantic versioning rules:
 
 1. **Interface Changes**: Require minor version increment and must be additive only
-2. **Data/Keyword Changes**: Require patch increment (unless minor also increments)
+2. **Data/Trait Changes**: Require patch increment (unless minor also increments)
 3. **Major Version Changes**: Require minting new NFT with new token ID
 4. **Immutable Fields**: DID, major version, minter, fungible token ID, contract ID
 
@@ -267,8 +267,8 @@ event DataUrlUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 index
                      string newDataUrl, bytes32 newDataHash, uint8 dataHashAlgorithm);
 event VersionAdded(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, 
                    uint8 minor, uint8 patch);
-event KeywordsUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, 
-                      bytes32[] newKeywordHashes);
+event TraitsUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, 
+                    bytes32[] newTraitHashes);
 event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, 
                         uint16 newInterfaces);
 ```
@@ -521,6 +521,9 @@ npx hardhat getApps --start 0 --registry <CONTRACT_ADDRESS> --network celoAlfajo
 
 # Get apps by minter
 npx hardhat getAppsByMinter --minter <ADDRESS> --start 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+
+# Check app traits
+npx hardhat has-traits --did "did:example:123" --traits "gaming,web3" --major 1 --mode "any" --registry <CONTRACT_ADDRESS> --network celoAlfajores
 ```
 
 ## Usage Examples
@@ -591,7 +594,7 @@ if (!isDataValid) {
 
 // 2. Now you can mint the application
 const interfaces = 5; // 1 (human) + 4 (mcp) = human + mcp interfaces
-const keywordHashes = [
+const traitHashes = [
   ethers.utils.keccak256(ethers.utils.toUtf8Bytes("gaming")),
   ethers.utils.keccak256(ethers.utils.toUtf8Bytes("web3"))
 ];
@@ -607,7 +610,7 @@ const tx = await registry.mint(
   1,                          // Major version 1
   0,                          // Minor version 0
   0,                          // Patch version 0
-  keywordHashes,              // Keywords
+  traitHashes,                // Traits
   metadataContent             // Optional: store JSON on-chain
 );
 
@@ -651,7 +654,7 @@ await registry.updateAppControlled(
   newDataHash,                // New data hash
   0,                          // Same algorithm
   0,                          // No interface changes
-  [],                         // No keyword changes
+  [],                         // No trait changes
   0,                          // Same minor
   1                           // Increment patch
 );
@@ -663,9 +666,9 @@ await registry.updateAppControlled(
 // Get active applications (paginated)
 const [apps, nextIndex] = await registry.getAppsByStatus(0, 0);
 
-// Check if app has keywords
-const hasKeywords = await registry.hasAnyKeywords(
-  "did:example:123", 1, keywordHashes
+// Check if app has traits
+const hasTraits = await registry.hasAnyTraits(
+  "did:example:123", 1, traitHashes
 );
 
 // Get latest major version
@@ -778,6 +781,27 @@ Advanced: OMA3FederatedHub (Multi-chain + decentralized storage)
 2. **Plan for Hybrid**: Design systems to handle both on-chain and off-chain attestations
 3. **Index with EAS**: Use EAS for extended attestations with DID-based indexing
 4. **Stay Updated**: Monitor for hub system announcements and migration guides
+
+---
+
+## Recommended Trait Hashes
+
+This appendix provides a list of recommended trait strings for use in the on-chain `traitHashes` array. For the onchain field, developers must hash these values with keccak256. Additional "offically recommended" traits may be proposed via pull request, but developers are free to use whatever string they like.
+
+| Trait String | Description |
+|--------------|-------------|
+| `api:openapi` | Include this if the interface field has a value of 2 and the API format is OpenAPI. |
+| `api:graphql` | Include this if the interface field has a value of 2 and the API format is GraphQL. |
+| `api:jsonrpc` | Include this if the interface field has a value of 2 and the API format is JSON-RPC. |
+| `api:mcp` | Include this if the interface field has a value of 2 and the API format is OpenAPI. |
+| `api:a2a` | Include this if the interface field has a value of 2 and the API format is A2A. |
+| `token:erc20` | Include this if the token in the fungibleTokenId field supports ERC-20. |
+| `token:erc3009` | Include this if the token in the fungibleTokenId field supports ERC-3009. |
+| `token:spl` | Include this if the token in the fungibleTokenId field supports SPL. |
+| `token:2022` | Include this if the token in the fungibleTokenId field supports Token-2022. |
+| `token:transferable` | Include this if the token in the fungibleTokenId is transferable. |
+| `token:burnable` | Include this if the token in the fungibleTokenId is burnable. |
+| `pay:x402` | Include this if the endpoint supports x402 payments. |
 
 ---
 

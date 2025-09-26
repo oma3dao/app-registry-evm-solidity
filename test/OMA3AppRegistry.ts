@@ -8,13 +8,13 @@ const hre = require("hardhat");
 // Keep these in sync with the constants in the contract
 const MAX_DID_LENGTH = 128;
 const MAX_URL_LENGTH = 256;
-const MAX_KEYWORDS = 20;
+const MAX_TRAITS = 20;
 
-// Interface types according to specification (0=human, 1=api, 2=mcp)
+// Interface types according to specification (0=human, 2=api, 4=smart contract)
 const INTERFACE_TYPES = {
   HUMAN: 0,
-  API: 1,
-  MCP: 2
+  API: 2,
+  SMART_CONTRACT: 4
 };
 
 // Status values
@@ -80,7 +80,7 @@ function makeCompatProxy(contract: any) {
 		const contractId = app[8];
 		const dataUrl = app[9];
 		const versionHistory = app[10];
-		const keywordHashes = app[11];
+		const traitHashes = app[11];
 		return {
 			minter,
 			interfaces: fromBitmap(interfacesBitmap),
@@ -93,7 +93,7 @@ function makeCompatProxy(contract: any) {
 			contractId,
 			dataUrl,
 			versionHistory,
-			keywordHashes
+			traitHashes
 		};
 	};
 
@@ -105,9 +105,9 @@ function makeCompatProxy(contract: any) {
 			}
 			if (prop === "mint") {
 				return (...args: any[]) => {
-					// Old tests: mint(did, status, dataUrl, dataHash, algoStr, fungibleTokenId, contractId, maj, min, patch, keywordHashes, interfacesArr, metadataJson)
+					// Old tests: mint(did, status, dataUrl, dataHash, algoStr, fungibleTokenId, contractId, maj, min, patch, traitHashes, interfacesArr, metadataJson)
 					if (args.length === 13) {
-						const [did, _statusIgnored, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, keywordHashes, interfacesArr, metadataJson] = args;
+						const [did, _statusIgnored, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, traitHashes, interfacesArr, metadataJson] = args;
 						return target.mint(
 							did,
 							toBitmap(interfacesArr),
@@ -119,13 +119,13 @@ function makeCompatProxy(contract: any) {
 							maj,
 							min,
 							patch,
-							keywordHashes,
+							traitHashes,
 							metadataJson
 						);
 					}
-					// New tests: mint(did, interfacesArg, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, keywordHashes, metadataJson)
+					// New tests: mint(did, interfacesArg, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, traitHashes, metadataJson)
 					if (args.length === 12) {
-						const [did, interfacesArg, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, keywordHashes, metadataJson] = args;
+						const [did, interfacesArg, dataUrl, dataHash, algo, fungibleTokenId, contractId, maj, min, patch, traitHashes, metadataJson] = args;
 						return target.mint(
 							did,
 							toBitmap(interfacesArg),
@@ -137,7 +137,7 @@ function makeCompatProxy(contract: any) {
 							maj,
 							min,
 							patch,
-							keywordHashes,
+							traitHashes,
 							metadataJson
 						);
 					}
@@ -194,7 +194,7 @@ const ERRORS = {
   DATA_URL_CANNOT_BE_EMPTY: "DataUrlCannotBeEmpty",
   FUNGIBLE_TOKEN_ID_TOO_LONG: "FungibleTokenIdTooLong",
   CONTRACT_ID_TOO_LONG: "ContractIdTooLong",
-  TOO_MANY_KEYWORDS: "TooManyKeywords",
+  TOO_MANY_KEYWORDS: "TooManyTraits",
   APP_NOT_FOUND: "AppNotFound",
   NOT_APP_OWNER: "NotAppOwner",
   INVALID_VERSION: "InvalidVersion",
@@ -206,7 +206,7 @@ const ERRORS = {
   INTERFACE_REMOVAL_NOT_ALLOWED: "InterfaceRemovalNotAllowed",
   NO_CHANGES_SPECIFIED: "NoChangesSpecified",
   DID_HASH_NOT_FOUND: "DIDHashNotFound",
-  DATA_HASH_REQUIRED_FOR_KEYWORD_CHANGE: "DataHashRequiredForKeywordChange",
+  DATA_HASH_REQUIRED_FOR_KEYWORD_CHANGE: "DataHashRequiredForTraitChange",
   InvalidStatus: "InvalidStatus"
 };
 
@@ -247,7 +247,7 @@ describe("OMA3AppRegistry", function () {
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
-      const keywordHashes: string[] = []; // No keywords
+      const traitHashes: string[] = []; // No keywords
       const interfaces = [INTERFACE_TYPES.HUMAN]; // Human interface only
 
       await registry.connect(minter1).mint(
@@ -261,7 +261,7 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes,
+        traitHashes,
         interfaces,
         ""
       );
@@ -312,7 +312,7 @@ describe("OMA3AppRegistry", function () {
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
-      const keywordHashes: string[] = []; // No keywords
+      const traitHashes: string[] = []; // No keywords
 
       await expect(
         registry.connect(minter1).mint(
@@ -326,7 +326,7 @@ describe("OMA3AppRegistry", function () {
           initialVersionMajor,
           initialVersionMinor,
           initialVersionPatch,
-          keywordHashes,
+          traitHashes,
           [INTERFACE_TYPES.HUMAN], // interfaces array
           ""
         )
@@ -348,7 +348,7 @@ describe("OMA3AppRegistry", function () {
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
-      const keywordHashes: string[] = [];
+      const traitHashes: string[] = [];
       const interfaces = [INTERFACE_TYPES.HUMAN];
 
       await registry.connect(minter1).mint(
@@ -362,7 +362,7 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes,
+        traitHashes,
         interfaces,
         ""
       );
@@ -377,7 +377,7 @@ describe("OMA3AppRegistry", function () {
       expect(app.contractId).to.equal(contractId);
       expect(app.versionMajor).to.equal(initialVersionMajor);
       expect(app.status).to.equal(status);
-      expect(app.keywordHashes.length).to.equal(0);
+      expect(app.traitHashes.length).to.equal(0);
     });
 
     it("should get apps by minter", async function () {
@@ -393,7 +393,7 @@ describe("OMA3AppRegistry", function () {
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
-      const keywordHashes: string[] = [];
+      const traitHashes: string[] = [];
       const interfaces = [INTERFACE_TYPES.HUMAN];
 
         await registry.connect(minter1).mint(
@@ -407,7 +407,7 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes,
+        traitHashes,
         interfaces,
         ""
       );
@@ -444,7 +444,7 @@ describe("OMA3AppRegistry", function () {
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
-      const keywordHashes: string[] = [];
+      const traitHashes: string[] = [];
       const interfaces = [INTERFACE_TYPES.HUMAN];
 
         await registry.connect(minter1).mint(
@@ -458,7 +458,7 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes,
+        traitHashes,
         interfaces,
         ""
       );
@@ -483,7 +483,7 @@ describe("OMA3AppRegistry", function () {
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
-      const keywordHashes: string[] = [];
+      const traitHashes: string[] = [];
       const interfaces = [INTERFACE_TYPES.HUMAN];
 
         await registry.connect(minter1).mint(
@@ -497,7 +497,7 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes,
+        traitHashes,
         interfaces,
         ""
       );
@@ -529,7 +529,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -554,7 +554,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -576,7 +576,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [], // Empty interfaces array
           ""
         )
@@ -598,7 +598,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -623,7 +623,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -651,7 +651,7 @@ describe("OMA3AppRegistry", function () {
             1,
             0,
             0,
-            [], // keywordHashes
+            [], // traitHashes
             [INTERFACE_TYPES.HUMAN], // interfaces
             ""
             )
@@ -665,7 +665,7 @@ describe("OMA3AppRegistry", function () {
         const { registry, minter1 } = await loadFixture(deployFixture);
         
       // Create more keywords than allowed
-      const tooManyKeywords = Array(MAX_KEYWORDS + 1).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("keyword")));
+      const tooManyKeywords = Array(MAX_TRAITS + 1).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("keyword")));
           
           await expect(
             registry.connect(minter1).mint(
@@ -679,7 +679,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-            tooManyKeywords, // keywordHashes
+            tooManyKeywords, // traitHashes
             [INTERFACE_TYPES.HUMAN], // interfaces
             ""
         )
@@ -705,7 +705,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -734,7 +734,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -748,8 +748,8 @@ describe("OMA3AppRegistry", function () {
     it("should mint with maximum keywords (20)", async function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
-      // Create exactly MAX_KEYWORDS keywords
-      const maxKeywords = Array(MAX_KEYWORDS).fill(0).map((_, i) => 
+      // Create exactly MAX_TRAITS keywords
+      const maxKeywords = Array(MAX_TRAITS).fill(0).map((_, i) => 
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`keyword${i}`))
       );
       
@@ -765,7 +765,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          maxKeywords, // keywordHashes
+          maxKeywords, // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -773,7 +773,7 @@ describe("OMA3AppRegistry", function () {
 
       // Verify the app was minted correctly
       const app = await registry.getApp("did:oma3:test-max-keywords", 1);
-      expect(app.keywordHashes.length).to.equal(MAX_KEYWORDS);
+      expect(app.traitHashes.length).to.equal(MAX_TRAITS);
     });
 
     it("should mint with empty optional fields (fungibleTokenId, contractId)", async function () {
@@ -791,7 +791,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -810,11 +810,11 @@ describe("OMA3AppRegistry", function () {
       const validInterfaces = [
         [INTERFACE_TYPES.HUMAN], // 0 = human interface
         [INTERFACE_TYPES.API],   // 1 = api interface
-        [INTERFACE_TYPES.MCP],   // 2 = mcp interface
+        [INTERFACE_TYPES.SMART_CONTRACT],   // 2 = mcp interface
         [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API], // 0,1 = human + api
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.MCP], // 0,2 = human + mcp
-        [INTERFACE_TYPES.API, INTERFACE_TYPES.MCP],   // 1,2 = api + mcp
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP] // 0,1,2 = all
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.SMART_CONTRACT], // 0,2 = human + mcp
+        [INTERFACE_TYPES.API, INTERFACE_TYPES.SMART_CONTRACT],   // 1,2 = api + mcp
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.SMART_CONTRACT] // 0,1,2 = all
       ];
       
       for (const interfaces of validInterfaces) {
@@ -832,7 +832,7 @@ describe("OMA3AppRegistry", function () {
             1, // initialVersionMajor
             0, // initialVersionMinor
             0, // initialVersionPatch
-            [], // keywordHashes
+            [], // traitHashes
             interfaces, // interfaces array
             ""
           )
@@ -859,7 +859,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -877,7 +877,7 @@ describe("OMA3AppRegistry", function () {
           2, // different major version
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -890,7 +890,7 @@ describe("OMA3AppRegistry", function () {
         const { registry, minter1 } = await loadFixture(deployFixture);
         
       // Create a large dataset to stress memory
-      const largeKeywords = Array(MAX_KEYWORDS).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("very-long-keyword-string-for-stress-testing")));
+      const largeKeywords = Array(MAX_TRAITS).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("very-long-keyword-string-for-stress-testing")));
       const longDid = "did:oma3:" + "a".repeat(MAX_DID_LENGTH - 9);
       const longUrl = "https://data.example.com/" + "a".repeat(MAX_URL_LENGTH - 25);
       
@@ -905,8 +905,8 @@ describe("OMA3AppRegistry", function () {
         255, // initialVersionMajor
         255, // initialVersionMinor
         255, // initialVersionPatch
-        largeKeywords, // keywordHashes
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP], // all interfaces
+        largeKeywords, // traitHashes
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.SMART_CONTRACT], // all interfaces
         ""
           );
           
@@ -934,7 +934,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
           )
@@ -959,7 +959,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
           )
@@ -969,8 +969,8 @@ describe("OMA3AppRegistry", function () {
     it("should accept maximum number of keywords", async function () {
         const { registry, minter1 } = await loadFixture(deployFixture);
         
-      // Create exactly MAX_KEYWORDS
-      const maxKeywords = Array(MAX_KEYWORDS).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("keyword")));
+      // Create exactly MAX_TRAITS
+      const maxKeywords = Array(MAX_TRAITS).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("keyword")));
         
         await expect(
           registry.connect(minter1).mint(
@@ -984,7 +984,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          maxKeywords, // keywordHashes
+          maxKeywords, // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
           )
@@ -1009,7 +1009,7 @@ describe("OMA3AppRegistry", function () {
         0, // major version 0
         1, // minor version 1
         0, // patch version 0
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1036,7 +1036,7 @@ describe("OMA3AppRegistry", function () {
         0, // major version 0
         1, // minor version 1
         0, // patch version 0
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1054,7 +1054,7 @@ describe("OMA3AppRegistry", function () {
           0, // major version 0
           2, // minor version 2
           0, // patch version 0
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -1088,7 +1088,7 @@ describe("OMA3AppRegistry", function () {
         0, // major version 0
         0, // minor version 0
         0, // patch version 0
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1115,7 +1115,7 @@ describe("OMA3AppRegistry", function () {
         0, // major version 0
         1, // minor version 1
         0, // patch version 0
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1132,7 +1132,7 @@ describe("OMA3AppRegistry", function () {
         1, // major version 1
         0, // minor version 0
         0, // patch version 0
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1157,7 +1157,7 @@ describe("OMA3AppRegistry", function () {
       const initialVersionMajor = 1;
       const initialVersionMinor = 0;
       const initialVersionPatch = 0;
-      const keywordHashes: string[] = [];
+      const traitHashes: string[] = [];
 
       await registry.connect(minter1).mint(
         did,
@@ -1170,7 +1170,7 @@ describe("OMA3AppRegistry", function () {
         initialVersionMajor,
         initialVersionMinor,
         initialVersionPatch,
-        keywordHashes,
+        traitHashes,
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1344,7 +1344,7 @@ describe("OMA3AppRegistry", function () {
       const app = await registry.getApp(did, 1);
       expect(app.interfaces).to.deep.equal([INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API]);
       expect(app.dataUrl).to.equal("https://data.example.com/app1-combined");
-      expect(app.keywordHashes.length).to.equal(1);
+      expect(app.traitHashes.length).to.equal(1);
     });
 
     it("should validate data URL constraints", async function () {
@@ -1386,7 +1386,7 @@ describe("OMA3AppRegistry", function () {
       const { registry, minter1, did } = await loadFixture(deployFixtureWithApp);
       
       // Try to update with too many keywords (should fail)
-      const tooManyKeywords = Array(MAX_KEYWORDS + 1).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("keyword")));
+      const tooManyKeywords = Array(MAX_TRAITS + 1).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("keyword")));
       
       await expect(
         registry.connect(minter1).updateAppControlled(
@@ -1458,7 +1458,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -1505,7 +1505,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1540,7 +1540,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -1587,7 +1587,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -1639,7 +1639,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1672,7 +1672,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1688,7 +1688,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1742,7 +1742,7 @@ describe("OMA3AppRegistry", function () {
         1, // major version 1
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1768,7 +1768,7 @@ describe("OMA3AppRegistry", function () {
         2, // major version 2
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1801,7 +1801,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1822,7 +1822,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1857,7 +1857,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1875,7 +1875,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -1912,7 +1912,7 @@ describe("OMA3AppRegistry", function () {
         0, // major version 0
         1, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1938,7 +1938,7 @@ describe("OMA3AppRegistry", function () {
         1, // major version 1
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1970,7 +1970,7 @@ describe("OMA3AppRegistry", function () {
         1, // major version 1
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -1996,7 +1996,7 @@ describe("OMA3AppRegistry", function () {
         2, // major version 2
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2020,7 +2020,7 @@ describe("OMA3AppRegistry", function () {
         3, // major version 3
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2064,7 +2064,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -2091,7 +2091,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2132,7 +2132,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2163,7 +2163,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2205,7 +2205,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2270,7 +2270,7 @@ describe("OMA3AppRegistry", function () {
             1, // initialVersionMajor
             0, // initialVersionMinor
             0, // initialVersionPatch
-            [], // keywordHashes
+            [], // traitHashes
             [INTERFACE_TYPES.HUMAN], // interfaces
             ""
           );
@@ -2288,7 +2288,7 @@ describe("OMA3AppRegistry", function () {
       // Test with maximum allowed inputs to ensure gas limits aren't exceeded
       const maxDid = "did:oma3:" + "a".repeat(MAX_DID_LENGTH - 9);
       const maxUrl = "https://data.example.com/" + "a".repeat(MAX_URL_LENGTH - 25);
-      const maxKeywords = Array(MAX_KEYWORDS).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("keyword")));
+      const maxKeywords = Array(MAX_TRAITS).fill(hre.ethers.keccak256(hre.ethers.toUtf8Bytes("keyword")));
       
       // This should complete within reasonable gas limits
       const tx = await registry.connect(minter1).mint(
@@ -2302,8 +2302,8 @@ describe("OMA3AppRegistry", function () {
         255, // initialVersionMajor
         255, // initialVersionMinor
         255, // initialVersionPatch
-        maxKeywords, // keywordHashes
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP], // all interfaces
+        maxKeywords, // traitHashes
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.SMART_CONTRACT], // all interfaces
         ""
       );
 
@@ -2329,7 +2329,7 @@ describe("OMA3AppRegistry", function () {
           255, // max uint8
           255, // max uint8
           255, // max uint8
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -2348,7 +2348,7 @@ describe("OMA3AppRegistry", function () {
           0, // min uint8
           0, // min uint8
           0, // min uint8
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -2382,7 +2382,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -2410,7 +2410,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -2438,7 +2438,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -2470,7 +2470,7 @@ describe("OMA3AppRegistry", function () {
         1,
         0,
         0,
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2499,7 +2499,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -2539,7 +2539,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -2587,7 +2587,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -2634,7 +2634,7 @@ describe("OMA3AppRegistry", function () {
           1,
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -2675,7 +2675,7 @@ describe("OMA3AppRegistry", function () {
         1,
         0,
         0,
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2711,7 +2711,7 @@ describe("OMA3AppRegistry", function () {
         1, // major version 1
         0,
         0,
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2729,7 +2729,7 @@ describe("OMA3AppRegistry", function () {
           1, // same major version (should fail)
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -2753,7 +2753,7 @@ describe("OMA3AppRegistry", function () {
         1, // major version 1
         0,
         0,
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2771,7 +2771,7 @@ describe("OMA3AppRegistry", function () {
           2, // different major version (should succeed)
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -2799,7 +2799,7 @@ describe("OMA3AppRegistry", function () {
         1, // major version 1
         0,
         0,
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -2817,7 +2817,7 @@ describe("OMA3AppRegistry", function () {
           1, // same major version, different DID (should succeed)
           0,
           0,
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -3073,7 +3073,7 @@ describe("OMA3AppRegistry", function () {
         1,
         0,
         0,
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -3109,7 +3109,7 @@ describe("OMA3AppRegistry", function () {
         1,
         0,
         0,
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -3569,7 +3569,7 @@ describe("OMA3AppRegistry", function () {
 
       // Verify app was minted successfully
       const app = await registry.getApp("did:oma3:keyword-collision-test", 1);
-      expect(app.keywordHashes.length).to.equal(3);
+      expect(app.traitHashes.length).to.equal(3);
     });
 
     it("should optimize keyword search performance", async function () {
@@ -3604,14 +3604,14 @@ describe("OMA3AppRegistry", function () {
       // Test keyword search performance
       const startTime = Date.now();
       
-      // Test hasAnyKeywords performance
+      // Test hasAnyTraits performance
       const web3Hash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3"));
       const defiHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("defi"));
       
              // Query apps by keywords (if such function exists)
        const [apps, nextIndex] = await registry.getAppsByStatus(0, 0);
-       const web3Apps = apps.filter((app: any) => app.keywordHashes.includes(web3Hash));
-       const defiApps = apps.filter((app: any) => app.keywordHashes.includes(defiHash));
+       const web3Apps = apps.filter((app: any) => app.traitHashes.includes(web3Hash));
+       const defiApps = apps.filter((app: any) => app.traitHashes.includes(defiHash));
       
       const queryTime = Date.now() - startTime;
       console.log(`    ✓ Keyword search completed in ${queryTime}ms`);
@@ -3623,7 +3623,7 @@ describe("OMA3AppRegistry", function () {
       const { registry, minter1 } = await loadFixture(deployFixture);
       
       // Create maximum number of keywords
-      const maxKeywords = Array(MAX_KEYWORDS).fill(0).map((_, i) => 
+      const maxKeywords = Array(MAX_TRAITS).fill(0).map((_, i) => 
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes(`keyword-${i}`))
       );
       
@@ -3644,11 +3644,11 @@ describe("OMA3AppRegistry", function () {
         ""
       );
       const mintTime = Date.now() - startTime;
-      console.log(`    ✓ Minted app with ${MAX_KEYWORDS} keywords in ${mintTime}ms`);
+      console.log(`    ✓ Minted app with ${MAX_TRAITS} keywords in ${mintTime}ms`);
 
       // Verify all keywords were stored
       const app = await registry.getApp("did:oma3:max-keywords-test", 1);
-      expect(app.keywordHashes.length).to.equal(MAX_KEYWORDS);
+      expect(app.traitHashes.length).to.equal(MAX_TRAITS);
     });
 
     it("should handle keyword updates efficiently", async function () {
@@ -3698,9 +3698,9 @@ describe("OMA3AppRegistry", function () {
 
       // Verify keywords were updated
       const app = await registry.getApp("did:oma3:keyword-update-test", 1);
-      expect(app.keywordHashes.length).to.equal(2);
-      expect(app.keywordHashes).to.include(newKeywords[0]);
-      expect(app.keywordHashes).to.include(newKeywords[1]);
+      expect(app.traitHashes.length).to.equal(2);
+      expect(app.traitHashes).to.include(newKeywords[0]);
+      expect(app.traitHashes).to.include(newKeywords[1]);
     });
   });
 
@@ -4219,7 +4219,7 @@ describe("OMA3AppRegistry", function () {
         const interfaces = randomInterfaces[i];
         
         // Convert keywords to hashes
-        const keywordHashes = keywords.map(keyword => 
+        const traitHashes = keywords.map(keyword => 
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(keyword))
         );
         
@@ -4235,7 +4235,7 @@ describe("OMA3AppRegistry", function () {
             1, // major (simplified)
             0, // minor
             0, // patch
-            keywordHashes,
+            traitHashes,
             [interfaces], // Convert to array format
             ""
           )
@@ -4274,7 +4274,7 @@ describe("OMA3AppRegistry", function () {
           1, // major
           0, // minor
           0, // patch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -4294,7 +4294,7 @@ describe("OMA3AppRegistry", function () {
           1, // major
           0, // minor
           0, // patch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         )
@@ -4319,7 +4319,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -4327,7 +4327,7 @@ describe("OMA3AppRegistry", function () {
       console.log(`Minimal mint gas used: ${minimalMintReceipt.gasUsed.toString()}`);
       
       // Measure full mint gas cost (with keywords)
-      const keywordHashes = ["web3", "defi", "nft", "ai", "ml", "blockchain", "dao", "governance", "voting", "lending"].map(
+      const traitHashes = ["web3", "defi", "nft", "ai", "ml", "blockchain", "dao", "governance", "voting", "lending"].map(
         keyword => hre.ethers.keccak256(hre.ethers.toUtf8Bytes(keyword))
       );
       const fullMintTx = await registry.connect(minter1).mint(
@@ -4341,8 +4341,8 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        keywordHashes,
-        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.MCP], // All interfaces
+        traitHashes,
+        [INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API, INTERFACE_TYPES.SMART_CONTRACT], // All interfaces
         ""
       );
       const fullMintReceipt = await fullMintTx.wait();
@@ -4382,7 +4382,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -4415,7 +4415,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -4473,7 +4473,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -4509,7 +4509,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -4542,7 +4542,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -4577,7 +4577,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -4614,7 +4614,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -4657,7 +4657,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -4699,7 +4699,7 @@ describe("OMA3AppRegistry", function () {
         1, // initialVersionMajor
         0, // initialVersionMinor
         0, // initialVersionPatch
-        [], // keywordHashes
+        [], // traitHashes
         [INTERFACE_TYPES.HUMAN], // interfaces
         ""
       );
@@ -4728,7 +4728,7 @@ describe("OMA3AppRegistry", function () {
           1, // initialVersionMajor
           0, // initialVersionMinor
           0, // initialVersionPatch
-          [], // keywordHashes
+          [], // traitHashes
           [INTERFACE_TYPES.HUMAN], // interfaces
           ""
         );
@@ -4809,7 +4809,7 @@ describe("OMA3AppRegistry", function () {
     const totalDeprecated = await registry.connect(minter1).getTotalAppsByStatus(1);
     expect(totalDeprecated).to.equal(105);
 
-    // Test hasAllKeywords function to cover the remaining uncovered lines
+    // Test hasAllTraits function to cover the remaining uncovered lines
     // First, mint an app with keywords
     await registry.connect(minter1).mint(
       "did:oma3:keywords-test",
@@ -4820,39 +4820,39 @@ describe("OMA3AppRegistry", function () {
       "",
       "",
       1, 0, 0, 
-      [hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")), hre.ethers.keccak256(hre.ethers.toUtf8Bytes("defi"))], // keywordHashes
+      [hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")), hre.ethers.keccak256(hre.ethers.toUtf8Bytes("defi"))], // traitHashes
       ""
     );
 
-    // Test hasAllKeywords with matching keywords
-    const hasAll = await registry.hasAllKeywords("did:oma3:keywords-test", 1, [
+    // Test hasAllTraits with matching keywords
+    const hasAll = await registry.hasAllTraits("did:oma3:keywords-test", 1, [
       hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")),
       hre.ethers.keccak256(hre.ethers.toUtf8Bytes("defi"))
     ]);
     expect(hasAll).to.be.true;
 
-    // Test hasAllKeywords with partial keywords (should return false)
-    const hasPartial = await registry.hasAllKeywords("did:oma3:keywords-test", 1, [
+    // Test hasAllTraits with partial keywords (should return false)
+    const hasPartial = await registry.hasAllTraits("did:oma3:keywords-test", 1, [
       hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3"))
     ]);
     expect(hasPartial).to.be.true; // This should be true since it has all the requested keywords
 
-    // Test hasAllKeywords with non-matching keywords (should return false)
-    const hasNone = await registry.hasAllKeywords("did:oma3:keywords-test", 1, [
+    // Test hasAllTraits with non-matching keywords (should return false)
+    const hasNone = await registry.hasAllTraits("did:oma3:keywords-test", 1, [
       hre.ethers.keccak256(hre.ethers.toUtf8Bytes("blockchain"))
     ]);
     expect(hasNone).to.be.false;
 
-    // Test hasAnyKeywords function to cover the remaining uncovered lines
-    // Test hasAnyKeywords with matching keywords (should return true)
-    const hasAny = await registry.hasAnyKeywords("did:oma3:keywords-test", 1, [
+    // Test hasAnyTraits function to cover the remaining uncovered lines
+    // Test hasAnyTraits with matching keywords (should return true)
+    const hasAny = await registry.hasAnyTraits("did:oma3:keywords-test", 1, [
       hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")),
       hre.ethers.keccak256(hre.ethers.toUtf8Bytes("blockchain"))
     ]);
     expect(hasAny).to.be.true; // Should return true because it has "web3"
 
-    // Test hasAnyKeywords with no matching keywords (should return false)
-    const hasAnyNone = await registry.hasAnyKeywords("did:oma3:keywords-test", 1, [
+    // Test hasAnyTraits with no matching keywords (should return false)
+    const hasAnyNone = await registry.hasAnyTraits("did:oma3:keywords-test", 1, [
       hre.ethers.keccak256(hre.ethers.toUtf8Bytes("blockchain")),
       hre.ethers.keccak256(hre.ethers.toUtf8Bytes("ethereum"))
     ]);
@@ -5347,7 +5347,7 @@ describe("OMA3AppRegistry", function () {
       );
 
       const app = await registry.getApp(did, 1);
-      expect(app.keywordHashes.length).to.equal(20);
+      expect(app.traitHashes.length).to.equal(20);
 
       // Test that adding more keywords fails
       const extraKeywords = [hre.ethers.keccak256(hre.ethers.toUtf8Bytes("extra"))];
@@ -5361,7 +5361,7 @@ describe("OMA3AppRegistry", function () {
           [...maxKeywords, ...extraKeywords], // try to add more keywords
           1, 1 // new minor, patch
         )
-      ).to.be.revertedWithCustomError(registry, "TooManyKeywords");
+      ).to.be.revertedWithCustomError(registry, "TooManyTraits");
     });
 
     it("should handle keyword validation with data hash requirement", async function () {
@@ -5391,7 +5391,7 @@ describe("OMA3AppRegistry", function () {
           newKeywords, // new keywords
           1, 1 // new minor, patch
         )
-      ).to.be.revertedWithCustomError(registry, "DataHashRequiredForKeywordChange");
+      ).to.be.revertedWithCustomError(registry, "DataHashRequiredForTraitChange");
 
       // Should succeed with new data hash
       await registry.connect(minter1).updateAppControlled(
@@ -5405,7 +5405,7 @@ describe("OMA3AppRegistry", function () {
       );
 
       const app = await registry.getApp(did, 1);
-      expect(app.keywordHashes).to.deep.include.members(newKeywords);
+      expect(app.traitHashes).to.deep.include.members(newKeywords);
     });
   });
 
