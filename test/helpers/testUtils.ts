@@ -117,7 +117,7 @@ export class TestHelper {
         const delegated = {
             issuer: signer.address,
             didHash: didHash,
-            controllerAddress: controllerAddress,
+            controllerAddress: ethers.zeroPadValue(controllerAddress, 32),
             expiresAt: expiresAt,
             deadline: deadline,
             nonce: nonce

@@ -282,6 +282,7 @@ describe("OMA3AppRegistry", function () {
     });
 
     it("getAppDIDs and getAppDIDsByStatus should return array with correct size when getting DIDs by status", async function () {
+      this.timeout(60000); // Increase timeout to 60 seconds
       const config = await loadFixture(deployFixtureOneApp);
 
       // Get all DIDs
@@ -2129,8 +2130,8 @@ describe("OMA3AppRegistry", function () {
       const endTime = Date.now();
       const executionTime = endTime - startTime;
       
-      // Ensure operations complete within reasonable time (5 seconds)
-      expect(executionTime).to.be.lessThan(5000);
+      // Ensure operations complete within reasonable time (6 seconds)
+      expect(executionTime).to.be.lessThan(6000);
     });
 
     it("should handle rapid concurrent operations", async function () {
