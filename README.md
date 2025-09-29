@@ -243,6 +243,8 @@ event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 in
 - **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
 - **Purpose**: DID ownership resolution and data hash attestation validation
 
+For information on deploying OMATrust contracts, see the deployment README.
+
 ### Contract ABI
 
 The contract ABIs are generated automatically when you compile the contracts and can be found at:
@@ -415,21 +417,25 @@ await resolver.attestDataHash(didHash, dataHash, expiresAt);
 console.log("Attestations created for developer");
 ```
 
-### Submitting Other Attestations
+### Trust Attestations- The Backbone of OMATrust
 
-The resolver contract only handles **DID ownership** and **data URL integrity**. For other OMATrust attestations (cybersecurity audits, user reviews, reputation scores, etc.):
+For attestations beyond core DID ownership and data integrity, the OMA3 ecosystem integrates with proven attestation services such as [EAS (Ethereum Attestation Service)](https://attest.sh/) and [BAS (Base Attestation Service)](https://github.com/base-org/bas) deployed on various chains, including OMAChain.
+
+#### Examples of Extended Attestations:
+- **Security Audits**: Third-party security assessment results
+- **Compliance Certifications**: Regulatory or industry standard compliance
+- **Integration Approvals**: Platform-specific authorization attestations
+- **User Reviews**: Community feedback and ratings
+
+#### To interface with OMAChain attestations:
 
 - **Frontend**: Use **[reputation.oma3.org](https://reputation.oma3.org)** for user-friendly attestation management
 - **Technical Details**: See [rep-attestation-tools-evm-solidity](https://github.com/oma3dao/rep-attestation-tools-evm-solidity) and [rep-attestation-frontend](https://github.com/oma3dao/rep-attestation-frontend) repositories
-- **Technology**: Built on proven attestation services (EAS, BAS, etc.) on various chains
-
-## Ecosystem Integration & Future Migration
-
-### **Proven Attestation Service Integration**
-
-For attestations beyond core DID ownership and data integrity, the OMA3 ecosystem integrates with proven attestation services such as [EAS (Ethereum Attestation Service)](https://attest.sh/) and [BAS (Base Attestation Service)](https://github.com/base-org/bas) deployed on various chains:
 
 #### **Index Function: DID → Recipient Mapping**
+
+EAS and BAS are not designed for OMATrust's DID-based identity system.  To utilize DIDs in these systems, the OMATrust specification requires usage of a function that maps DIDs to Ethereum formatted addresses (support for future virtual machines forthcoming):
+
 ```solidity
 // Helper function for EAS integration
 function didToRecipient(string memory didString) public pure returns (bytes32) {
@@ -437,30 +443,19 @@ function didToRecipient(string memory didString) public pure returns (bytes32) {
 }
 ```
 
-**Usage Pattern**:
-- **Core Trust**: OMATrust resolver handles DID ownership and data integrity
-- **Extended Attestations**: Use proven attestation services (EAS, BAS, etc.) for reputation, certifications, endorsements, reviews, etc.
-- **Indexing**: Use `didToRecipient(did)` as the recipient field in attestation services
-- **Discovery**: Query attestation services by recipient to find all attestations for a DID
+The resulting "address" can be used as the recipient in EAS-based attestation services.
 
-#### **Examples of Extended Attestations**:
-- **Reputation Scores**: Developer track record and community standing
-- **Security Audits**: Third-party security assessment results
-- **User Reviews**: Community feedback and ratings
-- **Compliance Certifications**: Regulatory or industry standard compliance
-- **Integration Approvals**: Platform-specific authorization attestations
-
-### **Future Hub Migration Path**
+## **Future Resolver -> Hub Migration Path**
 
 The OMATrust resolver system is designed for seamless migration to future hub systems:
 
-#### **Stable Interface Guarantee**
+### Stable Interface Guarantee
 The resolver implements permanent interfaces that will be maintained across all future versions:
 - `IOMA3Resolver` - Core resolution functions
 - `IOMA3DidOwnershipAttestationStore` - Ownership management  
 - `IOMA3DataUrlAttestationStore` - Data integrity validation
 
-#### **Hub System Evolution**
+### Hub System Evolution
 ```
 Current: OMA3ResolverWithStore (On-chain only)
     ↓
@@ -476,7 +471,7 @@ Advanced: OMA3FederatedHub (Multi-chain + decentralized storage)
 - ✅ **Gradual Migration**: Migrate at your own pace, no forced upgrades
 - ✅ **Data Preservation**: All existing attestations preserved and accessible
 
-#### **Future Hub Capabilities**
+### **Future Hub Capabilities**
 - **Hybrid Storage**: Both on-chain and off-chain attestation support
 - **Multi-chain Resolution**: Cross-chain DID ownership and attestation validation
 - **Decentralized Storage**: IPFS, Arweave, and other decentralized storage integration
@@ -490,66 +485,6 @@ Advanced: OMA3FederatedHub (Multi-chain + decentralized storage)
 2. **Plan for Hybrid**: Design systems to handle both on-chain and off-chain attestations
 3. **Index with EAS**: Use EAS for extended attestations with DID-based indexing
 4. **Stay Updated**: Monitor for hub system announcements and migration guides
-
-## **Deploying Contracts**
-
-### For Development/Testing ONLY:
-
-Use the Hardhat tasks for local development and testing:
-
-1. **Setup environment**:
-   ```bash
-   # Install dependencies
-   npm install
-   
-   # Create private key file for development
-   mkdir -p ~/.ssh
-   echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
-   chmod 600 ~/.ssh/test-evm-deployment-key
-   ```
-
-2. **Deploy to testnet for development**:
-
-   ```bash
-   # Deploy both Registry and Metadata contracts with linking
-   npm run deploy:system -- --network celoAlfajores
-   
-   # Or deploy just the Registry contract
-   npm run deploy:registry -- --network celoAlfajores
-   ```
-
-3. **Verify contracts on explorer** (optional):
-   ```bash
-   # Set API key 
-   export CELOSCAN_API_KEY=your_api_key_here
-
-   # Verify contracts using addresses from deployment output
-   npx hardhat verify --network celoAlfajores <REGISTRY_ADDRESS>
-   npx hardhat verify --network celoAlfajores <METADATA_ADDRESS>
-   ```
-
-### Deployment with Factory Contract (deprecated)
-
-Use the `OMA3SystemFactory` contract for deployment:
-
-1. **Prepare deployment**:
-   ```bash
-   npm run prepare:factory
-   ```
-
-2. **Deploy via Thirdweb Dashboard**:
-   - Upload `artifacts/contracts/OMA3SystemFactory.sol/OMA3SystemFactory.json`
-   - Deploy the factory (no constructor parameters needed)
-   - Call `deploySystem(0)` to deploy both contracts with linking
-   - Note the registry and metadata addresses from the deployment event
-
-**Factory Benefits**:
-- ✅ **Atomic deployment** - Both contracts deployed and linked in one transaction
-- ✅ **Deterministic addresses** - Predictable contract addresses  
-- ✅ **No circular dependency** - Factory handles the linking automatically
-- ✅ **Ownership transfer** - You become the owner of both contracts
-- ✅ **Minimal audit surface** - Simple factory logic, focus audit on main contracts
-
 
 ## Migration from V0
 
