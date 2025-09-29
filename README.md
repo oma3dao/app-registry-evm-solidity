@@ -1,16 +1,10 @@
 # OMA3 Application Registry - EVM/Solidity
 
-A production-ready ERC721-based registry with semantic versioning, efficient querying, and comprehensive metadata management.
+**Canonical Implementation** of the [OMATrust Application Registry Specification](https://github.com/oma3dao/omatrust-docs/tree/main/specification).
 
-This repository implements the Application Registry actor described in the Inter World Portaling System specification for identity.
+A production-ready ERC721-based registry with semantic versioning, efficient querying, and comprehensive metadata management for decentralized applications in the OMA3 ecosystem.
 
-## ⚠️ Deployment Security Notice
-
-**DEVELOPMENT ONLY**: The Hardhat deployment tasks in this repository are for development and testing purposes only.
-
-**FOR PRODUCTION**: Use [Thirdweb Dashboard](https://thirdweb.com/contracts/deploy) for secure mainnet and production testnet deployments to eliminate supply chain attack risks.
-
-## License and Participation
+## **License and Participation**
 
 - Code is licensed under [MIT](./LICENSE)
 - Contributor terms are defined in [CONTRIBUTING.md](./CONTRIBUTING.md)
@@ -20,60 +14,22 @@ This initial version (v1) is released under MIT to maximize transparency and ado
 
 OMA3 may license future versions of this reference implementation under different terms (for example, the Business Source License, BSL) if forks or incompatible implementations threaten to fragment the ecosystem or undermine the sustainability of OMA3.  
 
-OMA3 standards (such as specifications and schemas) will always remain open and are governed by [OMA3’s IPR Policy](https://www.oma3.org/intellectual-property-rights-policy).
+OMA3 standards (such as specifications and schemas) will always remain open and are governed by [OMA3's IPR Policy](https://www.oma3.org/intellectual-property-rights-policy).
 
-## Architecture Overview
+## **Architecture Overview**
 
 The OMA3 system consists of two main components working together:
 
-### **OMA3AppRegistry** - Application Registration & NFT Management
-An ERC721 contract where each token represents a unique (DID, major version) combination. This design enables:
+### OMA3AppRegistry - Application Registration & NFT Management
+An ERC721 contract where each token represents a unique (DID, major version) combination.  See the OMATrust specification for details.
 
-- **Semantic Versioning**: Full semver support (major.minor.patch) with controlled upgrade paths
-- **ERC721 Compatibility**: Standard NFT interfaces for marketplace integration and ownership management
-- **Efficient Queries**: Optimized storage layout for fast lookups by status, owner, and keywords
-- **Gas Optimization**: Packed structs and efficient array operations
-- **Extensible Design**: Future-proof architecture supporting new interface types and algorithms
+### OMA3ResolverWithStore - OMATrust DID Ownership & Data Integrity System
+A resolver contract that provides the foundation for decentralized identity and trust management.
 
-### **OMA3ResolverWithStore** - OMATrust DID Ownership & Data Integrity System
-A resolver contract that provides the foundation for decentralized identity and trust management:
+### OMA3AppMetadata - Optional App Registry DataURL Storage
+A contract that OMA3AppRegistry can use to store the dataUrl JSON object onchain.
 
-- **DID Ownership Resolution**: Authoritative determination of who controls a DID
-- **Data Hash Attestation**: Cryptographic proof of data integrity for app manifests
-- **Issuer Authorization**: Allowlist of trusted attestation providers
-- **EIP-712 Delegated Operations**: Secure off-chain signature-based attestations
-- **Maturation Windows**: 48-hour maturation period for ownership changes to prevent attacks
-- **Future-Proof Interfaces**: Stable interfaces designed for long-term compatibility with future hub systems
-
-### **Integration Model: Attestation-First Development**
-
-**🔒 Security Requirement**: Developers must obtain DID ownership attestations before registering applications in the registry. This ensures only legitimate DID controllers can mint applications for their identities.
-
-**Workflow**:
-1. Developer obtains DID ownership and DataURL attestations from authorized issuer
-2. Resolver validates ownership and DataURL during application minting
-3. Registry mints ERC721 token for verified (DID, major version) combination
-4. Ongoing DataURL integrity validated through resolver's attestation system
-
-## Core Concepts
-
-### OMATrust System - DID Ownership & Data Integrity
-
-The OMATrust system provides the foundational trust layer for the OMA3 ecosystem:
-
-#### **DID Ownership Resolution**
-- **Decentralized Identifiers (DIDs)**: Globally unique identifiers controlled by cryptographic keys
-- **Ownership Attestations**: Cryptographic proofs linking DIDs to controlling wallet addresses
-- **Authorized Issuers**: Allowlisted entities that can create valid ownership attestations
-- **Maturation Period**: 48-hour delay for ownership changes to prevent malicious takeovers
-
-#### **Data Hash Attestation System**
-- **Data Integrity**: Cryptographic hashes proving the authenticity of application manifests
-- **Immediate Validation**: Data attestations are valid immediately (no maturation period)
-- **Issuer Authorization**: Only authorized issuers can attest to data hash validity
-- **Ephemeral Storage**: Focused on current validity rather than historical records
-
-#### **Permanent Interfaces for Future Compatibility**
+#### Permanent Interfaces for Future Compatibility
 The resolver implements stable interfaces designed for long-term compatibility:
 
 - **`IOMA3Resolver`**: Core resolution functions (`currentOwner`, `isDataHashValid`)
@@ -82,40 +38,9 @@ The resolver implements stable interfaces designed for long-term compatibility:
 
 These interfaces ensure smooth migration to future hub systems that may store both on-chain and off-chain attestations.
 
-### Applications and Versioning
+## **Smart Contract Functions**
 
-- **DID (Decentralized Identifier)**: Immutable unique identifier for an application, validated through OMATrust
-- **Major Versions**: Breaking changes require new NFT (new token ID)
-- **Minor Versions**: Backward-compatible interface additions
-- **Patch Versions**: Backward-compatible bug fixes and metadata updates
-
-### Token Structure
-
-Each ERC721 token represents one major version of an application:
-- Token ID maps to (DID, major version)
-- Multiple major versions of same DID = multiple NFTs
-- Owner can mint new major versions but not modify immutable fields
-
-### Key Features
-
-#### **Registry Features**
-- **Interface Bitmap**: Supports human, API, and MCP interfaces (combinable)
-- **Status Management**: Active, deprecated, or replaced applications
-- **Keyword Tagging**: Hash-based keyword system for discoverability
-- **Off-chain Data**: URL + hash for integrity verification through OMATrust
-- **Registration Tracking**: Block/timestamp tracking for event log queries
-- **Optional Metadata Storage**: Integrate with OMA3AppMetadata for on-chain JSON storage
-
-#### **OMATrust Security Features**
-- **DID Ownership Validation**: Ensures only legitimate DID controllers can register applications
-- **Data Integrity Verification**: Cryptographic proof of application manifest authenticity  
-- **Authorized Issuer Network**: Decentralized trust through multiple authorized attestation providers
-- **Attack Prevention**: Maturation windows and replay protection prevent malicious ownership changes
-- **EIP-712 Compliance**: Industry-standard signature verification for off-chain operations
-
-## Smart Contract API
-
-### Core Functions
+### Write Functions
 
 #### Minting Applications
 
@@ -190,8 +115,8 @@ function setMetadataJson(
 ```
 
 **Metadata Storage Options:**
-- **Off-chain**: Use IPFS, Arweave, HTTP endpoints, or data URIs (most common)
-- **On-chain**: Optionally store JSON in the metadata contract for guaranteed availability
+- **Offchain**: Use IPFS, Arweave, HTTP endpoints, or data URIs (most common)
+- **Onchain**: Optionally store JSON in the metadata contract for guaranteed availability
 
 ### Query Functions
 
@@ -247,15 +172,6 @@ function hasAllTraits(string memory didString, uint8 major, bytes32[] memory tra
     external view returns (bool)
 ```
 
-### Versioning Rules
-
-The contract enforces semantic versioning rules:
-
-1. **Interface Changes**: Require minor version increment and must be additive only
-2. **Data/Trait Changes**: Require patch increment (unless minor also increments)
-3. **Major Version Changes**: Require minting new NFT with new token ID
-4. **Immutable Fields**: DID, major version, minter, fungible token ID, contract ID
-
 ### Events
 
 ```solidity
@@ -273,26 +189,7 @@ event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 in
                         uint16 newInterfaces);
 ```
 
-## Deployment and Interaction Guide
-
-### Current Deployment
-
-#### **OMA3AppRegistry** (ERC721 Application Registry)
-- **Network**: Celo Alfajores Testnet
-- **Contract Address**: 0x1a58589a9989C7E84128938Af06ede00593cFE31  // 0xE2d601F18166F6632f80d2Fa0Ab474B6d251D400
-- **Legacy Contract Address**: 0xb493465Bcb2151d5b5BaD19d87f9484c8B8A8e83
-
-#### **OMA3AppMetadata** (On-chain JSON Storage)
-- **Network**: Celo Alfajores Testnet
-- **Contract Address**: 0x24B0B17adb13DB2146995480e0114b2c93Df217f 
-- **Legacy Contract Address**: 0x9f1f5559b6D08eC855cafaCD76D9ae69c41169C9
-
-#### **OMA3ResolverWithStore** (OMATrust DID & Data Validation)
-- **Network**: Celo Alfajores Testnet  
-- **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
-- **Purpose**: DID ownership resolution and data hash attestation validation
-
-### Contract ABI
+## **Contract ABI**
 
 The contract ABI is generated automatically when you compile the contracts and can be found at:
 
@@ -309,244 +206,48 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
 # Or manually open the file and copy the "abi" array
 ```
 
-### Testing the Contract System
+## **Deployment Addresses**
 
-#### **Registry Testing**
+#### Production Deployments (OMAChain Mainnet)
+- **Chain ID**:
+- **RPC Endpoint**:
+- **OMA3AppRegistry**: [Deployed Address Here]
+- **OMA3AppMetadata**: [Deployed Address Here]
+- **OMA3ResolverWithStore**: [Deployed Address Here]
 
-1. Change the MAX_APPS_PER_PAGE to 4 for testing by modifying the contract:
-   ```solidity
-   uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
-   //uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
-   ```
+#### Test Deployment (OMAChain Testnet)
+- **Chain ID**:
+- **RPC Endpoint**:
+- **OMA3AppRegistry**: [Deployed Address Here]
+- **OMA3AppMetadata**: [Deployed Address Here]
+- **OMA3ResolverWithStore**: [Deployed Address Here]
 
-2. Compile
-   ```bash
-   npx hardhat compile
-   ```
+#### Dev Deployment (Celo Alfajores Testnet)
+- **Chain ID**:
+- **RPC Endpoint**:
+- **OMA3AppRegistry**: [Deployed Address Here]
+- **OMA3AppMetadata**: [Deployed Address Here]
+- **OMA3ResolverWithStore**: [Deployed Address Here]
 
-3. Run registry tests
-   ```bash
-   npx hardhat test test/OMA3AppRegistry.ts
-   ```
-
-4. Change the MAX_APPS_PER_PAGE back to production values:
-   ```solidity
-   //uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
-   uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
-   ```
-
-5. Compile again
-   ```bash
-   npx hardhat compile
-   ```
-
-#### **OMATrust Resolver Testing**
-
-The OMATrust resolver system includes comprehensive test suites:
-
-##### **🚀 Automated Test Runner (Recommended)**
-
-Use the convenient test runner script for organized testing with clear progress reporting:
-
-```bash
-# Show all available test configurations
-npx ts-node scripts/run-resolver-tests.ts
-
-# Run all resolver tests
-npx ts-node scripts/run-resolver-tests.ts all
-
-# Run specific test categories
-npx ts-node scripts/run-resolver-tests.ts core         # Core functionality only
-npx ts-node scripts/run-resolver-tests.ts integration  # Integration tests only
-npx ts-node scripts/run-resolver-tests.ts deployment   # Deployment tests
-npx ts-node scripts/run-resolver-tests.ts issuers      # Issuer management
-npx ts-node scripts/run-resolver-tests.ts ownership    # Ownership attestations
-npx ts-node scripts/run-resolver-tests.ts data         # Data hash attestations
-npx ts-node scripts/run-resolver-tests.ts delegated    # EIP-712 delegated ops
-npx ts-node scripts/run-resolver-tests.ts gas          # With gas reporting
-npx ts-node scripts/run-resolver-tests.ts coverage     # With coverage
-```
-
-**Test Runner Benefits**:
-- ✅ **Clear Progress**: Progress reporting with emojis and status messages
-- ✅ **Organized Categories**: 13 pre-configured test categories
-- ✅ **Error Handling**: Helpful error messages and configuration validation
-- ✅ **Gas & Coverage**: Built-in support for gas reporting and coverage analysis
-
-##### **Manual Test Execution**
-
-For direct hardhat test execution:
-
-```bash
-# Run all resolver tests manually
-npx hardhat test test/OMA3ResolverWithStore.ts test/OMA3ResolverIntegration.ts
-
-# Run specific test categories with grep
-npx hardhat test test/OMA3ResolverWithStore.ts --grep "Deployment"
-npx hardhat test test/OMA3ResolverWithStore.ts --grep "Issuer Authorization"
-npx hardhat test test/OMA3ResolverWithStore.ts --grep "EIP-712 Delegated"
-
-# Run with gas reporting
-REPORT_GAS=true npx hardhat test test/OMA3ResolverWithStore.ts
-```
-
-**Test Coverage**:
-- ✅ **28+ Core Tests**: Deployment, access control, attestations
-- ✅ **Integration Tests**: Complex scenarios and time-based testing  
-- ✅ **Security Tests**: EIP-712 signatures, replay protection, access control
-- ✅ **Edge Cases**: Expiry handling, maturation windows, error conditions
-
-See `test/README.md` for detailed testing guide and `test/TESTING_SUMMARY.md` for current status.
-
-### Deploying the Contract
-
-## ⚠️ CRITICAL: Development vs Production Deployment
-
-### For Development/Testing ONLY:
-
-Use the Hardhat tasks for local development and testing:
-
-1. **Setup environment**:
-   ```bash
-   # Install dependencies
-   npm install
-   
-   # Create private key file for development
-   mkdir -p ~/.ssh
-   echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
-   chmod 600 ~/.ssh/test-evm-deployment-key
-   ```
-
-### For Production/Mainnet:
-
-**🚨 DO NOT USE HARDHAT TASKS FOR PRODUCTION 🚨**
-
-Use [Thirdweb Dashboard](https://thirdweb.com/contracts/deploy) instead:
-
-1. **Compile contracts**: `npm run compile`
-2. **Upload to Thirdweb Dashboard**: Use the compiled artifacts from `artifacts/contracts/`
-3. **Deploy securely**: Through Thirdweb's secure infrastructure
-4. **Verify deployment**: Using dashboard tools
-
-**Why Thirdweb for Production?**
-- ✅ Eliminates supply chain attack risks
-- ✅ Secure remote execution environment  
-- ✅ Professional security infrastructure
-- ✅ Hardware wallet support via WalletConnect
-- ✅ No local private key exposure
-
-### Production Deployment with Factory Contract
-
-For production, use the `OMA3SystemFactory` contract for secure deployment:
-
-1. **Prepare deployment**:
-   ```bash
-   npm run prepare:factory
-   ```
-
-2. **Deploy via Thirdweb Dashboard**:
-   - Upload `artifacts/contracts/OMA3SystemFactory.sol/OMA3SystemFactory.json`
-   - Deploy the factory (no constructor parameters needed)
-   - Call `deploySystem(0)` to deploy both contracts with linking
-   - Note the registry and metadata addresses from the deployment event
-
-**Factory Benefits**:
-- ✅ **Atomic deployment** - Both contracts deployed and linked in one transaction
-- ✅ **Deterministic addresses** - Predictable contract addresses  
-- ✅ **No circular dependency** - Factory handles the linking automatically
-- ✅ **Ownership transfer** - You become the owner of both contracts
-- ✅ **Minimal audit surface** - Simple factory logic, focus audit on main contracts
-
-## Development Deployment Instructions
-
-### ⚠️ DEVELOPMENT ONLY - NOT FOR PRODUCTION
-
-The following instructions are for **development and testing purposes only**. 
-
-**For production deployments, use [Thirdweb Dashboard](https://thirdweb.com/contracts/deploy).**
-
-### Development Private Key Setup
-
-For development testing, you need a private key file:
-
-```bash
-# Create development private key file (use a test key, not your real funds!)
-mkdir -p ~/.ssh
-echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
-chmod 600 ~/.ssh/test-evm-deployment-key
-```
-
-### Development Deployment Commands
-
-**Deploy to testnet for development**:
-
-   ```bash
-   # Deploy both Registry and Metadata contracts with linking
-   npm run deploy:system -- --network celoAlfajores
-   
-   # Or deploy just the Registry contract
-   npm run deploy:registry -- --network celoAlfajores
-   ```
-
-**Verify contracts on explorer** (optional):
-   ```bash
-   # Set API key 
-   export CELOSCAN_API_KEY=your_api_key_here
-
-   # Verify contracts using addresses from deployment output
-   npx hardhat verify --network celoAlfajores <REGISTRY_ADDRESS>
-   npx hardhat verify --network celoAlfajores <METADATA_ADDRESS>
-   ```
-
-### Important Development Notes
-
-- ⚠️ **Development only**: These commands are for testing and development
-- ⚠️ **Use test funds**: Don't use real funds for development deployments  
-- ⚠️ **Production warning**: Never use these commands for mainnet or production testnets
-- ✅ **For production**: Use [Thirdweb Dashboard](https://thirdweb.com/contracts/deploy) instead
-
-### Interacting with the Contract
-
-#### Using Hardhat Tasks
-
-```bash
-# Register a new app
-npx hardhat registerApp --did "did:example:123" --interfaces 1 --dataurl "https://example.com/app" --major 1 --minor 0 --patch 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
-
-# Get app details by DID and major version
-npx hardhat getApp --did "did:example:123" --major 1 --registry <CONTRACT_ADDRESS> --network celoAlfajores
-
-# Get all apps (paginated)  
-npx hardhat getApps --start 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
-
-# Get apps by minter
-npx hardhat getAppsByMinter --minter <ADDRESS> --start 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
-
-# Check app traits
-npx hardhat has-traits --did "did:example:123" --traits "gaming,web3" --major 1 --mode "any" --registry <CONTRACT_ADDRESS> --network celoAlfajores
-```
-
-## Usage Examples
-
-### **🌐 Frontend Applications (Recommended for Most Developers)**
+## **Official Front End Websites**
 
 For 99% of developers, use the web applications instead of coding directly:
 
-#### **Application Registration**
+### Application Registration
 **🚀 [appregistry.oma3.org](https://appregistry.oma3.org)**
 - **User-friendly interface** for registering and managing OMA3 applications
 - **Visual workflow** for DID attestation and application minting
 - **Guided process** ensures all OMATrust requirements are met
 - **No coding required** - just fill out forms and connect your wallet
 
-#### **Reputation & Attestations**  
+### Reputation & Attestations  
 **⭐ [reputation.oma3.org](https://reputation.oma3.org)**
 - **Create attestations** for DID ownership and data integrity
 - **Manage reputation** and extended attestations via EAS integration
 - **Issuer interface** for authorized attestation providers
 - **Community tools** for reviews, endorsements, and certifications
 
-#### **Why Use the Frontend?**
+### Why Use the Frontend?
 - ✅ **No technical knowledge required** - intuitive web interface
 - ✅ **Automatic validation** - ensures all requirements are met
 - ✅ **Integrated workflow** - handles OMATrust attestations seamlessly  
@@ -554,17 +255,11 @@ For 99% of developers, use the web applications instead of coding directly:
 - ✅ **Mobile friendly** - works on all devices
 - ✅ **Community features** - discover and interact with other developers
 
----
+## **💻 Programmatic Integration**
 
-### **💻 Programmatic Integration (Advanced Users)**
+For developers who need programmatic access or custom integrations, refer to the code examples below and the [app-registry-frontend GitHub repository](https://github.com/oma3dao/app-registry-frontend) for complete implementation details.
 
-For developers who need programmatic access or custom integrations, refer to the code examples below and the [app-registry-evm-solidity GitHub repository](https://github.com/oma3dao/app-registry-evm-solidity) for complete implementation details.
-
-### **JavaScript/Web3 Integration**
-
-> **💡 Note**: Most developers should use [appregistry.oma3.org](https://appregistry.oma3.org) instead of coding directly. The examples below are for advanced programmatic integration.
-
-#### **Complete Integration: OMATrust + Registry**
+### Registering an Application
 
 ```javascript
 // 1. First, ensure you have OMATrust attestations
@@ -617,7 +312,73 @@ const tx = await registry.mint(
 console.log("Application minted successfully:", tx.hash);
 ```
 
-#### **Getting OMATrust Attestations**
+### Updating an Application
+
+```javascript
+// Update data and bump patch version
+await registry.updateAppControlled(
+  "did:example:123",          // DID
+  1,                          // Major version
+  "https://example.com/v2",   // New data URL
+  newDataHash,                // New data hash
+  0,                          // Same algorithm
+  0,                          // No interface changes
+  [],                         // No trait changes
+  0,                          // Same minor
+  1                           // Increment patch
+);
+```
+
+### Querying Applications
+
+```javascript
+// Get active applications (paginated)
+const [apps, nextIndex] = await registry.getAppsByStatus(0, 0);
+
+// Check if app has traits
+const hasTraits = await registry.hasAnyTraits(
+  "did:example:123", 1, traitHashes
+);
+
+// Get latest major version
+const latest = await registry.latestMajor(
+  ethers.utils.keccak256(ethers.utils.toUtf8Bytes("did:example:123"))
+);
+```
+
+## Getting Trust Data
+
+The main use of OMATrust is getting trust data on an application.  
+
+### OMATrust Attestations
+
+Most OMATrust attestations (cybersecurity audits, user reviews, reputation scores, etc.) leverage proven attestation services such as [EAS (Ethereum Attestation Service)](https://attest.sh/) and [BAS (Base Attestation Service)](https://github.com/base-org/bas) deployed on various chains, including OMAChain.  
+
+#### Index Function: DID → Recipient Mapping
+
+Exising EVM attestation services index on the ethereum address of the subject (also called the attestation "recipient").  OMATrust extends these attestations services by standardizing a method to convert any DID to an Ethereum address format:
+
+```solidity
+// Helper function for EAS integration
+function didToRecipient(string memory didString) public pure returns (bytes32) {
+    return keccak256(abi.encodePacked("did:", didString));
+}
+```
+
+**Usage Pattern**:
+- **Attesting**: Issuers use the output of `didToRecipient(did)` as the recipient field when making attestations
+- **Discovery**: Query attestation services by recipient to find all attestations for a DID
+
+#### Examples of OMATrust Attestations:
+- **Reputation Scores**: Developer track record and community standing
+- **Security Audits**: Third-party security assessment results
+- **User Reviews**: Community feedback and ratings
+- **Compliance Certifications**: Regulatory or industry standard compliance
+- **Integration Approvals**: Platform-specific authorization attestations
+
+### Ownership Resolver Attestations
+
+Ownership is checked when an application is registered.  However, clients that wish to verify ownership themselves can query the Resolver contract.  Remember that the Resolver contract only handles **DID ownership** and **data URL integrity** attestations.
 
 ```javascript
 // For authorized issuers to create attestations
@@ -635,123 +396,17 @@ await resolver.attestDataHash(didHash, dataHash, expiresAt);
 console.log("Attestations created for developer");
 ```
 
-#### **Beyond Core Trust: Extended Attestations**
-
-The resolver contract only handles **DID ownership** and **data URL integrity**. For other OMATrust attestations (cybersecurity audits, user reviews, reputation scores, etc.):
-
-- **Frontend**: Use **[reputation.oma3.org](https://reputation.oma3.org)** for user-friendly attestation management
-- **Technical Details**: See [rep-attestation-tools-evm-solidity](https://github.com/oma3dao/rep-attestation-tools-evm-solidity) and [rep-attestation-frontend](https://github.com/oma3dao/rep-attestation-frontend) repositories
-- **Technology**: Built on proven attestation services (EAS, BAS, etc.) on various chains
-
-#### Updating an Application
-
-```javascript
-// Update data and bump patch version
-await registry.updateAppControlled(
-  "did:example:123",          // DID
-  1,                          // Major version
-  "https://example.com/v2",   // New data URL
-  newDataHash,                // New data hash
-  0,                          // Same algorithm
-  0,                          // No interface changes
-  [],                         // No trait changes
-  0,                          // Same minor
-  1                           // Increment patch
-);
-```
-
-#### Querying Applications
-
-```javascript
-// Get active applications (paginated)
-const [apps, nextIndex] = await registry.getAppsByStatus(0, 0);
-
-// Check if app has traits
-const hasTraits = await registry.hasAnyTraits(
-  "did:example:123", 1, traitHashes
-);
-
-// Get latest major version
-const latest = await registry.latestMajor(
-  ethers.utils.keccak256(ethers.utils.toUtf8Bytes("did:example:123"))
-);
-```
-
----
-
-## Metadata Storage Integration
-
-The registry supports optional integration with the OMA3AppMetadata contract for on-chain JSON storage.
-
-### Configuration
-
-```solidity
-// Set metadata contract address (owner only)
-await registry.setMetadataContract("0x9f1f5559b6D08eC855cafaCD76D9ae69c41169C9");
-```
-
-### Developer Choice
-
-**Option A: Off-Chain Metadata (Recommended)**
-```javascript
-// Use IPFS, Arweave, HTTP, or data URIs
-await registry.mint(did, interfaces, "ipfs://QmHash...", dataHash, 0, "", "", 1, 0, 0, [], "");
-```
-
-**Option B: On-Chain Metadata**
-```javascript
-// Store JSON in metadata contract
-const json = JSON.stringify({name: "My App", description: "Description"});
-await registry.mint(did, interfaces, dataUrl, keccak256(json), 0, "", "", 1, 0, 0, [], json);
-```
-
-### Benefits
-
-- **Flexibility**: Choose storage method per application
-- **Future-proof**: Migrate between storage methods
-- **Cost-effective**: Pay for on-chain storage only when needed
-- **Reliable**: Registry works with or without metadata contract
-
----
-
-## Ecosystem Integration & Future Migration
-
-### **Proven Attestation Service Integration**
-
-For attestations beyond core DID ownership and data integrity, the OMA3 ecosystem integrates with proven attestation services such as [EAS (Ethereum Attestation Service)](https://attest.sh/) and [BAS (Base Attestation Service)](https://github.com/base-org/bas) deployed on various chains:
-
-#### **Index Function: DID → Recipient Mapping**
-```solidity
-// Helper function for EAS integration
-function didToRecipient(string memory didString) public pure returns (bytes32) {
-    return keccak256(abi.encodePacked("did:", didString));
-}
-```
-
-**Usage Pattern**:
-- **Core Trust**: OMATrust resolver handles DID ownership and data integrity
-- **Extended Attestations**: Use proven attestation services (EAS, BAS, etc.) for reputation, certifications, endorsements, reviews, etc.
-- **Indexing**: Use `didToRecipient(did)` as the recipient field in attestation services
-- **Discovery**: Query attestation services by recipient to find all attestations for a DID
-
-#### **Examples of Extended Attestations**:
-- **Reputation Scores**: Developer track record and community standing
-- **Security Audits**: Third-party security assessment results
-- **User Reviews**: Community feedback and ratings
-- **Compliance Certifications**: Regulatory or industry standard compliance
-- **Integration Approvals**: Platform-specific authorization attestations
-
-### **Future Hub Migration Path**
+### Future Hub Migration Path
 
 The OMATrust resolver system is designed for seamless migration to future hub systems:
 
-#### **Stable Interface Guarantee**
+#### Stable Interface Guarantee
 The resolver implements permanent interfaces that will be maintained across all future versions:
 - `IOMA3Resolver` - Core resolution functions
 - `IOMA3DidOwnershipAttestationStore` - Ownership management  
 - `IOMA3DataUrlAttestationStore` - Data integrity validation
 
-#### **Hub System Evolution**
+#### Hub System Evolution
 ```
 Current: OMA3ResolverWithStore (On-chain only)
     ↓
@@ -767,14 +422,14 @@ Advanced: OMA3FederatedHub (Multi-chain + decentralized storage)
 - ✅ **Gradual Migration**: Migrate at your own pace, no forced upgrades
 - ✅ **Data Preservation**: All existing attestations preserved and accessible
 
-#### **Future Hub Capabilities**
+#### Future Hub Capabilities
 - **Hybrid Storage**: Both on-chain and off-chain attestation support
 - **Multi-chain Resolution**: Cross-chain DID ownership and attestation validation
 - **Decentralized Storage**: IPFS, Arweave, and other decentralized storage integration
 - **Advanced Queries**: Complex attestation discovery and filtering
 - **Federation**: Inter-hub communication and attestation sharing
 
-### **Developer Integration Strategy**
+### Developer Integration Strategy
 
 **Recommended Approach**:
 1. **Build on Interfaces**: Always use `IOMA3Resolver` interface, never direct contract calls
@@ -782,64 +437,234 @@ Advanced: OMA3FederatedHub (Multi-chain + decentralized storage)
 3. **Index with EAS**: Use EAS for extended attestations with DID-based indexing
 4. **Stay Updated**: Monitor for hub system announcements and migration guides
 
+## **Production Deployment (Recommended)**
+
+For secure production deployments, use the [Thirdweb server wallet deployment scripts](./scripts/deploy/README.md). This approach provides maximum security by eliminating private key exposure and leveraging Thirdweb's HSM infrastructure.
+
+### **Deployment Workflow** (Hybrid: Script + Dashboard)
+
+```bash
+# Navigate to project root
+cd /path/to/app-registry-evm-solidity
+
+# 1. Create server wallet
+./scripts/deploy/create-server-wallet.sh production
+
+# 2. Upload contracts to Thirdweb (auto-compiles)
+./scripts/deploy/publish-contracts.sh
+
+# 3. Complete publishing and deployment (manual via dashboard)
+# - Visit the URL from step 2 output
+# - Click "Publish" for each contract to add to your profile  
+# - Click "Deploy Now" for each contract
+# - Select your server wallet (oma3-production-1)
+# - Choose target network and deploy
+
+Current Published Contracts:  https://thirdweb.com/contracts/publish?ipfs=QmWc5MJLuU485XmibxfnQGSyuGQxVR3GFhhzwoEzRYYDQZ%2F0&ipfs=QmWc5MJLuU485XmibxfnQGSyuGQxVR3GFhhzwoEzRYYDQZ%2F1&ipfs=QmWc5MJLuU485XmibxfnQGSyuGQxVR3GFhhzwoEzRYYDQZ%2F2&ipfs=QmWc5MJLuU485XmibxfnQGSyuGQxVR3GFhhzwoEzRYYDQZ%2F3&ipfs=QmWc5MJLuU485XmibxfnQGSyuGQxVR3GFhhzwoEzRYYDQZ%2F4&ipfs=QmWc5MJLuU485XmibxfnQGSyuGQxVR3GFhhzwoEzRYYDQZ%2F5
+
+# 4. Configure deployed contracts
+./scripts/deploy/configure-contracts.sh production
+```
+
+### Security Benefits
+- ✅ **No private keys exposed** - Server wallet managed by Thirdweb HSM
+- ✅ **Secure credential handling** - Bitwarden integration, no secrets in code
+- ✅ **Audit trail** - Complete deployment documentation
+- ✅ **Production-ready** - Eliminates supply chain attack risks
+
+*For detailed deployment instructions, see [Deployment Scripts Documentation](./scripts/deploy/README.md).* 
+
+## **Development Deployment (Local Testing)**
+
+⚠️ **DEVELOPMENT ONLY**: The following instructions are for local development and testing. **Never use these methods for production deployments** - use the [Thirdweb server wallet deployment](#production-deployment-recommended) instead.
+
+For local development and testing, you can deploy contracts directly using Hardhat.
+
+### Prerequisites
+
+```bash
+# Install dependencies
+npm install
+
+# Create development private key file (use a test key, not real funds!)
+mkdir -p ~/.ssh
+echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
+chmod 600 ~/.ssh/test-evm-deployment-key
+```
+
+### Development Deployment Commands
+
+```bash
+# Deploy both Registry and Metadata contracts with linking
+npm run deploy:system -- --network celoAlfajores
+
+# Or deploy just the Registry contract
+npm run deploy:registry -- --network celoAlfajores
+```
+
+## **Testing Deployed Contracts**
+
+Use these testing approaches to validate your deployed contracts:
+
+### Option 1: Development Testing (Local Hardhat Network)
+
+For testing contracts before production deployment:
+
+#### Registry Testing
+
+1. Change the MAX_APPS_PER_PAGE to 4 for testing by modifying the contract:
+   ```solidity
+   uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
+   //uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
+   ```
+
+2. Compile
+   ```bash
+   npx hardhat compile
+   ```
+
+3. Run registry tests
+   ```bash
+   npx hardhat test test/OMA3AppRegistry.ts
+   ```
+
+4. Change the MAX_APPS_PER_PAGE back to production values:
+   ```solidity
+   //uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
+   uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
+   ```
+
+5. Compile again
+   ```bash
+   npx hardhat compile
+   ```
+
+#### OMATrust Resolver Testing
+
+The OMATrust resolver system includes comprehensive test suites:
+
+##### 🚀 Automated Test Runner (Recommended)
+
+Use the convenient test runner script for organized testing with clear progress reporting:
+
+```bash
+# Show all available test configurations
+npx ts-node scripts/run-resolver-tests.ts
+
+# Run all resolver tests
+npx ts-node scripts/run-resolver-tests.ts all
+
+# Run specific test categories
+npx ts-node scripts/run-resolver-tests.ts core         # Core functionality only
+npx ts-node scripts/run-resolver-tests.ts integration  # Integration tests only
+npx ts-node scripts/run-resolver-tests.ts deployment   # Deployment tests
+npx ts-node scripts/run-resolver-tests.ts issuers      # Issuer management
+npx ts-node scripts/run-resolver-tests.ts ownership    # Ownership attestations
+npx ts-node scripts/run-resolver-tests.ts data         # Data hash attestations
+npx ts-node scripts/run-resolver-tests.ts delegated    # EIP-712 delegated ops
+npx ts-node scripts/run-resolver-tests.ts gas          # With gas reporting
+npx ts-node scripts/run-resolver-tests.ts coverage     # With coverage
+```
+
+**Test Runner Benefits**:
+- ✅ **Clear Progress**: Progress reporting with emojis and status messages
+- ✅ **Organized Categories**: 13 pre-configured test categories
+- ✅ **Error Handling**: Helpful error messages and configuration validation
+- ✅ **Gas & Coverage**: Built-in support for gas reporting and coverage analysis
+
+##### Manual Test Execution
+
+For direct hardhat test execution:
+
+```bash
+# Run all resolver tests manually
+npx hardhat test test/OMA3ResolverWithStore.ts test/OMA3ResolverIntegration.ts
+
+# Run specific test categories with grep
+npx hardhat test test/OMA3ResolverWithStore.ts --grep "Deployment"
+npx hardhat test test/OMA3ResolverWithStore.ts --grep "Issuer Authorization"
+npx hardhat test test/OMA3ResolverWithStore.ts --grep "EIP-712 Delegated"
+
+# Run with gas reporting
+REPORT_GAS=true npx hardhat test test/OMA3ResolverWithStore.ts
+```
+
+**Test Coverage**:
+- ✅ **28+ Core Tests**: Deployment, access control, attestations
+- ✅ **Integration Tests**: Complex scenarios and time-based testing  
+- ✅ **Security Tests**: EIP-712 signatures, replay protection, access control
+- ✅ **Edge Cases**: Expiry handling, maturation windows, error conditions
+
+### Option 2: Testnet/Mainnet Testing
+
+For testing contracts already deployed to testnet or mainnet:
+
+```bash
+# Test deployed contracts using Hardhat tasks
+npx hardhat get-apps --registry <DEPLOYED_ADDRESS> --network celoAlfajores
+npx hardhat get-metadata-json --did "did:oma3:test" --registry <DEPLOYED_ADDRESS> --network celoAlfajores
+```
+
+See `test/README.md` for detailed testing guide and `test/TESTING_SUMMARY.md` for current status.
+
+### Interacting with the Contract
+
+#### Using Hardhat Tasks
+
+```bash
+# Register a new app
+npx hardhat registerApp --did "did:example:123" --interfaces 1 --dataurl "https://example.com/app" --major 1 --minor 0 --patch 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+
+# Get app details by DID and major version
+npx hardhat getApp --did "did:example:123" --major 1 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+
+# Get all apps (paginated)  
+npx hardhat getApps --start 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+
+# Get apps by minter
+npx hardhat getAppsByMinter --minter <ADDRESS> --start 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+
+# Check app traits
+npx hardhat has-traits --did "did:example:123" --traits "gaming,web3" --major 1 --mode "any" --registry <CONTRACT_ADDRESS> --network celoAlfajores
+```
+
 ---
 
-## Recommended Trait Hashes
-
-This appendix provides a list of recommended trait strings for use in the on-chain `traitHashes` array. For the onchain field, developers must hash these values with keccak256. Additional "offically recommended" traits may be proposed via pull request, but developers are free to use whatever string they like.
-
-| Trait String | Description |
-|--------------|-------------|
-| `api:openapi` | Include this if the interface field has a value of 2 and the API format is OpenAPI. |
-| `api:graphql` | Include this if the interface field has a value of 2 and the API format is GraphQL. |
-| `api:jsonrpc` | Include this if the interface field has a value of 2 and the API format is JSON-RPC. |
-| `api:mcp` | Include this if the interface field has a value of 2 and the API format is OpenAPI. |
-| `api:a2a` | Include this if the interface field has a value of 2 and the API format is A2A. |
-| `token:erc20` | Include this if the token in the fungibleTokenId field supports ERC-20. |
-| `token:erc3009` | Include this if the token in the fungibleTokenId field supports ERC-3009. |
-| `token:spl` | Include this if the token in the fungibleTokenId field supports SPL. |
-| `token:2022` | Include this if the token in the fungibleTokenId field supports Token-2022. |
-| `token:transferable` | Include this if the token in the fungibleTokenId is transferable. |
-| `token:burnable` | Include this if the token in the fungibleTokenId is burnable. |
-| `pay:x402` | Include this if the endpoint supports x402 payments. |
-
----
-
-## Migration from V0
+## **Migration from V0**
 
 ### Major Changes from V0
 
 The current version represents a complete architectural redesign from the original v0 implementation:
 
-#### **1. ERC721 Integration**
+#### 1. ERC721 Integration
 - **V0**: Custom token system with simple ID assignment
 - **Current**: Full ERC721 compatibility with marketplace integration
 
-#### **2. DID-Based Versioning**
+#### 2. DID-Based Versioning
 - **V0**: Single version per DID, simple updates
 - **Current**: Semantic versioning with (DID, major) uniqueness, multiple major versions as separate NFTs
 
-#### **3. Data Structure**
+#### 3. Data Structure
 - **V0**: Simple flat fields (name, version, URLs)
 - **Current**: Complex structured data with version history, interface bitmaps, keyword hashes
 
-#### **4. Query Optimization**
+#### 4. Query Optimization
 - **V0**: Linear searches, limited pagination
 - **Current**: Optimized storage with active app indexing, efficient pagination, keyword filtering
 
-#### **5. Interface System**
+#### 5. Interface System
 - **V0**: Separate URL fields for different interface types
 - **Current**: Bitmap-based interface system (human/API/MCP) with extensibility
 
-#### **6. Versioning Constraints**
+#### 6. Versioning Constraints
 - **V0**: No version validation or semantic constraints
 - **Current**: Strict semver rules with controlled upgrade paths
 
-#### **7. Storage Efficiency**
+#### 7. Storage Efficiency
 - **V0**: Unoptimized storage layout
 - **Current**: Gas-optimized packed structs and efficient mappings
 
-#### **8. Event System**
+#### 8. Event System
 - **V0**: Basic events
 - **Current**: Comprehensive event system with indexed fields for efficient querying
 
