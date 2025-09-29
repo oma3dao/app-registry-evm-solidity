@@ -1,4 +1,4 @@
-# OMA3 Thirdweb Deployment Scripts
+# **OMA3 Thirdweb Deployment Scripts**
 
 This directory contains shell scripts for deploying OMA3 smart contracts using Thirdweb server wallets.
 
@@ -16,7 +16,7 @@ cd /path/to/app-registry-evm-solidity/scripts/deploy
 ./publish-contracts.sh OMA3AppRegistry  # Will fail to find artifacts
 ```
 
-## Security Notice
+## **Security Notice**
 
 ⚠️ **Critical**: These scripts handle sensitive operations and API credentials. Never commit:
 - Any files with `.tmp` extension (temporary files)
@@ -24,7 +24,7 @@ cd /path/to/app-registry-evm-solidity/scripts/deploy
 
 **Note**: Contract and wallet addresses are public information and should be documented in the main README after deployment.
 
-## Technical Implementation
+## **Technical Implementation**
 
 This folder contains the technical implementation of the Thirdweb deployment system. For user-friendly deployment instructions, see the main README.md.
 
@@ -94,7 +94,7 @@ npm run deploy:list-wallets
 
 **Note**: Deployment is primarily done via individual scripts and manual dashboard steps rather than NPM pipeline automation.
 
-## Script Reference
+## **Script Reference**
 
 ### 1. create-server-wallet.sh
 
@@ -417,8 +417,8 @@ npm run deploy:list-wallets
 - `0`: Success (even if no wallets found)
 - `1`: Error (API failure, authentication issues)
 
-## Address Management
-
+## **Address Management
+**
 ### File Structure
 - `contract-addresses.txt` - Published IDs and deployed addresses (for script reference)
 - `.tmp` files - Temporary processing files (auto-cleaned)
@@ -437,7 +437,7 @@ After successful deployment, update the main README.md with the deployed contrac
 ./scripts/deploy/list-server-wallets.sh
 ```
 
-## Technical Implementation
+## **Technical Implementation**
 
 ### Script Architecture
 - **Secure by design**: Credentials prompted, never stored in files
@@ -450,7 +450,7 @@ After successful deployment, update the main README.md with the deployed contrac
 - This technical documentation focuses on script mechanics
 - For user-facing deployment guide, see main README.md
 
-## Security Best Practices
+## **Security Best Practices**
 
 1. **Credentials**: Only in Bitwarden, never in environment variables
 2. **Script Execution**: Run scripts from project directory
@@ -458,7 +458,7 @@ After successful deployment, update the main README.md with the deployed contrac
 4. **Verification**: Always verify transactions on blockchain explorer
 5. **Backup**: Keep deployment records for audit purposes
 
-## Troubleshooting
+## **Troubleshooting**
 
 ### Common Issues
 
@@ -497,6 +497,66 @@ After successful deployment, update the main README.md with the deployed contrac
 4. Review deployment logs in `contract-addresses.txt`
 5. Check temporary files (`.tmp`) for debugging information
 
-## Summary
+## **Summary**
 
 This deployment system provides a secure, auditable way to deploy OMA3 contracts using Thirdweb's HSM-backed server wallets. The modular design ensures each deployment phase is handled correctly while maintaining security best practices throughout the process.
+
+# **Development Contract Deployment**
+
+## **For Development/Testing ONLY**
+
+Use the Hardhat tasks for local development and testing:
+
+1. **Setup environment**:
+   ```bash
+   # Install dependencies
+   npm install
+   
+   # Create private key file for development
+   mkdir -p ~/.ssh
+   echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
+   chmod 600 ~/.ssh/test-evm-deployment-key
+   ```
+
+2. **Deploy to testnet for development**:
+
+   ```bash
+   # Deploy both Registry and Metadata contracts with linking
+   npm run deploy:system -- --network celoAlfajores
+   
+   # Or deploy just the Registry contract
+   npm run deploy:registry -- --network celoAlfajores
+   ```
+
+3. **Verify contracts on explorer** (optional):
+   ```bash
+   # Set API key 
+   export CELOSCAN_API_KEY=your_api_key_here
+
+   # Verify contracts using addresses from deployment output
+   npx hardhat verify --network celoAlfajores <REGISTRY_ADDRESS>
+   npx hardhat verify --network celoAlfajores <METADATA_ADDRESS>
+   ```
+
+## Deployment with Factory Contract (deprecated)
+
+Use the `OMA3SystemFactory` contract for deployment:
+
+1. **Prepare deployment**:
+   ```bash
+   npm run prepare:factory
+   ```
+
+2. **Deploy via Thirdweb Dashboard**:
+   - Upload `artifacts/contracts/OMA3SystemFactory.sol/OMA3SystemFactory.json`
+   - Deploy the factory (no constructor parameters needed)
+   - Call `deploySystem(0)` to deploy both contracts with linking
+   - Note the registry and metadata addresses from the deployment event
+
+**Factory Benefits**:
+- ✅ **Atomic deployment** - Both contracts deployed and linked in one transaction
+- ✅ **Deterministic addresses** - Predictable contract addresses  
+- ✅ **No circular dependency** - Factory handles the linking automatically
+- ✅ **Ownership transfer** - You become the owner of both contracts
+- ✅ **Minimal audit surface** - Simple factory logic, focus audit on main contracts
+
