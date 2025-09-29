@@ -19,3 +19,6 @@ node_modules
 ignition/deployments/chain-31337
 
 .cursorignore
+
+# Temporary deployment files
+scripts/deploy/*.tmp
