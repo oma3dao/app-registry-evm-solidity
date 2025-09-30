@@ -211,3 +211,93 @@ The OMATrust resolver testing suite provides a solid foundation for validating t
 **Needs attention**: Issuer discovery mechanism and some integration scenarios.
 
 The delivered test suite successfully validates all major contract operations and provides confidence for proceeding with the next phase of development.
+
+### Testing the Contract System
+
+#### **Registry Testing**
+
+1. Change the MAX_APPS_PER_PAGE to 4 for testing by modifying the contract:
+   ```solidity
+   uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
+   //uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
+   ```
+
+2. Compile
+   ```bash
+   npx hardhat compile
+   ```
+
+3. Run registry tests
+   ```bash
+   npx hardhat test test/OMA3AppRegistry.ts
+   ```
+
+4. Change the MAX_APPS_PER_PAGE back to production values:
+   ```solidity
+   //uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
+   uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
+   ```
+
+5. Compile again
+   ```bash
+   npx hardhat compile
+   ```
+
+#### **OMATrust Resolver Testing**
+
+The OMATrust resolver system includes comprehensive test suites:
+
+##### **🚀 Automated Test Runner (Recommended)**
+
+Use the convenient test runner script for organized testing with clear progress reporting:
+
+```bash
+# Show all available test configurations
+npx ts-node scripts/run-resolver-tests.ts
+
+# Run all resolver tests
+npx ts-node scripts/run-resolver-tests.ts all
+
+# Run specific test categories
+npx ts-node scripts/run-resolver-tests.ts core         # Core functionality only
+npx ts-node scripts/run-resolver-tests.ts integration  # Integration tests only
+npx ts-node scripts/run-resolver-tests.ts deployment   # Deployment tests
+npx ts-node scripts/run-resolver-tests.ts issuers      # Issuer management
+npx ts-node scripts/run-resolver-tests.ts ownership    # Ownership attestations
+npx ts-node scripts/run-resolver-tests.ts data         # Data hash attestations
+npx ts-node scripts/run-resolver-tests.ts delegated    # EIP-712 delegated ops
+npx ts-node scripts/run-resolver-tests.ts gas          # With gas reporting
+npx ts-node scripts/run-resolver-tests.ts coverage     # With coverage
+```
+
+**Test Runner Benefits**:
+- ✅ **Clear Progress**: Progress reporting with emojis and status messages
+- ✅ **Organized Categories**: 13 pre-configured test categories
+- ✅ **Error Handling**: Helpful error messages and configuration validation
+- ✅ **Gas & Coverage**: Built-in support for gas reporting and coverage analysis
+
+##### **Manual Test Execution**
+
+For direct hardhat test execution:
+
+```bash
+# Run all resolver tests manually
+npx hardhat test test/OMA3ResolverWithStore.ts test/OMA3ResolverIntegration.ts
+
+# Run specific test categories with grep
+npx hardhat test test/OMA3ResolverWithStore.ts --grep "Deployment"
+npx hardhat test test/OMA3ResolverWithStore.ts --grep "Issuer Authorization"
+npx hardhat test test/OMA3ResolverWithStore.ts --grep "EIP-712 Delegated"
+
+# Run with gas reporting
+REPORT_GAS=true npx hardhat test test/OMA3ResolverWithStore.ts
+```
+
+**Test Coverage**:
+- ✅ **28+ Core Tests**: Deployment, access control, attestations
+- ✅ **Integration Tests**: Complex scenarios and time-based testing  
+- ✅ **Security Tests**: EIP-712 signatures, replay protection, access control
+- ✅ **Edge Cases**: Expiry handling, maturation windows, error conditions
+
+See `test/README.md` for detailed testing guide and `test/TESTING_SUMMARY.md` for current status.
+
