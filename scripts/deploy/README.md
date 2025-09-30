@@ -433,6 +433,11 @@ After successful deployment, update the main README.md with the deployed contrac
 - **OMA3AppMetadata**: 0x9f1f5559b6D08eC855cafaCD76D9ae69c41169C9
 - **OMA3ResolverWithStore**: 0x24B0B17adb13DB2146995480e0114b2c93Df217f
 
+#### Current Deployment (OMAchain Testnet)
+- **OMA3AppRegistry**: [TO BE DEPLOYED]
+- **OMA3AppMetadata**: [TO BE DEPLOYED]
+- **OMA3ResolverWithStore**: [TO BE DEPLOYED]
+
 # Wallet addresses are shown in console output or can be listed with:
 ./scripts/deploy/list-server-wallets.sh
 ```
@@ -523,9 +528,11 @@ Use the Hardhat tasks for local development and testing:
    ```bash
    # Deploy both Registry and Metadata contracts with linking
    npm run deploy:system -- --network celoAlfajores
+   npm run deploy:system -- --network omachainTestnet
    
    # Or deploy just the Registry contract
    npm run deploy:registry -- --network celoAlfajores
+   npm run deploy:registry -- --network omachainTestnet
    ```
 
 3. **Verify contracts on explorer** (optional):
@@ -536,6 +543,11 @@ Use the Hardhat tasks for local development and testing:
    # Verify contracts using addresses from deployment output
    npx hardhat verify --network celoAlfajores <REGISTRY_ADDRESS>
    npx hardhat verify --network celoAlfajores <METADATA_ADDRESS>
+   
+   # For OMAchain testnet (when API key is available)
+   export OMACHAIN_API_KEY=your_api_key_here
+   npx hardhat verify --network omachainTestnet <REGISTRY_ADDRESS>
+   npx hardhat verify --network omachainTestnet <METADATA_ADDRESS>
    ```
 
 ## Deployment with Factory Contract (deprecated)

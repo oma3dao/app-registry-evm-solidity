@@ -75,6 +75,10 @@ export const NETWORK_CONTRACTS = {
     registry: "0x1a58589a9989C7E84128938Af06ede00593cFE31",
     metadata: "0x24B0B17adb13DB2146995480e0114b2c93Df217f"
   },
+  omachainTestnet: {
+    registry: "0x", // TODO: Set after deployment
+    metadata: "0x"  // TODO: Set after deployment
+  },
   hardhat: {
     registry: "0x", // Will be set automatically during local deployment
     metadata: "0x"  // Will be set automatically during local deployment
@@ -113,6 +117,14 @@ const config: HardhatUserConfig = {
       gas: "auto",
       timeout: 60000
     },
+    omachainTestnet: {
+      url: "https://rpc.testnet.chain.oma3.org/",
+      chainId: 66238,
+      accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
+      gasPrice: "auto",
+      gas: "auto",
+      timeout: 60000
+    },
     // Add other networks as needed
     hardhat: {
       chainId: 31337,
@@ -131,7 +143,8 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      celoAlfajores: process.env.CELOSCAN_API_KEY || ""
+      celoAlfajores: process.env.CELOSCAN_API_KEY || "",
+      omachainTestnet: process.env.OMACHAIN_API_KEY || ""
     },
     customChains: [
       {
@@ -140,6 +153,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-alfajores.celoscan.io/api",
           browserURL: "https://alfajores.celoscan.io"
+        }
+      },
+      {
+        network: "omachainTestnet",
+        chainId: 66238,
+        urls: {
+          apiURL: "https://explorer.testnet.chain.oma3.org/api",
+          browserURL: "https://explorer.testnet.chain.oma3.org/"
         }
       }
     ]

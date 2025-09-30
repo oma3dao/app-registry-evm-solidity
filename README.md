@@ -233,13 +233,22 @@ event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 in
 - **Contract Address**: 0x1a58589a9989C7E84128938Af06ede00593cFE31  // 0xE2d601F18166F6632f80d2Fa0Ab474B6d251D400
 - **Legacy Contract Address**: 0xb493465Bcb2151d5b5BaD19d87f9484c8B8A8e83
 
+- **Network**: OMAchain Testnet
+- **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
+
 #### **OMA3AppMetadata** (On-chain JSON Storage)
 - **Network**: Celo Alfajores Testnet
 - **Contract Address**: 0x24B0B17adb13DB2146995480e0114b2c93Df217f 
 - **Legacy Contract Address**: 0x9f1f5559b6D08eC855cafaCD76D9ae69c41169C9
 
+- **Network**: OMAchain Testnet
+- **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
+
 #### **OMA3ResolverWithStore** (OMATrust DID & Data Validation)
 - **Network**: Celo Alfajores Testnet  
+- **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
+
+- **Network**: OMAchain Testnet
 - **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
 - **Purpose**: DID ownership resolution and data hash attestation validation
 
