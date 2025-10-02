@@ -29,6 +29,9 @@ import "./tasks/inherited/ownable";
 // Import task files - Metadata tasks
 import "./tasks/metadata/getmetadatajson";
 
+// Import task files - Resolver tasks
+import "./tasks/resolver";
+
 // Load deployment key from configurable SSH file path
 const deploymentKeyPath = process.env.DEPLOYMENT_KEY_PATH || path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
 
@@ -69,23 +72,28 @@ if (privateKeyFromSsh) {
 export const NETWORK_CONTRACTS = {
   thirdwebTestnet: {
     registry: "0x", // TODO: Set after deployment
-    metadata: "0x"  // TODO: Set after deployment
+    metadata: "0x", // TODO: Set after deployment
+    resolver: "0x"  // TODO: Set after deployment
   },
   celoAlfajores: {
     registry: "0x1a58589a9989C7E84128938Af06ede00593cFE31",
-    metadata: "0x24B0B17adb13DB2146995480e0114b2c93Df217f"
+    metadata: "0x24B0B17adb13DB2146995480e0114b2c93Df217f",
+    resolver: "0x"  // TODO: Set after deployment
   },
   omachainTestnet: {
     registry: "0x", // TODO: Set after deployment
-    metadata: "0x"  // TODO: Set after deployment
+    metadata: "0x", // TODO: Set after deployment
+    resolver: "0x"  // TODO: Set after deployment
   },
   hardhat: {
     registry: "0x", // Will be set automatically during local deployment
-    metadata: "0x"  // Will be set automatically during local deployment
+    metadata: "0x", // Will be set automatically during local deployment
+    resolver: "0x"  // Will be set automatically during local deployment
   },
   localhost: {
     registry: "0x", // Will be set automatically during local deployment
-    metadata: "0x"  // Will be set automatically during local deployment
+    metadata: "0x", // Will be set automatically during local deployment
+    resolver: "0x"  // Will be set automatically during local deployment
   }
 };
 
@@ -101,22 +109,6 @@ const config: HardhatUserConfig = {
     }
   },
   networks: {
-    thirdwebTestnet: {
-      url: "https://38df867c9941afedf972308db796e2b4.rpc.thirdweb.com",
-      chainId: 894538,
-      accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
-      gasPrice: "auto",
-      gas: "auto",
-      timeout: 60000
-    },
-    celoAlfajores: {
-      url: "https://alfajores-forno.celo-testnet.org",
-      chainId: 44787,
-      accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
-      gasPrice: "auto",
-      gas: "auto",
-      timeout: 60000
-    },
     omachainTestnet: {
       url: "https://rpc.testnet.chain.oma3.org/",
       chainId: 66238,

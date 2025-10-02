@@ -252,7 +252,105 @@ event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 in
 - **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
 - **Purpose**: DID ownership resolution and data hash attestation validation
 
-For information on deploying OMATrust contracts, see the deployment README.
+## Deployment
+
+### Production Deployment
+
+**⚠️ For production deployments to mainnet or public testnets**, use the secure Thirdweb deployment system with HSM-backed server wallets. See the [Thirdweb Deployment README](scripts/deploy/README.md) for complete instructions.
+
+### Development Deployment
+
+**For Development/Testing ONLY**
+
+Use the Hardhat tasks for local development and testing:
+
+1. **Setup environment**:
+   ```bash
+   # Install dependencies
+   npm install
+   
+   # Create private key file for development
+   mkdir -p ~/.ssh
+   echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
+   chmod 600 ~/.ssh/test-evm-deployment-key
+   ```
+
+2. **Start local Hardhat node**:
+   ```bash
+   npx hardhat node
+   ```
+
+3. **Deploy complete system to localhost**:
+   ```bash
+   # Deploy complete system (Registry + Metadata + Resolver) with linking
+   npm run deploy:system -- --network localhost
+   ```
+
+4. **Deploy to testnets for development**:
+   ```bash
+   # Deploy to OMAchain testnet
+   npm run deploy:system -- --network omachainTestnet
+   ```
+
+5. **Verify contracts on explorer** (optional):
+   ```bash
+   # Set API key 
+   export OMACHAIN_API_KEY=your_api_key_here
+
+   # Verify contracts using addresses from deployment output
+   npx hardhat verify --network omachainTestnet <REGISTRY_ADDRESS>
+   npx hardhat verify --network omachainTestnet <METADATA_ADDRESS>
+   npx hardhat verify --network omachainTestnet <RESOLVER_ADDRESS>
+   ```
+
+### What Gets Deployed
+
+The `deploy-system` script deploys and links three contracts:
+
+1. **OMA3AppRegistry** - Main application registry contract
+2. **OMA3AppMetadata** - On-chain metadata storage contract  
+3. **OMA3ResolverWithStore** - DID ownership resolution and data validation contract
+
+All contracts are automatically linked together with proper authorization settings.
+
+### Configuring the Resolver
+
+After deployment, you can configure the resolver's security parameters:
+
+```bash
+# Set maturation period (default: 172800 seconds = 48 hours)
+# For development, you might want 0 seconds for immediate testing
+npx hardhat configure-resolver \
+  --resolver <RESOLVER_ADDRESS> \
+  --maturation 0 \
+  --network localhost
+
+# Add authorized issuer (entity that can create DID ownership attestations)
+npx hardhat configure-resolver \
+  --resolver <RESOLVER_ADDRESS> \
+  --issuer 0x1234567890123456789012345678901234567890 \
+  --network localhost
+
+# Set maximum TTL for attestations (default: 63072000 seconds = 2 years)
+npx hardhat configure-resolver \
+  --resolver <RESOLVER_ADDRESS> \
+  --maxTTL 31536000 \
+  --network localhost
+
+# Remove an authorized issuer
+npx hardhat configure-resolver \
+  --resolver <RESOLVER_ADDRESS> \
+  --removeIssuer 0x1234567890123456789012345678901234567890 \
+  --network localhost
+```
+
+**Configuration Parameters:**
+- **`maturation`** - Delay period before DID ownership changes take effect (prevents attacks)
+- **`maxTTL`** - Maximum time-to-live for attestations before they expire
+- **`issuer`** - Address authorized to create DID ownership and data hash attestations
+- **`removeIssuer`** - Remove an address from the authorized issuers list
+
+**Development Tip:** Set maturation to `0` for local testing to avoid waiting periods.
 
 ### Contract ABI
 
