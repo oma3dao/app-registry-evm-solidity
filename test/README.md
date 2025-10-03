@@ -166,7 +166,7 @@ Create comprehensive test scripts for the OMA3ResolverWithStore contract and OMA
 - **`OMA3ResolverWithStore.ts`** - Primary unit test suite (28 tests)
 - **`OMA3ResolverIntegration.ts`** - Integration and complex scenario tests  
 - **`helpers/testUtils.ts`** - Reusable test utilities and helpers
-- **`scripts/run-resolver-tests.ts`** - Automated test runner script
+- **`run-resolver-tests.ts`** - Automated test runner script
 - **`test/README.md`** - Comprehensive testing documentation
 
 ### 2. Test Coverage Achieved ✅
@@ -302,9 +302,9 @@ npx hardhat test test/OMA3ResolverIntegration.ts
 REPORT_GAS=true npx hardhat test test/OMA3ResolverWithStore.ts
 
 # Using the test runner script
-npx ts-node scripts/run-resolver-tests.ts all
-npx ts-node scripts/run-resolver-tests.ts core
-npx ts-node scripts/run-resolver-tests.ts gas
+npx ts-node test/run-resolver-tests.ts all
+npx ts-node test/run-resolver-tests.ts core
+npx ts-node test/run-resolver-tests.ts gas
 ```
 
 ### Available Test Runner Commands
@@ -397,21 +397,21 @@ Use the convenient test runner script for organized testing with clear progress 
 
 ```bash
 # Show all available test configurations
-npx ts-node scripts/run-resolver-tests.ts
+npx ts-node test/run-resolver-tests.ts
 
 # Run all resolver tests
-npx ts-node scripts/run-resolver-tests.ts all
+npx ts-node test/run-resolver-tests.ts all
 
 # Run specific test categories
-npx ts-node scripts/run-resolver-tests.ts core         # Core functionality only
-npx ts-node scripts/run-resolver-tests.ts integration  # Integration tests only
-npx ts-node scripts/run-resolver-tests.ts deployment   # Deployment tests
-npx ts-node scripts/run-resolver-tests.ts issuers      # Issuer management
-npx ts-node scripts/run-resolver-tests.ts ownership    # Ownership attestations
-npx ts-node scripts/run-resolver-tests.ts data         # Data hash attestations
-npx ts-node scripts/run-resolver-tests.ts delegated    # EIP-712 delegated ops
-npx ts-node scripts/run-resolver-tests.ts gas          # With gas reporting
-npx ts-node scripts/run-resolver-tests.ts coverage     # With coverage
+npx ts-node test/run-resolver-tests.ts core         # Core functionality only
+npx ts-node test/run-resolver-tests.ts integration  # Integration tests only
+npx ts-node test/run-resolver-tests.ts deployment   # Deployment tests
+npx ts-node test/run-resolver-tests.ts issuers      # Issuer management
+npx ts-node test/run-resolver-tests.ts ownership    # Ownership attestations
+npx ts-node test/run-resolver-tests.ts data         # Data hash attestations
+npx ts-node test/run-resolver-tests.ts delegated    # EIP-712 delegated ops
+npx ts-node test/run-resolver-tests.ts gas          # With gas reporting
+npx ts-node test/run-resolver-tests.ts coverage     # With coverage
 ```
 
 **Test Runner Benefits**:
