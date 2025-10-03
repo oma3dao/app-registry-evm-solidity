@@ -72,16 +72,16 @@ task("balance-of", "Get the number of tokens owned by an address")
       const balance = await registry.balanceOf(address);
       console.log("Token balance:", balance.toString());
       
-      // Also get total by minter for comparison
+      // Also get total by owner for verification (should match balance)
       try {
-        const totalByMinter = await registry.getTotalAppsByMinter(address);
-        console.log("Total apps by minter:", totalByMinter.toString());
+        const totalByOwner = await registry.getTotalAppsByOwner(address);
+        console.log("Total apps by owner (verification):", totalByOwner.toString());
         
-        if (balance.toString() !== totalByMinter.toString()) {
-          console.log("⚠️ Balance and minter count differ (transfers may have occurred)");
+        if (balance.toString() !== totalByOwner.toString()) {
+          console.log("⚠️ ERC721 balance and getTotalAppsByOwner differ - possible contract bug!");
         }
       } catch (error: any) {
-        // Ignore if getTotalAppsByMinter fails
+        // Ignore if getTotalAppsByOwner fails
       }
       
       displayTaskCompletion(true, `Found ${balance} tokens`);

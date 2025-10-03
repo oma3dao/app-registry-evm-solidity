@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -23,9 +23,9 @@ interface IOMA3AppMetadata {
 
 /**
  * @title OMA3AppRegistry
- * @dev Registry for OMA3 applications using ERC721 tokens
+ * @dev Registry for OMA3 applications using ERC721 tokens with enumeration
  */
-contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
+contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     // Version struct for efficient storage and comparison
     struct Version {
@@ -95,7 +95,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     mapping(bytes32 => string) private _didToFungibleTokenId; // DID hash => fungible token ID (for consistency validation)
     mapping(bytes32 => uint8) private _didToLatestMajor; // DID hash => highest major version (for O(1) lookup)
     mapping(bytes32 => bool) private _didExists; // DID hash => exists flag (to handle version 0.x.x)
-    mapping(address => uint256[]) private _ownerToTokenIds; // Owner to token IDs
+    // Note: _ownerToTokenIds removed - using ERC721Enumerable's tokenOfOwnerByIndex instead
 
     // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
     // STORAGE MAPPINGS FOR EFFICIENT QUERIES
@@ -122,7 +122,6 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     uint256 private constant MAX_URL_LENGTH = 256;
     uint256 private constant MAX_TRAITS = 20;
     uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
-    //uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
 
     // Token ID counter
     // Note: OpenZeppelin ERC721 does not include totalSupply tracking
@@ -273,11 +272,17 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
 
 
     /**
-     * @dev Returns the total number of tokens (ERC721Enumerable compatibility)
-     * @return Total supply of minted tokens
+     * @dev Override supportsInterface for multiple inheritance
+     * @param interfaceId The interface identifier
+     * @return bool True if the interface is supported
      */
-    function totalSupply() public view returns (uint256) {
-        return _totalTokens;
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721Enumerable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 
 
@@ -420,7 +425,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
 
         // Store mappings
         _didMajorToToken[didHash][initialVersionMajor] = tokenId;
-        _ownerToTokenIds[msg.sender].push(tokenId);
+        // Note: Owner tracking handled automatically by ERC721Enumerable
         
         // Track active apps for efficient queries
         _activeTokenIdToIndex[tokenId] = _activeTokenIds.length;
@@ -721,11 +726,11 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         } else {
             // Non-active apps: only show caller's own apps for privacy
             // Apps are deactivated for a reason - shouldn't be publicly browsable
-            uint256[] storage ownerTokenIds = _ownerToTokenIds[msg.sender];
+            uint256 totalOwned = balanceOf(msg.sender);
             uint256 count = 0;
             
-            for (uint256 i = 0; i < ownerTokenIds.length; i++) {
-                uint256 tokenId = ownerTokenIds[i];
+            for (uint256 i = 0; i < totalOwned; i++) {
+                uint256 tokenId = tokenOfOwnerByIndex(msg.sender, i);
                 if (_apps[tokenId].status == status) {
                     count++;
                 }
@@ -763,9 +768,9 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
         } else {
             // Non-active apps: only show caller's own apps for privacy
             // Apps are deactivated for a reason - shouldn't be publicly browsable
-            uint256[] storage ownerTokenIds = _ownerToTokenIds[msg.sender];
+            uint256 totalOwned = balanceOf(msg.sender);
             
-            if (startIndex >= ownerTokenIds.length) {
+            if (startIndex >= totalOwned) {
                 return (new App[](0), 0);
             }
             
@@ -774,8 +779,8 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             uint256 collected = 0;
             uint256 i;
             
-            for (i = startIndex; i < ownerTokenIds.length && collected < MAX_APPS_PER_PAGE; i++) {
-                uint256 tokenId = ownerTokenIds[i];
+            for (i = startIndex; i < totalOwned && collected < MAX_APPS_PER_PAGE; i++) {
+                uint256 tokenId = tokenOfOwnerByIndex(msg.sender, i);
                 if (_apps[tokenId].status == status) {
                     tempApps[collected] = _apps[tokenId];
                     collected++;
@@ -789,7 +794,7 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
             }
             
             // Calculate next start index: if we might have more apps to scan
-            nextStartIndex = (i < ownerTokenIds.length) ? i : 0;
+            nextStartIndex = (i < totalOwned) ? i : 0;
         }
         
         return (apps, nextStartIndex);
@@ -807,33 +812,36 @@ contract OMA3AppRegistry is ERC721, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Get total number of apps by minter
-     * @param minter The minter's address
-     * @return uint256 Total number of apps minted by the minter
+     * @dev Get total number of apps by owner (current NFT owner, not original minter)
+     * Uses ERC721Enumerable's balanceOf for accurate ownership tracking
+     * @param owner The owner's address
+     * @return uint256 Total number of apps owned by the address
      */
-    function getTotalAppsByMinter(address minter) external view returns (uint256) {
-        return _ownerToTokenIds[minter].length;
+    function getTotalAppsByOwner(address owner) external view returns (uint256) {
+        return balanceOf(owner);
     }
 
     /**
-     * @dev Returns applications by minter (returns all remaining apps from startIndex)
-     * @param minter The minter's address
+     * @dev Returns applications by owner (returns all remaining apps from startIndex)
+     * Uses ERC721Enumerable's tokenOfOwnerByIndex for accurate ownership tracking after transfers
+     * Note: "owner" here means current NFT owner, which may differ from original minter
+     * @param owner The owner's address
      * @param startIndex The starting index (0-based)
      * @return apps Array of App structs
      * @return nextStartIndex Always 0 (no pagination limit)
      */
-    function getAppsByMinter(address minter, uint256 startIndex) external view returns (App[] memory apps, uint256 nextStartIndex) {
-        uint256[] memory tokenIds = _ownerToTokenIds[minter];
-        uint256 totalApps = tokenIds.length;
+    function getAppsByOwner(address owner, uint256 startIndex) external view returns (App[] memory apps, uint256 nextStartIndex) {
+        uint256 totalOwned = balanceOf(owner);
         
-        if (startIndex >= totalApps) {
+        if (startIndex >= totalOwned) {
             return (new App[](0), 0);
         }
         
         // Return all remaining apps from startIndex onwards
-        apps = new App[](totalApps - startIndex);
-        for (uint256 i = startIndex; i < totalApps; i++) {
-            apps[i - startIndex] = _apps[tokenIds[i]];
+        apps = new App[](totalOwned - startIndex);
+        for (uint256 i = startIndex; i < totalOwned; i++) {
+            uint256 tokenId = tokenOfOwnerByIndex(owner, i);
+            apps[i - startIndex] = _apps[tokenId];
         }
         
         return (apps, 0); // Always 0 since we return all remaining apps

@@ -174,7 +174,7 @@ function latestMajor(bytes32 didHash)
 function getAppsByStatus(uint8 status, uint256 startIndex) 
     external view returns (App[] memory apps, uint256 nextStartIndex)
 
-function getAppsByMinter(address minter, uint256 startIndex) 
+function getAppsByOwner(address owner, uint256 startIndex) 
     external view returns (App[] memory apps, uint256 nextStartIndex)
 
 function getApps(uint256 startIndex) 
@@ -183,7 +183,7 @@ function getApps(uint256 startIndex)
 function getTotalAppsByStatus(uint8 status) 
     external view returns (uint256)
 
-function getTotalAppsByMinter(address minter) 
+function getTotalAppsByOwner(address owner) 
     external view returns (uint256)
 ```
 
@@ -193,8 +193,8 @@ function getTotalAppsByMinter(address minter)
 - These are separate numbering systems - pagination index refers to position in result arrays, not token IDs
 
 **Example**: If you have 3 minted apps with token IDs [1, 2, 3]:
-- `getAppsByMinter(minter, 0)` returns apps at positions 0-2 (all 3 apps)
-- `getAppsByMinter(minter, 1)` returns apps at positions 1-2 (apps with token IDs 2, 3)
+- `getAppsByOwner(owner, 0)` returns apps at positions 0-2 (all 3 apps)
+- `getAppsByOwner(owner, 1)` returns apps at positions 1-2 (apps with token IDs 2, 3)
 - The apps themselves still have token IDs 1, 2, 3 regardless of pagination
 
 #### Trait Filtering
@@ -521,8 +521,8 @@ npx hardhat getApp --did "did:example:123" --major 1 --registry <CONTRACT_ADDRES
 # Get all apps (paginated)  
 npx hardhat getApps --start 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
 
-# Get apps by minter
-npx hardhat getAppsByMinter --minter <ADDRESS> --start 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+# Get apps by owner (current NFT owner, not original minter)
+npx hardhat get-apps-by-owner --owner <ADDRESS> --startfrom 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
 ```
 
 ### Submitting Ownership Attestations

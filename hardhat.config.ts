@@ -11,7 +11,7 @@ dotenvConfig();
 // Import task files - Registry tasks
 import "./tasks/registry/getApp";
 import "./tasks/registry/getApps";
-import "./tasks/registry/getAppsByMinter";
+import "./tasks/registry/getAppsByOwner";
 import "./tasks/registry/updateAppControlled";
 import "./tasks/registry/updateStatus";
 import "./tasks/registry/getDidHash";

@@ -170,7 +170,7 @@ function makeCompatProxy(contract: any) {
 					return mapAppStruct(app);
 				};
 			}
-			if (prop === "getAppsByStatus" || prop === "getApps" || prop === "getAppsByMinter") {
+			if (prop === "getAppsByStatus" || prop === "getApps" || prop === "getAppsByOwner") {
 				return async (...args: any[]) => {
 					const result = await value.apply(target, args);
 					// result is a tuple: [apps, nextStartIndex]
@@ -413,10 +413,10 @@ describe("OMA3AppRegistry", function () {
       );
 
       // Debug: Check total apps by minter
-      const totalApps = await registry.getTotalAppsByMinter(minter1.address);
+      const totalApps = await registry.getTotalAppsByOwner(minter1.address);
       console.log(`    Total apps for minter1: ${totalApps}`);
 
-      const [apps, nextIndex] = await registry.getAppsByMinter(minter1.address, 0);
+      const [apps, nextIndex] = await registry.getAppsByOwner(minter1.address, 0);
       console.log(`    Apps found for minter1: ${apps.length}`);
       console.log(`    App DIDs: ${apps.map((app: any) => app.did).join(', ')}`);
       
@@ -3938,8 +3938,8 @@ describe("OMA3AppRegistry", function () {
       expect(await registry.totalSupply()).to.equal(10);
       
       // Verify user isolation
-      const [user1Apps, user1Next] = await registry.getAppsByMinter(minter1.address, 0);
-      const [user2Apps, user2Next] = await registry.getAppsByMinter(minter2.address, 0);
+      const [user1Apps, user1Next] = await registry.getAppsByOwner(minter1.address, 0);
+      const [user2Apps, user2Next] = await registry.getAppsByOwner(minter2.address, 0);
       
       expect(user1Apps.length).to.equal(5);
       expect(user2Apps.length).to.equal(5);
@@ -4755,9 +4755,9 @@ describe("OMA3AppRegistry", function () {
     expect(next).to.equal(0);
   });
 
-  it("getAppsByMinter should return empty array and 0 when startIndex is out of bounds", async function () {
+  it("getAppsByOwner should return empty array and 0 when startIndex is out of bounds", async function () {
     const { registry, minter1 } = await loadFixture(deployFixture);
-    const [apps, next] = await registry.getAppsByMinter(minter1.address, 9999);
+    const [apps, next] = await registry.getAppsByOwner(minter1.address, 9999);
     expect(apps).to.be.an("array").that.is.empty;
     expect(next).to.equal(0);
   });
@@ -4785,11 +4785,11 @@ describe("OMA3AppRegistry", function () {
     }
 
     // Debug: Check how many apps minter1 owns and their statuses
-    const totalApps = await registry.getTotalAppsByMinter(minter1.address);
+    const totalApps = await registry.getTotalAppsByOwner(minter1.address);
     console.log(`Total apps owned by minter1: ${totalApps}`);
     
     // Check first few apps to see their status
-    const [firstApps] = await registry.getAppsByMinter(minter1.address, 0);
+    const [firstApps] = await registry.getAppsByOwner(minter1.address, 0);
     if (firstApps.length > 0) {
       console.log(`First app status: ${firstApps[0].status}`);
     }
@@ -5103,10 +5103,17 @@ describe("OMA3AppRegistry", function () {
       expect(emptyStatusApps.length).to.equal(0);
       expect(emptyStatusNext).to.equal(0);
 
-      // Test minter filtering on empty registry
-      const [emptyMinterApps, emptyMinterNext] = await registry.getAppsByMinter(hre.ethers.ZeroAddress, 0);
-      expect(emptyMinterApps.length).to.equal(0);
-      expect(emptyMinterNext).to.equal(0);
+      // Test owner filtering on empty registry - should revert for zero address (OpenZeppelin ERC721 safety)
+      await expect(
+        registry.getAppsByOwner(hre.ethers.ZeroAddress, 0)
+      ).to.be.revertedWithCustomError(registry, "ERC721InvalidOwner");
+      
+      // Test owner filtering with valid address that has no apps
+      const signers = await hre.ethers.getSigners();
+      const randomAddress = signers[5]?.address || signers[0].address;
+      const [emptyOwnerApps, emptyOwnerNext] = await registry.getAppsByOwner(randomAddress, 0);
+      expect(emptyOwnerApps.length).to.equal(0);
+      expect(emptyOwnerNext).to.equal(0);
     });
   });
 
@@ -5563,7 +5570,7 @@ describe("OMA3AppRegistry", function () {
       const [activeApps] = await registry.getApps(0);
       expect(activeApps.length).to.equal(2); // Only active apps
 
-      const [user1Apps] = await registry.connect(minter1).getAppsByMinter(minter1.address, 0);
+      const [user1Apps] = await registry.connect(minter1).getAppsByOwner(minter1.address, 0);
       expect(user1Apps.length).to.equal(3);
 
       const [deprecatedApps] = await registry.connect(minter1).getAppsByStatus(1, 0);

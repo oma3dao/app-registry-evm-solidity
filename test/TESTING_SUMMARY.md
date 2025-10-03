@@ -216,32 +216,20 @@ The delivered test suite successfully validates all major contract operations an
 
 #### **Registry Testing**
 
-1. Change the MAX_APPS_PER_PAGE to 4 for testing by modifying the contract:
-   ```solidity
-   uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
-   //uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
-   ```
+Run the comprehensive registry test suite:
 
-2. Compile
-   ```bash
-   npx hardhat compile
-   ```
+```bash
+# Compile contracts
+npx hardhat compile
 
-3. Run registry tests
-   ```bash
-   npx hardhat test test/OMA3AppRegistry.ts
-   ```
+# Run all registry tests (includes pagination tests with 100+ apps)
+npx hardhat test test/OMA3AppRegistry.ts
 
-4. Change the MAX_APPS_PER_PAGE back to production values:
-   ```solidity
-   //uint256 private constant MAX_APPS_PER_PAGE = 4; // Maximum apps to return per query
-   uint256 private constant MAX_APPS_PER_PAGE = 100; // Maximum apps to return per query
-   ```
+# Run legacy registry tests
+npx hardhat test test/OMA3AppRegistryLegacy.ts
+```
 
-5. Compile again
-   ```bash
-   npx hardhat compile
-   ```
+**Note**: Pagination tests properly validate `MAX_APPS_PER_PAGE = 100` by minting 100-105 apps in the test fixtures.
 
 #### **OMATrust Resolver Testing**
 

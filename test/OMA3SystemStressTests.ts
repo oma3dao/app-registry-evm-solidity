@@ -219,7 +219,7 @@ describe("OMA3 System - Stress Tests and Performance", function () {
                     );
 
                     apps.push(did);
-                } catch (error) {
+                } catch (error: any) {
                     console.log(`Failed to mint app ${i}:`, error.message);
                     // Continue with next app
                 }
@@ -235,7 +235,7 @@ describe("OMA3 System - Stress Tests and Performance", function () {
                 const status = (i % 2) + 1; // Cycle through 1, 2 (deprecated, replaced) - avoid 0 (active)
                 try {
                     await registry.connect(user1).updateStatus(apps[i], 1, status);
-                } catch (error) {
+                } catch (error: any) {
                     console.log(`Failed to update status for app ${i} (${apps[i]}):`, error.message);
                     // Continue with next app
                 }
@@ -301,7 +301,7 @@ describe("OMA3 System - Stress Tests and Performance", function () {
             queryPromises.push(registry.getAppsByStatus(2, 0));
 
             // Get apps by minter
-            queryPromises.push(registry.getAppsByMinter(user1.address, 0));
+            queryPromises.push(registry.getAppsByOwner(user1.address, 0));
 
             // Get individual apps
             for (let i = 0; i < 10; i++) {
@@ -423,9 +423,14 @@ describe("OMA3 System - Stress Tests and Performance", function () {
             for (let i = 0; i < txResults.length; i++) {
                 const tx = txResults[i];
                 const receipt = await tx.wait();
+                const targetAddress = tx.to;
+                
+                if (!receipt || !targetAddress) {
+                    throw new Error("Transaction receipt or target address not found");
+                }
                 
                 // Get the factory contract for this transaction
-                const factory = await ethers.getContractAt("OMA3SystemFactory", tx.to);
+                const factory = await ethers.getContractAt("OMA3SystemFactory", targetAddress);
                 
                 // Get the addresses from the SystemDeployed event
                 const event = receipt.logs.find(log => {
@@ -437,14 +442,18 @@ describe("OMA3 System - Stress Tests and Performance", function () {
                     }
                 });
                 
-                if (event) {
-                    const parsed = factory.interface.parseLog(event);
-                    const registryAddress = parsed.args.registry;
-                    const metadataAddress = parsed.args.metadata;
-                    results.push([registryAddress, metadataAddress]);
-                } else {
+                if (!event) {
                     throw new Error("SystemDeployed event not found");
                 }
+                
+                const parsed = factory.interface.parseLog(event);
+                if (!parsed) {
+                    throw new Error("Failed to parse SystemDeployed event");
+                }
+                
+                const registryAddress = parsed.args.registry;
+                const metadataAddress = parsed.args.metadata;
+                results.push([registryAddress, metadataAddress]);
             }
 
             // Verify all systems are properly linked

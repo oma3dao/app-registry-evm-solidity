@@ -3,38 +3,38 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getRegistryContract, displayTaskHeader, displayTaskCompletion } from "../shared/env-helpers";
 
 interface TaskArgs {
-  minter: string;
+  owner: string;
   startfrom?: string;
 }
 
-task("get-apps-by-minter", "Fetches applications by minter address with pagination")
-  .addParam("minter", "The minter address to search for")
+task("get-apps-by-owner", "Fetches applications by owner address (current NFT owner) with pagination")
+  .addParam("owner", "The owner address to search for")
   .addOptionalParam("startfrom", "The index to start fetching from", "0")
   .setAction(async (taskArgs: TaskArgs, hre: HardhatRuntimeEnvironment) => {
-    const { minter, startfrom = "0" } = taskArgs;
+    const { owner, startfrom = "0" } = taskArgs;
     const startFromIndex = parseInt(startfrom, 10);
     
     try {
       const [deployer] = await hre.ethers.getSigners();
-      displayTaskHeader("Get Applications by Minter", hre.network.name, deployer.address);
+      displayTaskHeader("Get Applications by Owner", hre.network.name, deployer.address);
       
-      console.log("Minter address:", minter);
+      console.log("Owner address:", owner);
       console.log("Starting from index:", startFromIndex);
 
       const { contract: appRegistry } = await getRegistryContract(hre);
 
-      // Check if the minter address is valid
-      if (!hre.ethers.isAddress(minter)) {
-        throw new Error("Invalid minter address format");
+      // Check if the owner address is valid
+      if (!hre.ethers.isAddress(owner)) {
+        throw new Error("Invalid owner address format");
       }
 
-      const result = await appRegistry.getAppsByMinter(minter, startFromIndex);
+      const result = await appRegistry.getAppsByOwner(owner, startFromIndex);
       const { apps, nextStartIndex } = result;
       
-      console.log(`Found ${apps.length} application(s) for minter ${minter}:`);
+      console.log(`Found ${apps.length} application(s) for owner ${owner}:`);
       
       if (apps.length === 0) {
-        console.log("No applications found for this minter.");
+        console.log("No applications found for this owner.");
         displayTaskCompletion(true, "No applications to display");
         return;
       }
@@ -52,11 +52,12 @@ task("get-apps-by-minter", "Fetches applications by minter address with paginati
         console.log(`\nMore applications available. Use --startfrom ${nextStartIndex} to continue.`);
       }
 
-      displayTaskCompletion(true, `Retrieved ${apps.length} applications for minter`);
+      displayTaskCompletion(true, `Retrieved ${apps.length} applications for owner`);
 
     } catch (error: any) {
-      console.error("Error fetching apps by minter:", error.message);
-      displayTaskCompletion(false, "Failed to retrieve applications by minter");
+      console.error("Error fetching apps by owner:", error.message);
+      displayTaskCompletion(false, "Failed to retrieve applications by owner");
       throw error;
     }
   });
+
