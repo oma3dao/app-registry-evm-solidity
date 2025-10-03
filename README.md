@@ -292,7 +292,7 @@ Use the Hardhat tasks for local development and testing:
    npm run deploy:system -- --network omachainTestnet
    ```
 
-5. **Verify contracts on explorer** (optional):
+5. **Verify contracts on explorer** (won't work on localhost):
    ```bash
    # Set API key 
    export OMACHAIN_API_KEY=your_api_key_here
@@ -302,6 +302,25 @@ Use the Hardhat tasks for local development and testing:
    npx hardhat verify --network omachainTestnet <METADATA_ADDRESS>
    npx hardhat verify --network omachainTestnet <RESOLVER_ADDRESS>
    ```
+
+### Testing Against Your Localhost Deployment
+
+**Important**: By default, `npm test` runs tests against fresh contract deployments in Hardhat's built-in test network, not against your running localhost node.
+
+To test against contracts deployed to your running localhost node:
+
+```bash
+# Terminal 1: Keep your node running
+npx hardhat node
+
+# Terminal 2: Deploy to localhost
+npm run deploy:system -- --network localhost
+
+# Terminal 2: Run tests against localhost
+npx hardhat test --network localhost
+```
+
+This will test your specific deployed contracts with their actual addresses, rather than creating fresh deployments for each test.
 
 ### What Gets Deployed
 
