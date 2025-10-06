@@ -71,7 +71,7 @@ The scripts work together to provide a complete deployment pipeline:
 cd /path/to/app-registry-evm-solidity
 
 # 1. Create/reuse server wallet
-./scripts/deploy/create-server-wallet.sh production
+./scripts/deploy/create-server-wallet.sh development/testnet/production
 
 # 2. Upload contracts to Thirdweb (auto-compiles)
 ./scripts/deploy/publish-contracts.sh
@@ -82,7 +82,7 @@ cd /path/to/app-registry-evm-solidity
 # - Deploy each contract using your server wallet
 
 # 4. Configure deployed contracts
-./scripts/deploy/configure-contracts.sh production
+./scripts/deploy/configure-contracts.sh development/testnet/production
 ```
 
 ### NPM Script Available
