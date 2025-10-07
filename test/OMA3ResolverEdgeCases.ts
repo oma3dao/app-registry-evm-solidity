@@ -137,8 +137,7 @@ describe("OMA3ResolverWithStore Edge Cases Coverage", function () {
       await resolver.upsertDirect(didHash, ethers.zeroPadValue(user1.address, 32), futureTime);
       
       currentOwner = await resolver.currentOwner(didHash);
-      expect(typeof currentOwner).to.equal("string");
-      expect(currentOwner).to.match(/^0x[a-fA-F0-9]{40}$/); // Valid address format
+      expect(currentOwner).to.equal(user1.address); // Should return the attested owner
         });
     });
 
