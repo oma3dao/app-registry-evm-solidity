@@ -17,6 +17,7 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
 
     // Policy configuration (simplified for v1)
     mapping(address => bool) public isIssuer;        // allowlisted attestation issuers
+    address[] public authorizedIssuers;              // array for iteration
     uint64 public maturationSeconds;                 // maturation period for ownership changes
     uint64 public maxTTLSeconds;                     // maximum TTL cap
 
@@ -204,10 +205,9 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
         uint256 maxScore = 0;
         address owner = address(0);
 
-        // Simple linear scan over issuer allowlist
-        for (uint256 i = 0; i < 1000; i++) { // Reasonable upper bound
-            address issuer = address(uint160(uint256(keccak256(abi.encodePacked("issuer", i)))));
-            if (!isIssuer[issuer]) continue;
+        // Iterate over authorized issuers array
+        for (uint256 i = 0; i < authorizedIssuers.length; i++) {
+            address issuer = authorizedIssuers[i];
 
             IOMA3DidOwnershipAttestationStore.Entry storage entry = _own[issuer][didHash];
             if (!entry.active) continue;
@@ -232,9 +232,8 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
 
     function isDataHashValid(bytes32 didHash, bytes32 dataHash) external view override(IOMA3DataUrlAttestationStore, IOMA3Resolver) returns (bool) {
         // Check if any allowlisted issuer has attested to this data hash for this DID
-        for (uint256 i = 0; i < 1000; i++) { // Reasonable upper bound
-            address issuer = address(uint160(uint256(keccak256(abi.encodePacked("issuer", i)))));
-            if (!isIssuer[issuer]) continue;
+        for (uint256 i = 0; i < authorizedIssuers.length; i++) {
+            address issuer = authorizedIssuers[i];
 
             IOMA3DataUrlAttestationStore.DataEntry storage entry = _data[issuer][didHash][dataHash];
             if (!entry.active) continue;
@@ -257,12 +256,23 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
         require(issuer != address(0), "Invalid issuer address");
         require(!isIssuer[issuer], "Issuer already authorized");
         isIssuer[issuer] = true;
+        authorizedIssuers.push(issuer);
         emit IssuerAuthorized(issuer);
     }
     
     function removeAuthorizedIssuer(address issuer) external onlyOwner {
         require(isIssuer[issuer], "Issuer not authorized");
         isIssuer[issuer] = false;
+        
+        // Remove from array (swap with last and pop)
+        for (uint256 i = 0; i < authorizedIssuers.length; i++) {
+            if (authorizedIssuers[i] == issuer) {
+                authorizedIssuers[i] = authorizedIssuers[authorizedIssuers.length - 1];
+                authorizedIssuers.pop();
+                break;
+            }
+        }
+        
         emit IssuerRevoked(issuer);
     }
     
