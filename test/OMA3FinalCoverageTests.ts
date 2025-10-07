@@ -92,24 +92,23 @@ describe("OMA3 Final Coverage Tests", function () {
       deterministicSigner = await ethers.getSigner(deterministicIssuer);
     });
 
-    it("Should hit lines 212, 216, 219, 222, 224 in currentOwner function", async function () {
+    it("Should properly resolve ownership with authorized issuer attestation", async function () {
       const didHash = ethers.keccak256(ethers.toUtf8Bytes("did:oma3:test"));
       const controllerAddress = ethers.zeroPadValue(user1.address, 32);
       
       // Set maturation seconds to 0 for immediate testing
       await resolver.setMaturation(0);
       
-      // Create ownership attestation directly (not using deterministic issuer)
-      await resolver.upsertDirect(
+      // Create ownership attestation using the deterministic issuer (which is authorized)
+      await resolver.connect(deterministicSigner).upsertDirect(
         didHash,
         controllerAddress,
         0 // No expiration
       );
 
-      // This should hit lines 212, 222, 224 in currentOwner
-      // Note: currentOwner only looks at deterministic issuers, not direct attestations
+      // SPECIFICATION REQUIREMENT: currentOwner should return the correct owner
       const owner = await resolver.currentOwner(didHash);
-      expect(owner).to.equal(ethers.ZeroAddress); // No deterministic issuer attestation
+      expect(owner).to.equal(user1.address); // Should return the attested owner
     });
 
     it("Should hit lines 216, 219 with expired and maturation conditions", async function () {
@@ -119,8 +118,8 @@ describe("OMA3 Final Coverage Tests", function () {
       // Set maturation seconds to 1 hour
       await resolver.setMaturation(3600);
       
-      // Create ownership attestation
-      await resolver.upsertDirect(
+      // Create ownership attestation using the deterministic issuer
+      await resolver.connect(deterministicSigner).upsertDirect(
         didHash,
         controllerAddress,
         Math.floor(Date.now() / 1000) + 3600 // Expires in 1 hour
@@ -135,7 +134,7 @@ describe("OMA3 Final Coverage Tests", function () {
       await ethers.provider.send("evm_mine", []);
 
       const ownerAfterMaturation = await resolver.currentOwner(didHash);
-      expect(ownerAfterMaturation).to.equal(ethers.ZeroAddress); // No deterministic issuer attestation
+      expect(ownerAfterMaturation).to.equal(user1.address); // Should return the attested owner after maturation
 
       // Test expiration (line 216)
       await ethers.provider.send("evm_increaseTime", [3601]);
