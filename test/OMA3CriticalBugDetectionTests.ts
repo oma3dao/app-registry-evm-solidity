@@ -74,36 +74,41 @@ describe("OMA3 Critical Bug Detection Tests", function () {
             const controller2 = ethers.zeroPadValue(user2.address, 32);
             const futureTime = Math.floor(Date.now() / 1000) + 3600;
 
-            // Both real issuers create attestations
+            // Both real issuers create attestations with DIFFERENT controllers (contention)
             await resolver.connect(realIssuer1).upsertDirect(TEST_DID_HASH, controller1, futureTime);
             await resolver.connect(realIssuer2).upsertDirect(TEST_DID_HASH, controller2, futureTime);
 
-            // Should return one of the attested owners
+            // With contention and maturation=0, both are matured immediately
+            // Dual-tally approach: contention exists, so it checks matured consensus
+            // Since both are matured but disagree, returns address(0)
             const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.be.oneOf([user1.address, user2.address],
-                "🚨 CRITICAL BUG: currentOwner() not working with multiple real issuers!");
+            expect(owner).to.equal(ethers.ZeroAddress,
+                "With contention and disagreement, should return zero address");
         });
 
         it("Should respect maturation period with real issuers", async function () {
             const { resolver, realIssuer1, user1 } = await loadFixture(deployBugDetectionFixture);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-            const futureTime = Math.floor(Date.now() / 1000) + 3600;
+            // Set expiry far in the future so it doesn't expire during the test
+            const farFutureTime = Math.floor(Date.now() / 1000) + 365 * 24 * 3600; // 1 year
 
-            // Create attestation
-            await resolver.connect(realIssuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
+            // Create attestation from single issuer (no contention)
+            await resolver.connect(realIssuer1).upsertDirect(TEST_DID_HASH, controllerAddress, farFutureTime);
 
-            // Should return zero during maturation (default 48 hours)
-            const ownerDuringMaturation = await resolver.currentOwner(TEST_DID_HASH);
-            expect(ownerDuringMaturation).to.equal(ethers.ZeroAddress);
+            // With the new dual-tally approach: single issuer (no contention) = immediate winner
+            // Maturation only applies when there's contention between issuers
+            const ownerImmediate = await resolver.currentOwner(TEST_DID_HASH);
+            expect(ownerImmediate).to.equal(user1.address,
+                "Single issuer should return immediately without maturation");
 
-            // Fast forward past maturation
+            // Fast forward past maturation (should still return same owner)
             await time.increase(172800 + 1); // 48 hours + 1 second
 
-            // Should now return the correct owner
+            // Should still return the correct owner
             const ownerAfterMaturation = await resolver.currentOwner(TEST_DID_HASH);
             expect(ownerAfterMaturation).to.equal(user1.address,
-                "🚨 CRITICAL BUG: Maturation period not working with real issuers!");
+                "Owner should remain consistent after maturation period");
         });
     });
 
