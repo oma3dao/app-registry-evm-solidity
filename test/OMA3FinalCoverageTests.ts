@@ -119,29 +119,36 @@ describe("OMA3 Final Coverage Tests", function () {
       await resolver.setMaturation(3600);
       
       // Create ownership attestation using the deterministic issuer
+      // Set expiry far in the future so we can test maturation without expiring
       await resolver.connect(deterministicSigner).upsertDirect(
         didHash,
         controllerAddress,
-        Math.floor(Date.now() / 1000) + 3600 // Expires in 1 hour
+        Math.floor(Date.now() / 1000) + 365 * 24 * 3600 // Expires in 1 year
       );
 
       // Test maturation window (line 219)
+      // With dual-tally: single issuer (no contention) = returns immediately
       const ownerBeforeMaturation = await resolver.currentOwner(didHash);
-      expect(ownerBeforeMaturation).to.equal(ethers.ZeroAddress); // Should be 0 due to maturation
+      expect(ownerBeforeMaturation).to.equal(user1.address); // Returns immediately (no contention)
 
       // Fast forward time past maturation
       await ethers.provider.send("evm_increaseTime", [3601]);
       await ethers.provider.send("evm_mine", []);
 
       const ownerAfterMaturation = await resolver.currentOwner(didHash);
-      expect(ownerAfterMaturation).to.equal(user1.address); // Should return the attested owner after maturation
+      expect(ownerAfterMaturation).to.equal(user1.address); // Should still return the attested owner
 
-      // Test expiration (line 216)
-      await ethers.provider.send("evm_increaseTime", [3601]);
+      // Now test expiration with a new attestation that will expire soon
+      const didHash2 = ethers.keccak256(ethers.toUtf8Bytes("did:oma3:will-expire"));
+      const shortExpiry = Math.floor(Date.now() / 1000) + 1800; // 30 minutes
+      await resolver.connect(deterministicSigner).upsertDirect(didHash2, controllerAddress, shortExpiry);
+      
+      // Fast forward past expiration
+      await ethers.provider.send("evm_increaseTime", [1801]);
       await ethers.provider.send("evm_mine", []);
 
-      const ownerAfterExpiration = await resolver.currentOwner(didHash);
-      expect(ownerAfterExpiration).to.equal(ethers.ZeroAddress);
+      const ownerAfterExpiration = await resolver.currentOwner(didHash2);
+      expect(ownerAfterExpiration).to.equal(ethers.ZeroAddress); // Should be zero after expiration
     });
 
     it("Should hit lines 239, 240, 243, 245 in isDataHashValid function", async function () {
