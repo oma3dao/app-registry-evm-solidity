@@ -581,9 +581,10 @@ describe("OMA3ResolverWithStore", function () {
 
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerBytes32, futureTime);
 
-            // Check immediately (should be in maturation period)
+            // With dual-tally: single issuer (no contention) = returns immediately
+            // Maturation only applies when there's contention
             const maturationOwner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(maturationOwner).to.equal(ethers.ZeroAddress);
+            expect(maturationOwner).to.equal(issuer1.address);
         });
     });
 
@@ -910,13 +911,12 @@ describe("OMA3ResolverWithStore", function () {
             expect(result1).to.be.false;
             
             // Test 2: Create attestation with our test signers
-            // This won't hit the deterministic pattern but tests the basic functionality
+            // With the fix, this now works with real authorized issuers
             await resolver.connect(issuer1).attestDataHash(uniqueDidHash, uniqueDataHash, 0);
             
-            // The linear scan won't find this because issuer1 doesn't match the deterministic pattern
-            // but we can still test that the function works correctly
+            // The linear scan now finds real authorized issuers correctly
             const result2 = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
-            expect(result2).to.be.false; // Will be false because linear scan doesn't find our signer
+            expect(result2).to.be.true; // Now returns true with the fix!
             
             // Test 3: Test the basic functionality we can verify
             expect(typeof result1).to.equal('boolean');
@@ -1351,10 +1351,10 @@ describe("OMA3ResolverWithStore", function () {
             expect(result1).to.be.false;
 
             // Test 2: Create active attestation with our test signers
-            // Note: This won't be found by the linear scan due to deterministic address pattern
+            // With the fix, this now works with real authorized issuers
             await resolver.connect(issuer1).attestDataHash(testDidHash, testDataHash, 0);
             const result2 = await resolver.isDataHashValid(testDidHash, testDataHash);
-            expect(result2).to.be.false; // Will be false because linear scan doesn't find our signer
+            expect(result2).to.be.true; // Now returns true with the fix!
 
             // Test 3: Test with different DID hash
             const differentDidHash = ethers.keccak256(ethers.toUtf8Bytes(`did:oma3:different-test-${Date.now()}`));
