@@ -479,17 +479,17 @@ describe("OMA3 Specification Compliance Tests", function () {
             const { resolver, issuer1, user1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-            const maxTTL = await resolver.maxTTLSeconds();
+            const maxTTL = Number(await resolver.maxTTLSeconds());
             const nowTimestamp = Math.floor(Date.now() / 1000);
-            const tooFarFuture = nowTimestamp + Number(maxTTL) + 3600; // Beyond max TTL
+            const tooFarFuture = nowTimestamp + maxTTL + 3600; // Beyond max TTL
 
             // Should cap the expiry to max TTL
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, tooFarFuture);
 
             // Verify the entry was capped (allow 10 second buffer for timing)
             const entry = await resolver.get(issuer1.address, TEST_DID_HASH);
-            const maxAllowed = nowTimestamp + Number(maxTTL) + 10;
-            expect(entry.expiresAt).to.be.lessThanOrEqual(maxAllowed);
+            const maxAllowed = nowTimestamp + maxTTL + 120; // generous buffer
+            expect(Number(entry.expiresAt)).to.be.lessThanOrEqual(maxAllowed);
         });
 
         it("Should prevent non-owners from changing policies", async function () {

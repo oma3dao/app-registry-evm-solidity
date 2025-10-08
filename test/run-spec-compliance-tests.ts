@@ -189,7 +189,12 @@ async function main() {
     }
 }
 
-main().catch((error) => {
-    log(`\n${colors.red}❌ Error running tests: ${error.message}${colors.reset}`);
-    process.exit(1);
-});
+// Only execute when invoked directly via CLI, not when loaded by Mocha/Hardhat
+if (require.main === module) {
+    main().catch((error) => {
+        log(`\n${colors.red}❌ Error running tests: ${error.message}${colors.reset}`);
+        process.exit(1);
+    });
+}
+
+export { main };
