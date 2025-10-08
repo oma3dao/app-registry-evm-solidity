@@ -201,33 +201,74 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
     // ---------- IResolver: ownership & data validation ----------
 
     function currentOwner(bytes32 didHash) external view returns (address) {
-        // Count attestations from allowlisted issuers
-        uint256 maxScore = 0;
-        address owner = address(0);
+        // Dual-tally approach:
+        // - Immediate tally (no maturation applied)
+        // - Matured tally (maturation applied)
+        // Selection:
+        //   * No issuer entries           -> address(0)
+        //   * No contention               -> immediate winner (effective immediately)
+        //   * Contention (disagreement)   -> matured winner (or address(0) until matured consensus)
 
-        // Iterate over authorized issuers array
+        uint256 issuerCount = 0;
+
+        // Immediate (no maturation)
+        address immediateWinner = address(0);
+        bool immediateInitialized = false;
+        bool immediateDisagree = false;
+
+        // Matured (with maturation)
+        address maturedWinner = address(0);
+        bool maturedInitialized = false;
+        bool maturedDisagree = false;
+
         for (uint256 i = 0; i < authorizedIssuers.length; i++) {
             address issuer = authorizedIssuers[i];
-
             IOMA3DidOwnershipAttestationStore.Entry storage entry = _own[issuer][didHash];
             if (!entry.active) continue;
 
-            // Check if expired
+            // Skip expired entries
             if (entry.expiresAt != 0 && _now() > entry.expiresAt) continue;
 
-            // Check maturation window
-            if (maturationSeconds > 0 && _now() < entry.recordedAt + maturationSeconds) continue;
+            issuerCount++;
+            address ctrl = address(uint160(uint256(entry.controllerAddress)));
 
-            // Count as score (could be weighted in future)
-            uint256 score = 1;
+            // Immediate tally (no maturation)
+            if (!immediateInitialized) {
+                immediateInitialized = true;
+                immediateWinner = ctrl;
+            } else if (ctrl != immediateWinner) {
+                immediateDisagree = true;
+            }
 
-            if (score > maxScore) {
-                maxScore = score;
-                owner = address(uint160(uint256(entry.controllerAddress)));
+            // Matured tally (apply maturation window)
+            bool maturedOk = (maturationSeconds == 0) || (_now() >= entry.recordedAt + maturationSeconds);
+            if (maturedOk) {
+                if (!maturedInitialized) {
+                    maturedInitialized = true;
+                    maturedWinner = ctrl;
+                } else if (ctrl != maturedWinner) {
+                    maturedDisagree = true;
+                }
             }
         }
 
-        return owner;
+        if (issuerCount == 0) {
+            return address(0);
+        }
+
+        // Contention exists if multiple issuers and they disagree on controller (without maturation)
+        bool contention = (issuerCount > 1) && immediateDisagree;
+        if (!contention) {
+            // Single issuer or multiple issuers in agreement -> effective immediately
+            return immediateWinner;
+        }
+
+        // Contested: require matured consensus (may be unset until maturation elapses)
+        if (maturedInitialized && !maturedDisagree) {
+            return maturedWinner;
+        }
+
+        return address(0);
     }
 
     function isDataHashValid(bytes32 didHash, bytes32 dataHash) external view override(IOMA3DataUrlAttestationStore, IOMA3Resolver) returns (bool) {
