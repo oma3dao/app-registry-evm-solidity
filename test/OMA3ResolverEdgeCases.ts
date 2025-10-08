@@ -118,23 +118,31 @@ describe("OMA3ResolverWithStore Edge Cases Coverage", function () {
       let currentOwner = await resolver.currentOwner(didHash);
       expect(currentOwner).to.equal(ethers.ZeroAddress);
 
+      // Setup deterministic issuer for testing
+      const deterministicIssuer = ethers.getAddress(
+        ethers.keccak256(ethers.solidityPacked(["string", "uint256"], ["issuer", 0])).slice(0, 42)
+      );
+      await ethers.provider.send("hardhat_impersonateAccount", [deterministicIssuer]);
+      const deterministicSigner = await ethers.getSigner(deterministicIssuer);
+      await ethers.provider.send("hardhat_setBalance", [deterministicIssuer, "0x1000000000000000000"]);
+
       // Test case 2: Ownership attestation exists but is not active
-      await resolver.upsertDirect(didHash, ethers.zeroPadValue(user1.address, 32), 0);
-      await resolver.revokeDirect(didHash);
+      await resolver.connect(deterministicSigner).upsertDirect(didHash, ethers.zeroPadValue(user1.address, 32), 0);
+      await resolver.connect(deterministicSigner).revokeDirect(didHash);
       
       currentOwner = await resolver.currentOwner(didHash);
       expect(currentOwner).to.equal(ethers.ZeroAddress);
 
       // Test case 3: Ownership attestation exists but is expired
       const pastTime = Math.floor(Date.now() / 1000) - 3600;
-      await resolver.upsertDirect(didHash, ethers.zeroPadValue(user1.address, 32), pastTime);
+      await resolver.connect(deterministicSigner).upsertDirect(didHash, ethers.zeroPadValue(user1.address, 32), pastTime);
       
       currentOwner = await resolver.currentOwner(didHash);
       expect(currentOwner).to.equal(ethers.ZeroAddress);
 
       // Test case 4: Valid ownership attestation exists
       const futureTime = Math.floor(Date.now() / 1000) + 3600;
-      await resolver.upsertDirect(didHash, ethers.zeroPadValue(user1.address, 32), futureTime);
+      await resolver.connect(deterministicSigner).upsertDirect(didHash, ethers.zeroPadValue(user1.address, 32), futureTime);
       
       currentOwner = await resolver.currentOwner(didHash);
       expect(currentOwner).to.equal(user1.address); // Should return the attested owner
