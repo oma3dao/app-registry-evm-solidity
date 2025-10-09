@@ -249,8 +249,8 @@ describe("OMA3ResolverWithStore", function () {
         it("Should return zero address when no valid ownership attestations exist", async function () {
             const { resolver } = await loadFixture(deployWithIssuersFixture);
 
-            const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(ethers.ZeroAddress);
+            const resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(ethers.ZeroAddress);
         });
 
         it("Should return false when no valid data hash attestations exist", async function () {
@@ -549,7 +549,6 @@ describe("OMA3ResolverWithStore", function () {
 
             // Set maturation to 0 for immediate effect
             await resolver.connect(owner).setMaturation(0);
-            await resolver.connect(owner).setMaturation(0);
 
             const controllerBytes32 = ethers.zeroPadValue(user1.address, 32);
             const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
@@ -558,8 +557,8 @@ describe("OMA3ResolverWithStore", function () {
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerBytes32, futureTime);
 
             // Verify owner is resolved correctly
-            const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(user1.address);
+            const resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(user1.address);
         });
 
         it("Should not return owner for expired attestations", async function () {
