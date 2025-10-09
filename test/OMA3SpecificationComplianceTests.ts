@@ -116,7 +116,7 @@ describe("OMA3 Specification Compliance Tests", function () {
         });
 
         it("Should resolve correct owner after valid attestation (CRITICAL SPEC TEST)", async function () {
-            const { resolver, issuer1, user1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
+            const { resolver, issuer1, user1, owner } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             // Set maturation to 0 for immediate effect
             await resolver.connect(owner).setMaturation(0);
@@ -174,7 +174,7 @@ describe("OMA3 Specification Compliance Tests", function () {
         });
 
         it("Should handle non-expiring attestations (expiresAt = 0)", async function () {
-            const { resolver, issuer1, user1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
+            const { resolver, issuer1, user1, owner } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             // Set maturation to 0 for immediate effect
             await resolver.connect(owner).setMaturation(0);
@@ -189,7 +189,7 @@ describe("OMA3 Specification Compliance Tests", function () {
         });
 
         it("Should allow revocation of ownership attestations", async function () {
-            const { resolver, issuer1, user1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
+            const { resolver, issuer1, user1, owner } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             // Set maturation to 0 for immediate effect
             await resolver.connect(await ethers.getSigner(await resolver.owner())).setMaturation(0);
