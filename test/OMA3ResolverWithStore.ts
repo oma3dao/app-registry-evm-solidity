@@ -540,8 +540,8 @@ describe("OMA3ResolverWithStore", function () {
         it("Should return zero address when no valid ownership attestations exist", async function () {
             const { resolver } = await loadFixture(deployWithIssuersFixture);
 
-            const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(ethers.ZeroAddress);
+            const resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(ethers.ZeroAddress);
         });
 
         it("Should return correct owner when valid attestation exists", async function () {
@@ -1211,8 +1211,8 @@ describe("OMA3ResolverWithStore", function () {
             await resolver.connect(issuer1).attestDataHash(uniqueDidHash, uniqueDataHash, futureTime);
             
             // Test currentOwner - this should trigger the linear scan logic
-            const owner = await resolver.currentOwner(uniqueDidHash);
-            expect(typeof owner).to.equal('string');
+            const resolvedOwner1 = await resolver.currentOwner(uniqueDidHash);
+            expect(typeof resolvedOwner1).to.equal('string');
             
             // Test isDataHashValid - this should trigger the linear scan logic  
             const isValid = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
@@ -1249,8 +1249,8 @@ describe("OMA3ResolverWithStore", function () {
             await resolver.connect(issuer2).attestDataHash(uniqueDidHash, uniqueDataHash, futureTime);
             
             // Test currentOwner with multiple issuers - should trigger linear scan
-            const owner = await resolver.currentOwner(uniqueDidHash);
-            expect(typeof owner).to.equal('string');
+            const resolvedOwner2 = await resolver.currentOwner(uniqueDidHash);
+            expect(typeof resolvedOwner2).to.equal('string');
             
             // Test isDataHashValid with multiple issuers - should trigger linear scan
             const isValid = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
