@@ -108,7 +108,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             const { resolver, issuer1, user1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-            const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+            const futureTime = 0; // non-expiring simplifies deterministic resolution
 
             await expect(resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime))
                 .to.emit(resolver, "Upsert")
@@ -195,7 +195,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(owner).setMaturation(0);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-            const futureTime = Math.floor(Date.now() / 1000) + 3600;
+            const futureTime = 0;
 
             // Create attestation
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
@@ -219,7 +219,7 @@ describe("OMA3 Specification Compliance Tests", function () {
         it("Should allow authorized issuers to attest data hashes", async function () {
             const { resolver, issuer1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
-            const futureTime = Math.floor(Date.now() / 1000) + 3600;
+            const futureTime = 0;
 
             await expect(resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime))
                 .to.emit(resolver, "DataHashAttested")
@@ -229,7 +229,7 @@ describe("OMA3 Specification Compliance Tests", function () {
         it("Should validate data hashes attested by authorized issuers", async function () {
             const { resolver, issuer1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
-            const futureTime = Math.floor(Date.now() / 1000) + 3600;
+            const futureTime = 0;
 
             // Attest data hash
             await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
