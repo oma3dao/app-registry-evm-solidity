@@ -102,7 +102,7 @@ describe("OMA3 Missing Test Cases", function () {
                 const { resolver, issuer1, user1 } = await loadFixture(deployMissingTestsFixture);
 
                 const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-                const futureTime = Math.floor(Date.now() / 1000) + 3600;
+                const futureTime = (await time.latest()) + 3600;
 
                 await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
                 await resolver.connect(issuer1).revokeDirect(TEST_DID_HASH);
@@ -299,7 +299,7 @@ describe("OMA3 Missing Test Cases", function () {
 
                 const controllerAddress = ethers.zeroPadValue(user1.address, 32);
                 const futureTime = Math.floor(Date.now() / 1000) + 3600;
-                const deadline = Math.floor(Date.now() / 1000) + 7200;
+                const deadline = (await time.latest()) + 7200;
                 const nonce = 1;
 
                 const delegatedData = {
@@ -322,8 +322,8 @@ describe("OMA3 Missing Test Cases", function () {
                 const { resolver, issuer1, user1 } = await loadFixture(deployMissingTestsFixture);
 
                 const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-                const futureTime = Math.floor(Date.now() / 1000) + 3600;
-                const deadline = Math.floor(Date.now() / 1000) + 7200;
+                const futureTime = (await time.latest()) + 3600;
+                const deadline = (await time.latest()) + 7200;
                 const nonce = 1;
 
                 const delegatedData = {
