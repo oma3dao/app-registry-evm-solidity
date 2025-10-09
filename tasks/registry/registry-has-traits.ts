@@ -23,8 +23,7 @@ task("has-traits", "Check if an app has specific traits (any or all)")
     }
     
     try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Check App Traits", hre.network.name, signer.address);
+      displayTaskHeader("Check App Traits (read-only)", hre.network.name, "-");
       
       console.log("App DID:", did);
       console.log("Major version:", majorVersion);

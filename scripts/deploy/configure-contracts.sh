@@ -30,33 +30,81 @@ print_header() {
     echo -e "${BLUE}[STEP]${NC} $1"
 }
 
-# Check arguments
-if [ $# -ne 1 ]; then
-    print_error "Usage: $0 <environment>"
-    print_error "Example: $0 production"
+# Initialize contract addresses
+REGISTRY_ADDRESS=""
+METADATA_ADDRESS=""
+RESOLVER_ADDRESS=""
+
+# Parse arguments
+ENVIRONMENT=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --registry)
+            REGISTRY_ADDRESS="$2"
+            shift 2
+            ;;
+        --metadata)
+            METADATA_ADDRESS="$2"
+            shift 2
+            ;;
+        --resolver)
+            RESOLVER_ADDRESS="$2"
+            shift 2
+            ;;
+        --help|-h)
+            print_status "Usage: $0 <environment> --registry <address> --metadata <address> --resolver <address>"
+            print_status "Examples:"
+            print_status "  $0 testnet --registry 0x742d35... --metadata 0x9f1f55... --resolver 0x24B0B17..."
+            print_status "  $0 mainnet --registry 0x742d35... --metadata 0x9f1f55... --resolver 0x24B0B17..."
+            print_status "  $0 testnet --resolver 0x24B0B17... --registry 0x742d35... --metadata 0x9f1f55..."
+            print_status ""
+            print_status "Contract addresses should be the deployed contract addresses from deploy-contracts.sh"
+            print_status "All three contracts are required for complete system configuration"
+            exit 0
+            ;;
+        *)
+            if [ -z "$ENVIRONMENT" ]; then
+                ENVIRONMENT="$1"
+            else
+                print_error "Unknown argument: $1"
+                print_error "Use --help for usage information"
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Validate environment
+if [ -z "$ENVIRONMENT" ]; then
+    print_error "Environment is required"
+    print_error "Usage: $0 <environment> --registry <address> --metadata <address> --resolver <address>"
     exit 1
 fi
 
-ENVIRONMENT=$1
+# Validate all three contracts are specified (required for complete system)
+if [ -z "$REGISTRY_ADDRESS" ]; then
+    print_error "Registry contract address is required"
+    print_error "Use --registry <address> flag"
+    exit 1
+fi
+
+if [ -z "$METADATA_ADDRESS" ]; then
+    print_error "Metadata contract address is required"
+    print_error "Use --metadata <address> flag"
+    exit 1
+fi
+
+if [ -z "$RESOLVER_ADDRESS" ]; then
+    print_error "Resolver contract address is required"
+    print_error "Use --resolver <address> flag"
+    exit 1
+fi
+
 WALLET_IDENTIFIER="oma3-${ENVIRONMENT}-1"
 
 print_header "Configuring contracts for environment: $ENVIRONMENT"
 print_status "Looking for wallet: $WALLET_IDENTIFIER"
-
-# Check if wallet exists by listing all server wallets
-WALLET_LIST=$(./list-server-wallets.sh 2>/dev/null | grep -A 10 "Server Wallets Found" | grep -E "(address|identifier):" | grep -v "^---" || true)
-
-# Look for our wallet identifier in the list
-if ! echo "$WALLET_LIST" | grep -q "identifier: $WALLET_IDENTIFIER"; then
-    print_error "Wallet $WALLET_IDENTIFIER not found"
-    print_error "Run: ./create-server-wallet.sh $ENVIRONMENT"
-    exit 1
-fi
-
-# Extract wallet address
-WALLET_ID=$(echo "$WALLET_LIST" | grep -A 1 "identifier: $WALLET_IDENTIFIER" | grep "address:" | sed 's/address: //' | tr -d ' ')
-
-print_status "Using wallet: $WALLET_ID ($WALLET_IDENTIFIER)"
 
 # Get secret key (check environment variable first, then prompt)
 if [ -z "$THIRDWEB_SECRET_KEY" ]; then
@@ -73,32 +121,40 @@ if [ -z "$SECRET_KEY" ]; then
     exit 1
 fi
 
-# Check if contract addresses file exists
-CONTRACT_ADDRESSES_FILE="scripts/deploy/contract-addresses.txt"
-if [ ! -f "$CONTRACT_ADDRESSES_FILE" ]; then
-    print_error "Contract addresses file not found: $CONTRACT_ADDRESSES_FILE"
-    print_error "Make sure to run deploy-contracts.sh first"
+# Check if wallet exists by listing all server wallets
+print_status "Checking for server wallet..."
+
+# Make API call to list server wallets
+WALLET_RESPONSE=$(curl -s -X GET "https://api.thirdweb.com/v1/wallets/server" \
+  -H "x-secret-key: $SECRET_KEY" \
+  -H "Content-Type: application/json")
+
+# Check if request was successful
+if echo "$WALLET_RESPONSE" | grep -q '"error"'; then
+    print_error "Failed to list server wallets:"
+    echo "$WALLET_RESPONSE" | grep -o '"message":"[^"]*"' | sed 's/"message":"//;s/"//'
     exit 1
 fi
 
-# Source deployed addresses
-source "$CONTRACT_ADDRESSES_FILE"
+# Extract wallet information
+WALLET_LIST=$(echo "$WALLET_RESPONSE" | jq -r '.result.wallets[] | "identifier: \(.profiles[].identifier), address: \(.address)"' 2>/dev/null || echo "")
 
-# Verify required deployed addresses exist
-REQUIRED_ADDRESSES=("DEPLOYED_OMA3APPREGISTRY_ADDRESS" "DEPLOYED_OMA3APPMETADATA_ADDRESS" "DEPLOYED_OMA3RESOLVERWITHSTORE_ADDRESS")
+# Look for our wallet identifier in the list
+if ! echo "$WALLET_LIST" | grep -q "identifier: $WALLET_IDENTIFIER"; then
+    print_error "Wallet $WALLET_IDENTIFIER not found"
+    print_error "Run: ./scripts/deploy/create-server-wallet.sh $ENVIRONMENT"
+    exit 1
+fi
 
-for addr_var in "${REQUIRED_ADDRESSES[@]}"; do
-    if [ -z "${!addr_var}" ]; then
-        print_error "Required deployed address not found: $addr_var"
-        print_error "Make sure all contracts were deployed successfully"
-        exit 1
-    fi
-done
+# Extract wallet address
+WALLET_ID=$(echo "$WALLET_RESPONSE" | jq -r ".result.wallets[] | select(.profiles[].identifier == \"$WALLET_IDENTIFIER\") | .address" 2>/dev/null)
 
-print_status "Found deployed contract addresses:"
-print_status "  Registry: $DEPLOYED_OMA3APPREGISTRY_ADDRESS"
-print_status "  Metadata: $DEPLOYED_OMA3APPMETADATA_ADDRESS"
-print_status "  Resolver: $DEPLOYED_OMA3RESOLVERWITHSTORE_ADDRESS"
+print_status "Using wallet: $WALLET_ID ($WALLET_IDENTIFIER)"
+
+print_status "Contracts to configure:"
+print_status "  Registry: $REGISTRY_ADDRESS"
+print_status "  Metadata: $METADATA_ADDRESS"
+print_status "  Resolver: $RESOLVER_ADDRESS"
 
 # Function to call contract function
 call_contract_function() {
@@ -147,17 +203,17 @@ FAILED_OPERATIONS=()
 print_status "Linking Registry and Metadata contracts..."
 
 if ! call_contract_function \
-    "$DEPLOYED_OMA3APPREGISTRY_ADDRESS" \
+    "$REGISTRY_ADDRESS" \
     "setMetadataContract" \
-    "[\"$DEPLOYED_OMA3APPMETADATA_ADDRESS\"]" \
+    "[\"$METADATA_ADDRESS\"]" \
     "Registry → Metadata"; then
     FAILED_OPERATIONS+=("Registry → Metadata linking")
 fi
 
 if ! call_contract_function \
-    "$DEPLOYED_OMA3APPMETADATA_ADDRESS" \
+    "$METADATA_ADDRESS" \
     "setAuthorizedRegistry" \
-    "[\"$DEPLOYED_OMA3APPREGISTRY_ADDRESS\"]" \
+    "[\"$REGISTRY_ADDRESS\"]" \
     "Metadata → Registry"; then
     FAILED_OPERATIONS+=("Metadata → Registry linking")
 fi
@@ -166,29 +222,29 @@ fi
 print_status "Linking Registry to Resolvers..."
 
 if ! call_contract_function \
-    "$DEPLOYED_OMA3APPREGISTRY_ADDRESS" \
+    "$REGISTRY_ADDRESS" \
     "setOwnershipResolver" \
-    "[\"$DEPLOYED_OMA3RESOLVERWITHSTORE_ADDRESS\"]" \
+    "[\"$RESOLVER_ADDRESS\"]" \
     "Registry → Ownership Resolver"; then
     FAILED_OPERATIONS+=("Registry → Ownership Resolver linking")
 fi
 
 if ! call_contract_function \
-    "$DEPLOYED_OMA3APPREGISTRY_ADDRESS" \
+    "$REGISTRY_ADDRESS" \
     "setDataUrlResolver" \
-    "[\"$DEPLOYED_OMA3RESOLVERWITHSTORE_ADDRESS\"]" \
+    "[\"$RESOLVER_ADDRESS\"]" \
     "Registry → Data URL Resolver"; then
     FAILED_OPERATIONS+=("Registry → Data URL Resolver linking")
 fi
 
-# 3. Configure Resolver (optional)
+# 3. Configure Resolver
 print_status "Configuring Resolver policies..."
 
 # Add a trusted issuer (example - replace with your actual issuer address)
 TRUSTED_ISSUER="0x0000000000000000000000000000000000000000"  # Replace with actual issuer
 
 if ! call_contract_function \
-    "$DEPLOYED_OMA3RESOLVERWITHSTORE_ADDRESS" \
+    "$RESOLVER_ADDRESS" \
     "setIssuer" \
     "[\"$TRUSTED_ISSUER\", true]" \
     "Add trusted issuer"; then

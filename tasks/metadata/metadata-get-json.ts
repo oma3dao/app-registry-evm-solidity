@@ -8,7 +8,7 @@ import { getMetadataContract, displayTaskHeader, displayTaskCompletion } from ".
 const DEFAULT_MAX_BLOCK_RANGE = 100_000; // 100K blocks is a safe default for most providers
 const DEFAULT_CHUNK_SIZE = 25_000;       // Process in 25K block chunks for stability
 
-task("getmetadatajson", "Get metadata JSON for a specific DID")
+task("metadata-get-json", "Get metadata JSON for a specific DID")
   .addParam("did", "The DID identifier to query")
   .addOptionalParam("contract", "The address of the deployed metadata contract")
   .addOptionalParam("fromblock", "The starting block number for event query (default: recent)", undefined, types.int)

@@ -271,7 +271,7 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
         return address(0);
     }
 
-    function isDataHashValid(bytes32 didHash, bytes32 dataHash) external view override(IOMA3DataUrlAttestationStore, IOMA3Resolver) returns (bool) {
+    function checkDataHashAttestation(bytes32 didHash, bytes32 dataHash) external view override(IOMA3DataUrlAttestationStore, IOMA3Resolver) returns (bool) {
         // Check if any allowlisted issuer has attested to this data hash for this DID
         for (uint256 i = 0; i < authorizedIssuers.length; i++) {
             address issuer = authorizedIssuers[i];

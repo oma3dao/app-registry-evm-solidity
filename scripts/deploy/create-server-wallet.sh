@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # OMA3 Server Wallet Creation Script
-# Creates a server wallet for the specified environment using Thirdweb API
-# Usage: ./create-server-wallet.sh <environment>
+# Creates a server wallet with the specified identifier using Thirdweb API
+# Usage: ./create-server-wallet.sh <wallet-identifier>
 
 set -e  # Exit on any error
 
@@ -27,20 +27,19 @@ print_error() {
 
 # Check arguments
 if [ $# -ne 1 ]; then
-    print_error "Usage: $0 <environment>"
+    print_error "Usage: $0 <wallet-identifier>"
     print_error "Examples:"
-    print_error "  $0 production     # Creates/uses oma3-production-1"
-    print_error "  $0 testnet        # Creates/uses oma3-testnet-1"
-    print_error "  $0 development    # Creates/uses oma3-development-1"
+    print_error "  $0 OMA3-production-1"
+    print_error "  $0 oma3-testnet-1"
+    print_error "  $0 my-custom-wallet"
     exit 1
 fi
 
-ENVIRONMENT=$1
-WALLET_IDENTIFIER="oma3-${ENVIRONMENT}-1"
+WALLET_IDENTIFIER="$1"
 
 # Get secret key first (needed for wallet listing API call)
 if [ -z "$THIRDWEB_SECRET_KEY" ]; then
-    echo -n "Enter your Bitwarden secret key: "
+    echo -n "Enter your Thirdweb secret key (app-registry-evm-solidity project): "
     read -s SECRET_KEY
     echo ""
 else
@@ -117,24 +116,3 @@ fi
 print_status "Server wallet created successfully!"
 print_status "Wallet Address: $WALLET_ADDRESS"
 print_status "Wallet Identifier: $WALLET_IDENTIFIER"
-print_status "Environment: $ENVIRONMENT"
-
-# Save wallet information
-WALLET_FILE="scripts/deploy/wallet-addresses.txt"
-{
-    echo "=== Server Wallet Information ==="
-    echo "Created: $(date)"
-    echo "Environment: $ENVIRONMENT"
-    echo "Wallet ID: $WALLET_IDENTIFIER"
-    echo "Wallet Address: $WALLET_ADDRESS"
-    echo ""
-} >> "$WALLET_FILE"
-
-print_status "Wallet information saved to: $WALLET_FILE"
-print_status ""
-print_status "Verifying wallet creation..."
-./list-server-wallets.sh > /dev/null 2>&1 && print_status "✅ Wallet verified in Thirdweb" || print_status "⚠️  Wallet verification failed - check manually"
-print_status ""
-print_status "Next steps:"
-print_status "1. Run: ./publish-contracts.sh $ENVIRONMENT"
-print_status "2. Run: ./deploy-contracts.sh $ENVIRONMENT"

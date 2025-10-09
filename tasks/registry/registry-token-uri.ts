@@ -13,8 +13,7 @@ task("token-uri", "Get the token URI for a specific token ID")
     const tokenId = parseInt(tokenid, 10);
     
     try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Get Token URI", hre.network.name, signer.address);
+      displayTaskHeader("Get Token URI (read-only)", hre.network.name, "-");
       
       console.log("Token ID:", tokenId);
 

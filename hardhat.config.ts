@@ -9,25 +9,44 @@ import "solidity-coverage";
 dotenvConfig();
 
 // Import task files - Registry tasks
-import "./tasks/registry/getApp";
-import "./tasks/registry/getApps";
-import "./tasks/registry/getAppsByOwner";
-import "./tasks/registry/updateAppControlled";
-import "./tasks/registry/updateStatus";
-import "./tasks/registry/getDidHash";
-import "./tasks/registry/tokenUri";
-import "./tasks/registry/totalSupply";
-import "./tasks/registry/hasKeywords";
-import "./tasks/registry/getAppsByStatus";
+import "./tasks/registry/registry-get-app";
+import "./tasks/registry/registry-get-apps";
+import "./tasks/registry/registry-get-apps-by-owner";
+import "./tasks/registry/registry-get-apps-by-status";
+import "./tasks/registry/registry-get-did-hash";
+import "./tasks/registry/registry-has-traits";
+import "./tasks/registry/registry-mint";
+import "./tasks/registry/registry-set-metadata-json";
+import "./tasks/registry/registry-token-uri";
+import "./tasks/registry/registry-total-supply";
+import "./tasks/registry/registry-update-app-controlled";
+import "./tasks/registry/registry-update-status";
 import "./tasks/deploy/system";
 import "./tasks/deploy/registry";
+import "./tasks/deploy/metadata";
+import "./tasks/deploy/resolver";
+
+// Import task files - Admin tasks
+import "./tasks/admin/registry-set-metadata-contract";
+import "./tasks/admin/registry-set-ownership-resolver";
+import "./tasks/admin/registry-set-dataurl-resolver";
+import "./tasks/admin/registry-set-require-attestation";
+import "./tasks/admin/registry-transfer-owner";
+import "./tasks/admin/metadata-authorize-registry";
+import "./tasks/admin/metadata-transfer-owner";
+import "./tasks/admin/resolver-set-maturation";
+import "./tasks/admin/resolver-set-max-ttl";
+import "./tasks/admin/resolver-add-issuer";
+import "./tasks/admin/resolver-remove-issuer";
+import "./tasks/admin/resolver-transfer-owner";
+import "./tasks/admin/resolver-view-attestations";
 
 // Import task files - Inherited functions
 import "./tasks/inherited/erc721";
 import "./tasks/inherited/ownable";
 
 // Import task files - Metadata tasks
-import "./tasks/metadata/getmetadatajson";
+import "./tasks/metadata/metadata-get-json";
 
 // Import task files - Resolver tasks
 import "./tasks/resolver";
@@ -70,20 +89,15 @@ if (privateKeyFromSsh) {
 
 // Network-specific contract addresses
 export const NETWORK_CONTRACTS = {
-  thirdwebTestnet: {
-    registry: "0x", // TODO: Set after deployment
-    metadata: "0x", // TODO: Set after deployment
-    resolver: "0x"  // TODO: Set after deployment
-  },
-  celoAlfajores: {
-    registry: "0x1a58589a9989C7E84128938Af06ede00593cFE31",
-    metadata: "0x24B0B17adb13DB2146995480e0114b2c93Df217f",
-    resolver: "0x"  // TODO: Set after deployment
-  },
   omachainTestnet: {
-    registry: "0x", // TODO: Set after deployment
-    metadata: "0x", // TODO: Set after deployment
-    resolver: "0x"  // TODO: Set after deployment
+    registry: "0xf978773a2f393CC840a7FE9991025ea8a220b4DE",
+    metadata: "0x2b93eeEC89C2899D79516c68e2A5345743418A06",
+    resolver: "0x80C7bC75bc23238cF948eBaedC474DCaCA1835E2"
+  },
+  omachainMainnet: {
+    registry: "0x", 
+    metadata: "0x", 
+    resolver: "0x"  
   },
   hardhat: {
     registry: "0x", // Will be set automatically during local deployment
@@ -117,6 +131,14 @@ const config: HardhatUserConfig = {
       gas: "auto",
       timeout: 60000
     },
+    omachainMainnet: {
+      url: "https://rpc.chain.oma3.org/",
+      chainId: 999999,
+      accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
+      gasPrice: "auto",
+      gas: "auto",
+      timeout: 60000
+    },
     // Add other networks as needed
     hardhat: {
       chainId: 31337,
@@ -139,14 +161,6 @@ const config: HardhatUserConfig = {
       omachainTestnet: process.env.OMACHAIN_API_KEY || ""
     },
     customChains: [
-      {
-        network: "celoAlfajores",
-        chainId: 44787,
-        urls: {
-          apiURL: "https://api-alfajores.celoscan.io/api",
-          browserURL: "https://alfajores.celoscan.io"
-        }
-      },
       {
         network: "omachainTestnet",
         chainId: 66238,

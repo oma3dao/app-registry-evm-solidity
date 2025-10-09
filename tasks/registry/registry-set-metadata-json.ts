@@ -3,32 +3,41 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import * as fs from 'fs';
 import * as path from 'path';
 import { getRegistryContract, displayTaskHeader, displayTaskCompletion } from "../shared/env-helpers";
+import { getUserSigner } from "../shared/signer-utils";
 
 interface TaskArgs {
   did: string;
   major?: string;
+  minor?: string;
+  patch?: string;
   jsonfile?: string;
   hash?: string;
   algorithm?: string;
 }
 
-task("set-metadata-json", "Set metadata JSON for an existing app via registry contract")
+task("set-metadata-json", "Set metadata JSON for an existing app via registry contract (updates versionHistory)")
   .addParam("did", "The DID identifier for the app")
   .addOptionalParam("major", "The major version number", "1")
+  .addOptionalParam("minor", "The minor version number (creates new version entry)", "0")
+  .addOptionalParam("patch", "The patch version number (creates new version entry)", "0")
   .addOptionalParam("jsonfile", "Path to JSON file containing metadata or JSON string", "tasks/samples/sample-metadata-human.json")
   .addOptionalParam("hash", "Pre-computed hash of the metadata (will auto-calculate if not provided)")
   .addOptionalParam("algorithm", "Hash algorithm: 'keccak256' or 'sha256'", "keccak256")
+  .addOptionalParam("signerFileName", "~/.ssh/<file> containing hex private key")
   .setAction(async (taskArgs: TaskArgs, hre: HardhatRuntimeEnvironment) => {
-    const { did, major = "1", jsonfile = "tasks/samples/sample-metadata-human.json", hash, algorithm = "keccak256" } = taskArgs;
+    const { did, major = "1", minor = "0", patch = "0", jsonfile = "tasks/samples/sample-metadata-human.json", hash, algorithm = "keccak256" } = taskArgs;
     const majorVersion = parseInt(major, 10);
+    const minorVersion = parseInt(minor, 10);
+    const patchVersion = parseInt(patch, 10);
     
     try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Set App Metadata", hre.network.name, signer.address);
+      const { signer, address } = await getUserSigner(hre, taskArgs as any);
+      displayTaskHeader("Set App Metadata", hre.network.name, address);
       
       console.log("App DID:", did);
-      console.log("Major version:", majorVersion);
+      console.log("Version:", `${majorVersion}.${minorVersion}.${patchVersion}`);
       console.log("Hash algorithm:", algorithm);
+      console.log("\nNote: This will add version", `${majorVersion}.${minorVersion}.${patchVersion}`, "to versionHistory");
 
       const { contract: registry } = await getRegistryContract(hre);
 
@@ -108,8 +117,8 @@ task("set-metadata-json", "Set metadata JSON for an existing app via registry co
         console.log(`App found - Owner: ${app.minter}`);
         
         // Verify the signer owns this app
-        if (app.minter.toLowerCase() !== signer.address.toLowerCase()) {
-          throw new Error(`You don't own this app. Owner: ${app.minter}, You: ${signer.address}`);
+        if (app.minter.toLowerCase() !== address.toLowerCase()) {
+          throw new Error(`You don't own this app. Owner: ${app.minter}, You: ${address}`);
         }
         
         console.log("✅ Ownership verified. Setting metadata...");
@@ -122,11 +131,13 @@ task("set-metadata-json", "Set metadata JSON for an existing app via registry co
         }
       }
 
-      // Call registry's setMetadataJson function
+      // Call registry's setMetadataJson function (new signature with version components)
       console.log("Sending transaction via registry contract...");
       const tx = await registry.setMetadataJson(
         did,
         majorVersion,
+        minorVersion,
+        patchVersion,
         metadataJson,
         dataHash,
         dataHashAlgorithm

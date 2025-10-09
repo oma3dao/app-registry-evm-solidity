@@ -15,8 +15,7 @@ task("get-app", "Fetches an application by its DID and major version")
     const majorVersion = parseInt(major, 10);
     
     try {
-      const [deployer] = await hre.ethers.getSigners();
-      displayTaskHeader("Get Application", hre.network.name, deployer.address);
+      displayTaskHeader("Get Application (read-only)", hre.network.name, "-");
       
       console.log("Fetching app for DID:", did);
       console.log("Major version:", majorVersion);

@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getRegistryContract, displayTaskHeader, displayTaskCompletion } from "../shared/env-helpers";
+import { getUserSigner } from "../shared/signer-utils";
 
 interface TaskArgs {
   did: string;
@@ -12,6 +13,7 @@ task("update-status", "Update the status of an app")
   .addParam("did", "The DID identifier for the app")
   .addParam("status", "New status: 'active' (0), 'deprecated' (1), or 'replaced' (2)")
   .addOptionalParam("major", "The major version number", "1")
+  .addOptionalParam("signerFileName", "~/.ssh/<file> containing hex private key")
   .setAction(async (taskArgs: TaskArgs, hre: HardhatRuntimeEnvironment) => {
     const { did, status, major = "1" } = taskArgs;
     const majorVersion = parseInt(major, 10);
@@ -36,8 +38,8 @@ task("update-status", "Update the status of an app")
     }
     
     try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Update App Status", hre.network.name, signer.address);
+      const { signer, address } = await getUserSigner(hre, taskArgs as any);
+      displayTaskHeader("Update App Status", hre.network.name, address);
       
       console.log("App DID:", did);
       console.log("Major version:", majorVersion);

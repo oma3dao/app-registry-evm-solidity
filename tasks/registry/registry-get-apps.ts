@@ -5,8 +5,7 @@ import { getRegistryContract, displayTaskHeader, displayTaskCompletion } from ".
 task("get-apps", "Fetches all applications from the registry")
   .setAction(async (taskArgs: {}, hre: HardhatRuntimeEnvironment) => {
     try {
-      const [deployer] = await hre.ethers.getSigners();
-      displayTaskHeader("Get All Applications", hre.network.name, deployer.address);
+      displayTaskHeader("Get All Applications (read-only)", hre.network.name, "-");
 
       const { contract: appRegistry } = await getRegistryContract(hre);
 

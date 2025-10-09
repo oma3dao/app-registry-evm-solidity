@@ -34,7 +34,7 @@ print_status "OMA3 Server Wallet Listing Tool"
 print_status "=================================="
 
 # Prompt for secret key securely
-echo -n "Enter your Bitwarden secret key: "
+echo -n "Enter your Thirdweb secret key (app-registry-evm-solidity project): "
 read -s SECRET_KEY
 echo ""
 
@@ -44,15 +44,17 @@ if [ -z "$SECRET_KEY" ]; then
 fi
 
 print_status "Fetching server wallets from Thirdweb..."
+echo ""
 
 # List all server wallets
 RESPONSE=$(curl -s -X GET "https://api.thirdweb.com/v1/wallets/server" \
   -H "x-secret-key: $SECRET_KEY" \
   -H "Content-Type: application/json")
 
-# Debug: Show raw response for troubleshooting
-print_status "Debug: Raw API response:"
-echo "$RESPONSE" | head -5
+# Show raw response first
+print_header "Raw JSON Response:"
+echo "$RESPONSE"
+echo ""
 
 # Check if request was successful
 if echo "$RESPONSE" | grep -q '"error"'; then
@@ -61,53 +63,26 @@ if echo "$RESPONSE" | grep -q '"error"'; then
     exit 1
 fi
 
-# Try multiple ways to extract wallet information
-WALLETS=$(echo "$RESPONSE" | grep -o '"wallets":\[[^]]*\]' | sed 's/"wallets"://')
-
-# If that doesn't work, try looking for result array
-if [ -z "$WALLETS" ]; then
-    WALLETS=$(echo "$RESPONSE" | grep -o '"result":\[[^]]*\]' | sed 's/"result"://')
-fi
-
-# If that doesn't work, try looking for data array
-if [ -z "$WALLETS" ]; then
-    WALLETS=$(echo "$RESPONSE" | grep -o '"data":\[[^]]*\]' | sed 's/"data"://')
-fi
-
-if [ -z "$WALLETS" ] || [ "$WALLETS" = "[]" ]; then
-    print_status "No server wallets found in this project."
-    print_status "Debug: Response structure may be different than expected"
-    print_status "Debug: Full response:"
-    echo "$RESPONSE"
-    exit 0
-fi
-
-print_header "Server Wallets Found:"
+# Extract and format each wallet
+print_header "Formatted Wallet List:"
 echo ""
 
-# Parse and display each wallet
-echo "$WALLETS" | sed 's/\[//;s/\]//' | sed 's/{/\n---\n/g' | sed 's/},$//' | while IFS= read -r wallet; do
-    if [ -n "$wallet" ] && [ "$wallet" != "---" ]; then
-        echo "$wallet" | sed 's/,$//' | sed 's/"//g' | sed 's/:/: /' | sed 's/^  //' | sed 's/^/- /'
-        echo ""
-    fi
-done
-
-# Save wallet information
-WALLET_FILE="scripts/deploy/wallet-addresses.txt"
-{
-    echo "=== Server Wallets Listing ==="
-    echo "Retrieved: $(date)"
-    echo "Source: Thirdweb API"
-    echo ""
-    echo "$WALLETS" | sed 's/\[//;s/\]//' | sed 's/{/\n--- WALLET ---\n/g' | sed 's/},$//' | sed 's/"//g' | sed 's/:/: /' | sed 's/^  //' | sed 's/^/- /'
-    echo ""
-} >> "$WALLET_FILE"
-
-print_status "Wallet information saved to: $WALLET_FILE"
-print_status ""
-print_status "Wallet Management Tips:"
-print_status "- Use wallet 'address' field for contract deployments"
-print_status "- Use wallet 'identifier' field in deployment scripts"
-print_status "- Server wallets are managed by Thirdweb's HSM infrastructure"
-print_status "- Wallet addresses are public on the blockchain"
+# Use jq if available, otherwise use basic parsing
+if command -v jq &> /dev/null; then
+    echo "$RESPONSE" | jq -r '.result.wallets[] | "Identifier: \(.profiles[0].identifier)\nAddress: \(.address)\nSmart Wallet: \(.smartWalletAddress)\n---"'
+else
+    # Fallback to basic parsing - extract wallets array and process each wallet
+    echo "$RESPONSE" | grep -o '"wallets":\[.*\]' | sed 's/"wallets":\[//;s/\]$//' | \
+    sed 's/},{/}\n{/g' | while IFS= read -r wallet; do
+        if [ -n "$wallet" ]; then
+            IDENTIFIER=$(echo "$wallet" | grep -o '"identifier":"[^"]*"' | head -1 | sed 's/"identifier":"//;s/"//')
+            ADDRESS=$(echo "$wallet" | grep -o '"address":"[^"]*"' | head -1 | sed 's/"address":"//;s/"//')
+            SMART_WALLET=$(echo "$wallet" | grep -o '"smartWalletAddress":"[^"]*"' | head -1 | sed 's/"smartWalletAddress":"//;s/"//')
+            
+            echo "Identifier: $IDENTIFIER"
+            echo "Address: $ADDRESS"
+            echo "Smart Wallet: $SMART_WALLET"
+            echo "---"
+        fi
+    done
+fi

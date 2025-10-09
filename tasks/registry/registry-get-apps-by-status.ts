@@ -38,8 +38,7 @@ task("get-apps-by-status", "Get apps filtered by status with pagination")
     }
     
     try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Get Apps by Status", hre.network.name, signer.address);
+      displayTaskHeader("Get Apps by Status (read-only)", hre.network.name, "-");
       
       console.log("Status filter:", `${statusName} (${statusValue})`);
       console.log("Starting from index:", startFromIndex);

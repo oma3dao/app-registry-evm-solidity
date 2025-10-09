@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getRegistryContract, displayTaskHeader, displayTaskCompletion } from "../shared/env-helpers";
+import { getUserSigner } from "../shared/signer-utils";
 
 interface TaskArgs {
   did: string;
@@ -24,6 +25,7 @@ task("update-app-controlled", "Update all fields of an app (comprehensive update
   .addOptionalParam("traits", "Comma-separated trait hashes", "")
   .addOptionalParam("minor", "New minor version", "0")
   .addOptionalParam("patch", "New patch version", "0")
+  .addOptionalParam("signerFileName", "~/.ssh/<file> containing hex private key")
   .setAction(async (taskArgs: TaskArgs, hre: HardhatRuntimeEnvironment) => {
     const { 
       did, 
@@ -44,8 +46,8 @@ task("update-app-controlled", "Update all fields of an app (comprehensive update
     const dataHashAlgorithm = algorithm === "sha256" ? 1 : 0;
     
     try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Update App (Controlled)", hre.network.name, signer.address);
+      const { signer, address } = await getUserSigner(hre, taskArgs as any);
+      displayTaskHeader("Update App (Controlled)", hre.network.name, address);
       
       console.log("App DID:", did);
       console.log("Major version:", majorVersion);
@@ -62,8 +64,8 @@ task("update-app-controlled", "Update all fields of an app (comprehensive update
         const app = await registry.getApp(did, majorVersion);
         console.log(`App found - Owner: ${app.minter}`);
         
-        if (app.minter.toLowerCase() !== signer.address.toLowerCase()) {
-          throw new Error(`You don't own this app. Owner: ${app.minter}, You: ${signer.address}`);
+        if (app.minter.toLowerCase() !== address.toLowerCase()) {
+          throw new Error(`You don't own this app. Owner: ${app.minter}, You: ${address}`);
         }
         
         console.log("✅ Ownership verified");

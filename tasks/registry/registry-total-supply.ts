@@ -5,8 +5,7 @@ import { getRegistryContract, displayTaskHeader, displayTaskCompletion } from ".
 task("total-supply", "Get the total number of registered apps")
   .setAction(async (taskArgs: {}, hre: HardhatRuntimeEnvironment) => {
     try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Get Total Supply", hre.network.name, signer.address);
+      displayTaskHeader("Get Total Supply (read-only)", hre.network.name, "-");
 
       const { contract: registry } = await getRegistryContract(hre);
 

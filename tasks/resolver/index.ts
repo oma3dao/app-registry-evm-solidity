@@ -1,2 +1,2 @@
-// Resolver configuration tasks
-import "./configure";
+// Resolver tasks
+import "./attest-dataurl";

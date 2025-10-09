@@ -34,7 +34,7 @@ export function getContractAddresses(hre: HardhatRuntimeEnvironment) {
     );
   }
   
-  const { registry, metadata } = contractConfig;
+  const { registry, metadata, resolver } = contractConfig as any;
   
   if (!registry || registry === "0x") {
     throw new Error(
@@ -50,7 +50,7 @@ export function getContractAddresses(hre: HardhatRuntimeEnvironment) {
     );
   }
   
-  return { registry, metadata };
+  return { registry, metadata, resolver };
 }
 
 /**
@@ -79,6 +79,32 @@ export async function getMetadataContract(hre: HardhatRuntimeEnvironment, addres
   
   const contract = await hre.ethers.getContractAt("OMA3AppMetadata", contractAddress);
   return { contract, address: contractAddress };
+}
+
+/**
+ * Get a contract instance for the resolver
+ */
+export async function getResolverContract(hre: HardhatRuntimeEnvironment, address?: string) {
+  const contractAddress = address || getContractAddresses(hre).resolver;
+  console.log(`Resolver contract address (${hre.network.name}):`, contractAddress);
+  
+  const contract = await hre.ethers.getContractAt("OMA3ResolverWithStore", contractAddress);
+  return { contract, address: contractAddress };
+}
+
+/**
+ * Get specific contract address by type, optionally overriding address
+ */
+export function getNetworkContractAddress(
+  hre: HardhatRuntimeEnvironment,
+  contractType: "registry" | "metadata" | "resolver",
+  override?: string
+): string {
+  if (override) return override;
+  const cfg = getContractAddresses(hre) as any;
+  const addr = cfg[contractType];
+  if (!addr) throw new Error(`${contractType} not configured for ${hre.network.name}`);
+  return addr;
 }
 
 /**

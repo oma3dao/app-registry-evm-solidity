@@ -15,8 +15,7 @@ task("get-apps-by-owner", "Fetches applications by owner address (current NFT ow
     const startFromIndex = parseInt(startfrom, 10);
     
     try {
-      const [deployer] = await hre.ethers.getSigners();
-      displayTaskHeader("Get Applications by Owner", hre.network.name, deployer.address);
+      displayTaskHeader("Get Applications by Owner (read-only)", hre.network.name, "-");
       
       console.log("Owner address:", owner);
       console.log("Starting from index:", startFromIndex);
@@ -42,10 +41,25 @@ task("get-apps-by-owner", "Fetches applications by owner address (current NFT ow
       apps.forEach((app: any, index: number) => {
         console.log(`\n--- Application ${index + 1} ---`);
         console.log("DID:", app.did);
-        console.log("Name:", app.name);
-        console.log("Version:", `${app.majorVersion}.${app.minorVersion}.${app.patchVersion}`);
+        console.log("Minter:", app.minter);
+        console.log("Major Version:", Number(app.versionMajor));
+        
+        // Get current version from version history
+        const versionHistory = app.versionHistory || [];
+        const currentVersion = versionHistory[versionHistory.length - 1] || { major: Number(app.versionMajor), minor: 0, patch: 0 };
+        console.log("Current Version:", `${currentVersion.major}.${currentVersion.minor}.${currentVersion.patch}`);
+        console.log("Version History:", versionHistory.map((v: any) => `${v.major}.${v.minor}.${v.patch}`).join(", "));
+        
+        const interfacesNum = Number(app.interfaces);
+        console.log("Interfaces:", interfacesNum, `(Human: ${!!(interfacesNum & 1)}, API: ${!!(interfacesNum & 2)}, Contract: ${!!(interfacesNum & 4)})`);
+        const statusNum = Number(app.status);
+        const statusLabels = ['Active', 'Deprecated', 'Replaced'];
+        console.log("Status:", statusNum, `(${statusLabels[statusNum] || 'Unknown'})`);
         console.log("Data URL:", app.dataUrl);
-        console.log("Registry Time:", new Date(Number(app.registryTime) * 1000).toISOString());
+        console.log("Data Hash:", app.dataHash);
+        console.log("Contract ID:", app.contractId || "(none)");
+        console.log("Fungible Token ID:", app.fungibleTokenId || "(none)");
+        console.log("Trait Hashes:", app.traitHashes?.length || 0);
       });
 
       if (nextStartIndex > 0) {

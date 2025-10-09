@@ -12,8 +12,7 @@ task("get-did-hash", "Get the hash of a DID string")
     const { did } = taskArgs;
     
     try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Get DID Hash", hre.network.name, signer.address);
+      displayTaskHeader("Get DID Hash (read-only)", hre.network.name, "-");
       
       console.log("DID:", did);
 

@@ -10,7 +10,8 @@ import type { Signer } from "ethers";
  * For production, use Thirdweb Dashboard deployment for maximum security.
  */
 
-export async function getSecureSigner(hre: HardhatRuntimeEnvironment): Promise<{ signer: Signer; address: string; method: string }> {
+// Deployer signer (admin + deploy)
+export async function getDeployerSigner(hre: HardhatRuntimeEnvironment): Promise<{ signer: Signer; address: string; method: string }> {
   return await getSSHKeySigner(hre);
 }
 
@@ -30,6 +31,53 @@ async function getSSHKeySigner(hre: HardhatRuntimeEnvironment): Promise<{ signer
   const address = await signer.getAddress();
   
   return { signer, address, method: "SSH Key" };
+}
+
+/**
+ * Issuer signer for writing attestations (separate from deployment key)
+ * Priority:
+ * 1) env.ISSUER_PRIVATE_KEY
+ * 2) ~/.ssh/local-attestation-key (hex, with or without 0x)
+ */
+export async function getIssuerSigner(
+  hre: HardhatRuntimeEnvironment
+): Promise<{ signer: Signer; address: string; method: string }> {
+  const pk = loadIssuerPrivateKey();
+  const signer = new (hre.ethers as any).Wallet(pk, hre.ethers.provider) as Signer;
+  const address = await (signer as any).getAddress();
+  console.log("ISSUER KEY: Using issuer private key for attestation writes");
+  return { signer, address, method: "Issuer SSH Key" };
+}
+
+function loadIssuerPrivateKey(): `0x${string}` {
+  // 1) Env var
+  const envPk = process.env.ISSUER_PRIVATE_KEY;
+  if (envPk && /^0x[0-9a-fA-F]{64}$/.test(envPk.trim())) {
+    return envPk.trim() as `0x${string}`;
+  }
+  if (envPk && /^[0-9a-fA-F]{64}$/.test(envPk.trim())) {
+    return ("0x" + envPk.trim()) as `0x${string}`;
+  }
+
+  // 2) SSH file fallback (same path as API route)
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const sshKeyPath = path.join(os.homedir(), '.ssh', 'local-attestation-key');
+  if (!fs.existsSync(sshKeyPath)) {
+    throw new Error(
+      `Issuer private key not found. Set ISSUER_PRIVATE_KEY or create ${sshKeyPath}`
+    );
+  }
+  const keyContent = fs.readFileSync(sshKeyPath, 'utf8')
+    .trim()
+    .replace(/\s+/g, '')
+    .toLowerCase();
+  const withPrefix = keyContent.startsWith('0x') ? keyContent : `0x${keyContent}`;
+  if (!/^0x[0-9a-f]{64}$/.test(withPrefix)) {
+    throw new Error(`Invalid issuer key format in ${sshKeyPath}`);
+  }
+  return withPrefix as `0x${string}`;
 }
 
 export async function verifyBytecode(
@@ -70,6 +118,22 @@ export async function verifyBytecode(
   }
 }
 
+export async function getSignerAndCheckOwnership(
+  hre: HardhatRuntimeEnvironment,
+  contractAddress: string,
+  contractName: string
+): Promise<{ signer: any; address: string }> {
+  const { signer, address: signerAddress } = await getDeployerSigner(hre);
+  console.log(`Signer: ${signerAddress}`);
+  const contract = await hre.ethers.getContractAt(contractName, contractAddress, signer);
+  const owner = await contract.owner();
+  if (owner.toLowerCase() !== signerAddress.toLowerCase()) {
+    throw new Error(`Signer (${signerAddress}) is not the contract owner (${owner})`);
+  }
+  console.log("✅ Ownership verified\n");
+  return { signer, address: signerAddress };
+}
+
 export async function logTransactionForVerification(
   hre: HardhatRuntimeEnvironment,
   contractFactory: any,
@@ -83,5 +147,39 @@ export async function logTransactionForVerification(
   } catch (error) {
     console.log("Could not generate deployment transaction preview");
   }
+}
+
+// User/developer signer for registry interactions (mint/update/etc.)
+// Priority:
+// 1) CLI --pk override (hex)
+// 2) env.USER_PRIVATE_KEY
+export async function getUserSigner(
+  hre: HardhatRuntimeEnvironment,
+  taskArgs?: { signerFileName?: string }
+): Promise<{ signer: Signer; address: string; method: string }> {
+  // SSH file in ~/.ssh/<signerFileName>
+  const fileName = taskArgs?.signerFileName;
+  if (fileName && fileName.trim().length > 0) {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const sshKeyPath = path.join(os.homedir(), '.ssh', fileName.trim());
+    if (!fs.existsSync(sshKeyPath)) {
+      throw new Error(`Signer file not found: ${sshKeyPath}`);
+    }
+    const keyContent = fs.readFileSync(sshKeyPath, 'utf8')
+      .trim()
+      .replace(/\s+/g, '')
+      .toLowerCase();
+    const withPrefix = keyContent.startsWith('0x') ? keyContent : `0x${keyContent}`;
+    if (!/^0x[0-9a-f]{64}$/.test(withPrefix)) {
+      throw new Error(`Invalid key format in ${sshKeyPath}. Expected hex private key`);
+    }
+    const signer = new (hre.ethers as any).Wallet(withPrefix, hre.ethers.provider) as Signer;
+    const address = await (signer as any).getAddress();
+    return { signer, address, method: `~/.ssh/${fileName.trim()}` };
+  }
+
+  throw new Error("User key required. Provide --signerFileName to load from ~/.ssh/<file>");
 }
 

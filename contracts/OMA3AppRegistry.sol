@@ -12,12 +12,12 @@ interface IOMA3OwnershipResolver {
 
 // Interface for data URL attestation resolver
 interface IOMA3DataUrlResolver {
-    function isDataHashValid(bytes32 didHash, bytes32 dataHash) external view returns (bool);
+    function checkDataHashAttestation(bytes32 didHash, bytes32 dataHash) external view returns (bool);
 }
 
 // Interface for metadata contract
 interface IOMA3AppMetadata {
-    function setMetadataForRegistry(string memory did, string memory metadataJson) external;
+    function setMetadataForRegistry(string memory did, uint8 major, uint8 minor, uint8 patch, string memory metadataJson) external;
 }
 
 
@@ -115,6 +115,9 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     // Resolvers for ownership and data validation
     IOMA3OwnershipResolver public ownershipResolver;
     IOMA3DataUrlResolver public dataUrlResolver;
+    
+    // Feature flags
+    bool public requireDataUrlAttestation; // Default: false (disabled)
 
 
     // Constants
@@ -156,6 +159,17 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     function setDataUrlResolver(address _resolver) external onlyOwner {
         require(_resolver != address(0), "Invalid data URL resolver address");
         dataUrlResolver = IOMA3DataUrlResolver(_resolver);
+    }
+    
+    /**
+     * @dev Enable or disable dataUrl attestation requirement
+     * @param _require True to require attestations, false to disable
+     * 
+     * Note: When disabled (default), apps can be minted without dataHash attestations.
+     * When enabled, the dataUrlResolver must validate all dataHash values.
+     */
+    function setRequireDataUrlAttestation(bool _require) external onlyOwner {
+        requireDataUrlAttestation = _require;
     }
 
     /**
@@ -370,9 +384,10 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
             require(didOwner == msg.sender, "NOT_DID_OWNER");
         }
 
-        if (address(dataUrlResolver) != address(0)) {
+        // Only check dataUrl attestation if feature is enabled
+        if (requireDataUrlAttestation && address(dataUrlResolver) != address(0)) {
             // Check data hash: must be attested by trusted oracle
-            require(dataUrlResolver.isDataHashValid(didHash, dataHash), "DATA_HASH_NOT_ATTESTED");
+            require(dataUrlResolver.checkDataHashAttestation(didHash, dataHash), "DATA_HASH_NOT_ATTESTED");
         }
         
         // Check if this specific (DID, major) combination already exists
@@ -444,7 +459,7 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
 
         // Store metadata on-chain if provided
         if (bytes(metadataJson).length > 0) {
-            _setMetadataJson(didString, metadataJson, dataHash, dataHashAlgorithm);
+            _setMetadataJson(didString, initialVersionMajor, initialVersionMinor, initialVersionPatch, metadataJson, dataHash, dataHashAlgorithm);
         }
 
         emit AppMinted(didHash, initialVersionMajor, tokenId, msg.sender, interfaces, block.number, block.timestamp);
@@ -459,29 +474,58 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @dev Set metadata for an existing app (allows developers to update metadata after mint)
      * @param didString The DID as string
      * @param major The major version of the app
+     * @param minor The minor version for this metadata update
+     * @param patch The patch version for this metadata update
      * @param metadataJson JSON string containing the app metadata
      * @param dataHash Hash of the metadata JSON
      * @param dataHashAlgorithm Algorithm used for dataHash (0=keccak256, 1=sha256)
+     * 
+     * Note: This updates versionHistory with the new version and sets metadata
      */
     function setMetadataJson(
         string memory didString,
         uint8 major,
+        uint8 minor,
+        uint8 patch,
         string memory metadataJson,
         bytes32 dataHash,
         uint8 dataHashAlgorithm
     ) external onlyAppOwner(didString, major) nonReentrant {
-        _setMetadataJson(didString, metadataJson, dataHash, dataHashAlgorithm);
+        bytes32 didHash = getDidHash(didString);
+        uint256 tokenId = _didMajorToToken[didHash][major];
+        
+        if (tokenId == 0) revert DIDHashNotFound(didHash);
+        
+        App storage app = _apps[tokenId];
+        
+        // Add new version to history (consistent with updateAppControlled)
+        app.versionHistory.push(Version({
+            major: major,
+            minor: minor,
+            patch: patch
+        }));
+        
+        emit VersionAdded(didHash, major, tokenId, minor, patch);
+        
+        // Set metadata with full version context
+        _setMetadataJson(didString, major, minor, patch, metadataJson, dataHash, dataHashAlgorithm);
     }
 
     /**
      * @dev Internal function to set metadata with validation
      * @param didString The DID as string
+     * @param major Major version number
+     * @param minor Minor version number
+     * @param patch Patch version number
      * @param metadataJson JSON string containing the app metadata
      * @param dataHash Hash of the metadata JSON
      * @param dataHashAlgorithm Algorithm used for dataHash (0=keccak256, 1=sha256)
      */
     function _setMetadataJson(
         string memory didString,
+        uint8 major,
+        uint8 minor,
+        uint8 patch,
         string memory metadataJson,
         bytes32 dataHash,
         uint8 dataHashAlgorithm
@@ -489,9 +533,9 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         // Validate metadataJson hash matches dataHash
         _validateMetadataHash(metadataJson, dataHash, dataHashAlgorithm);
         
-        // Call metadata contract if set
+        // Call metadata contract if set, passing full version context
         if (address(metadataContract) != address(0)) {
-            metadataContract.setMetadataForRegistry(didString, metadataJson);
+            metadataContract.setMetadataForRegistry(didString, major, minor, patch, metadataJson);
         }
     }
 

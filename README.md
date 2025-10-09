@@ -40,7 +40,41 @@ A resolver contract that provides the foundation for decentralized identity and 
 - **Maturation Windows**: 48-hour maturation period for ownership changes to prevent attacks
 - **Future-Proof Interfaces**: Stable interfaces designed for long-term compatibility with future hub systems
 
-There is also an optional **OMA3AppMetadata** contract that gives app developers the option to store metadata onchain that is typically stored offchain.  
+### OMA3AppMetadata - Optional On-Chain Metadata Storage
+
+An optional contract that allows developers to store metadata on-chain instead of self-hosting. **Key architectural decisions:**
+
+- **Storage:** Metadata is indexed by **DID only** (not versioned DID) for gas efficiency
+  - Example: `did:web:example.com` → metadata (shared by all versions)
+  - All versions of an app (v1.0, v2.0, v3.0) share the same metadata
+  - Updates overwrite previous metadata (latest wins)
+  
+- **Version Tracking:** Events include full version context (major.minor.patch)
+  - `MetadataSet` event emits: `(did, major, minor, patch, metadataJson, hash, timestamp)`
+  - Shows which version triggered each metadata update
+  - Complete historical audit trail via blockchain events
+  - Example: "v2.1.0 updated metadata at block 12345"
+  
+- **Contract Interface:**
+  ```solidity
+  function setMetadataForRegistry(
+      string memory did,
+      uint8 major,
+      uint8 minor,
+      uint8 patch,
+      string memory metadataJson
+  ) external onlyAuthorizedRegistry;
+  ```
+  - Accepts version components separately (no string manipulation)
+  - Stores by base DID, emits with full version for tracking
+  
+- **Version-Specific Metadata:** Apps requiring different metadata per version should use custom `dataUrl` pointing to their own server
+
+**Why DID-only storage with version events?**
+- Saves gas - no duplicate metadata storage across versions
+- Events track which version updated metadata (historical context)
+- Most apps don't need version-specific metadata
+- Apps needing version-specific metadata can self-host  
 
 ### Attestations
 
@@ -224,45 +258,13 @@ event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 in
                         uint16 newInterfaces);
 ```
 
-## Deployments
+## Current Deployments
 
-### Current Deployment
+Current deployments can be found at [contract-addresses.txt](contract-addresses.txt)
 
-#### **OMA3AppRegistry** (ERC721 Application Registry)
-- **Network**: Celo Alfajores Testnet
-- **Contract Address**: 0x1a58589a9989C7E84128938Af06ede00593cFE31  // 0xE2d601F18166F6632f80d2Fa0Ab474B6d251D400
-- **Legacy Contract Address**: 0xb493465Bcb2151d5b5BaD19d87f9484c8B8A8e83
+## Development
 
-- **Network**: OMAchain Testnet
-- **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
-
-#### **OMA3AppMetadata** (On-chain JSON Storage)
-- **Network**: Celo Alfajores Testnet
-- **Contract Address**: 0x24B0B17adb13DB2146995480e0114b2c93Df217f 
-- **Legacy Contract Address**: 0x9f1f5559b6D08eC855cafaCD76D9ae69c41169C9
-
-- **Network**: OMAchain Testnet
-- **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
-
-#### **OMA3ResolverWithStore** (OMATrust DID & Data Validation)
-- **Network**: Celo Alfajores Testnet  
-- **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
-
-- **Network**: OMAchain Testnet
-- **Contract Address**: [TO BE DEPLOYED - See deployment instructions below]
-- **Purpose**: DID ownership resolution and data hash attestation validation
-
-## Deployment
-
-### Production Deployment
-
-**⚠️ For production deployments to mainnet or public testnets**, use the secure Thirdweb deployment system with HSM-backed server wallets. See the [Thirdweb Deployment README](scripts/deploy/README.md) for complete instructions.
-
-### Development Deployment
-
-**For Development/Testing ONLY**
-
-Use the Hardhat tasks for local development and testing:
+### Setup
 
 1. **Setup environment**:
    ```bash
@@ -275,52 +277,51 @@ Use the Hardhat tasks for local development and testing:
    chmod 600 ~/.ssh/test-evm-deployment-key
    ```
 
-2. **Start local Hardhat node**:
+2. **Compile contracts**:
+   ```bash
+   npx hardhat compile
+   ```
+
+### Development Deployment
+
+Use the Hardhat tasks for local development and testing:
+
+1. **Start local Hardhat node**:
    ```bash
    npx hardhat node
    ```
 
-3. **Deploy complete system to localhost**:
+2. **Deploy complete system to localhost**:
    ```bash
    # Deploy complete system (Registry + Metadata + Resolver) with linking
    npm run deploy:system -- --network localhost
    ```
 
-4. **Deploy to testnets for development**:
-   ```bash
-   # Deploy to OMAchain testnet
-   npm run deploy:system -- --network omachainTestnet
-   ```
+3. **Run tests against localhost**:
+  ```bash
+  npx hardhat test --network localhost
+  ```
 
-5. **Verify contracts on explorer** (won't work on localhost):
-   ```bash
-   # Set API key 
-   export OMACHAIN_API_KEY=your_api_key_here
+  This will test your specific deployed contracts with their actual addresses, rather than creating fresh deployments for each test.
 
-   # Verify contracts using addresses from deployment output
-   npx hardhat verify --network omachainTestnet <REGISTRY_ADDRESS>
-   npx hardhat verify --network omachainTestnet <METADATA_ADDRESS>
-   npx hardhat verify --network omachainTestnet <RESOLVER_ADDRESS>
-   ```
+4. **Deploy to testnets**:
+  See [tasks/README.md](tasks/README.md)
+
+### Production Deployment
+
+**⚠️ For production deployments to mainnet or public testnets**, use the secure Thirdweb deployment system with HSM-backed server wallets. See the [Thirdweb Deployment README](scripts/deploy/README.md) for complete instructions.
+
+**🔧 For post-deployment contract management**, use the admin scripts to configure contracts and manage ongoing operations. See the [Admin Scripts README](scripts/admin/README.md) for complete admin documentation.
+
+**📚 For complete task reference**, see the [Hardhat Tasks README](tasks/README.md) which includes:
+- **Deploy tasks**: Deploy complete system or individual contracts
+- **Admin tasks**: Configure contracts, manage permissions, and view attestations
+- **Registry tasks**: Interact with deployed contracts
+- **Usage examples**: Common workflows and command patterns
 
 ### Testing Against Your Localhost Deployment
 
 **Important**: By default, `npm test` runs tests against fresh contract deployments in Hardhat's built-in test network, not against your running localhost node.
-
-To test against contracts deployed to your running localhost node:
-
-```bash
-# Terminal 1: Keep your node running
-npx hardhat node
-
-# Terminal 2: Deploy to localhost
-npm run deploy:system -- --network localhost
-
-# Terminal 2: Run tests against localhost
-npx hardhat test --network localhost
-```
-
-This will test your specific deployed contracts with their actual addresses, rather than creating fresh deployments for each test.
 
 ### What Gets Deployed
 
@@ -334,42 +335,79 @@ All contracts are automatically linked together with proper authorization settin
 
 ### Configuring the Resolver
 
-After deployment, you can configure the resolver's security parameters:
+After deployment, you can configure the resolver's security parameters using granular admin tasks:
+
+#### Add Authorized Issuer
+
+Authorize an address to create DID ownership attestations (e.g., your server wallet for the `/api/verify-and-attest` endpoint):
 
 ```bash
-# Set maturation period (default: 172800 seconds = 48 hours)
-# For development, you might want 0 seconds for immediate testing
-npx hardhat configure-resolver \
-  --resolver <RESOLVER_ADDRESS> \
-  --maturation 0 \
-  --network localhost
-
-# Add authorized issuer (entity that can create DID ownership attestations)
-npx hardhat configure-resolver \
-  --resolver <RESOLVER_ADDRESS> \
+npx hardhat resolver-add-issuer \
   --issuer 0x1234567890123456789012345678901234567890 \
-  --network localhost
+  --network omachainTestnet
+```
 
-# Set maximum TTL for attestations (default: 63072000 seconds = 2 years)
-npx hardhat configure-resolver \
-  --resolver <RESOLVER_ADDRESS> \
-  --maxTTL 31536000 \
-  --network localhost
+**Common issuers to authorize:**
+- Your server wallet (for DID verification API)
+- Registry contract (for automated attestations)
+- Trusted third-party services
 
-# Remove an authorized issuer
-npx hardhat configure-resolver \
-  --resolver <RESOLVER_ADDRESS> \
-  --removeIssuer 0x1234567890123456789012345678901234567890 \
+#### Remove Authorized Issuer
+
+Revoke authorization for an address:
+
+```bash
+npx hardhat resolver-remove-issuer \
+  --issuer 0x1234567890123456789012345678901234567890 \
+  --network omachainTestnet
+```
+
+#### Set Maturation Period
+
+Configure how long before ownership changes take effect (prevents attacks):
+
+```bash
+# Set to 1 hour for testing
+npx hardhat resolver-set-maturation \
+  --duration 3600 \
+  --network omachainTestnet
+
+# Default: 48 hours (172800 seconds)
+npx hardhat resolver-set-maturation \
+  --duration 172800 \
+  --network omachainTestnet
+
+# Development: 0 seconds for immediate testing
+npx hardhat resolver-set-maturation \
+  --duration 0 \
   --network localhost
 ```
 
-**Configuration Parameters:**
-- **`maturation`** - Delay period before DID ownership changes take effect (prevents attacks)
-- **`maxTTL`** - Maximum time-to-live for attestations before they expire
-- **`issuer`** - Address authorized to create DID ownership and data hash attestations
-- **`removeIssuer`** - Remove an address from the authorized issuers list
+#### Set Maximum TTL
 
-**Development Tip:** Set maturation to `0` for local testing to avoid waiting periods.
+Configure the maximum time-to-live for attestations before they expire:
+
+```bash
+# Set to 1 year
+npx hardhat resolver-set-max-ttl \
+  --duration 31536000 \
+  --network omachainTestnet
+
+# Default: 2 years (63072000 seconds)
+npx hardhat resolver-set-max-ttl \
+  --duration 63072000 \
+  --network omachainTestnet
+```
+
+**Configuration Parameters:**
+- **`maturation`** - Delay period before DID ownership changes take effect (default: 48 hours)
+- **`maxTTL`** - Maximum time-to-live for attestations before they expire (default: 2 years)
+- **`issuer`** - Address authorized to create DID ownership and data hash attestations
+
+**Development Tip:** 
+- Set maturation to `0` for local testing to avoid waiting periods
+- All tasks automatically load contract addresses from `hardhat.config.ts` → `NETWORK_CONTRACTS`
+- See `tasks/admin/README.md` for complete admin task documentation
 
 ### Contract ABI
 

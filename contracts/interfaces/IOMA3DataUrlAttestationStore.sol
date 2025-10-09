@@ -18,7 +18,7 @@ interface IOMA3DataUrlAttestationStore {
     // ---------- READ ----------
     function getDataEntry(address issuer, bytes32 didHash, bytes32 dataHash)
         external view returns (DataEntry memory);
-    function isDataHashValid(bytes32 didHash, bytes32 dataHash)
+    function checkDataHashAttestation(bytes32 didHash, bytes32 dataHash)
         external view returns (bool);
 
     // ---------- WRITE (direct) ----------

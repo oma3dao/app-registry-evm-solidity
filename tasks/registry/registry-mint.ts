@@ -3,6 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import * as fs from 'fs';
 import * as path from 'path';
 import { getRegistryContract, displayTaskHeader, displayTaskCompletion } from "../shared/env-helpers";
+import { getUserSigner } from "../shared/signer-utils";
 
 interface TaskArgs {
   did: string;
@@ -32,6 +33,7 @@ task("mint", "Mint a new application NFT")
   .addOptionalParam("patch", "Initial patch version", "0")
   .addOptionalParam("traits", "Comma-separated traits for tagging", "")
   .addOptionalParam("jsonfile", "Path to JSON file for on-chain metadata (empty to skip)", "")
+  .addOptionalParam("signerFileName", "~/.ssh/<file> containing hex private key")
   .setAction(async (taskArgs: TaskArgs, hre: HardhatRuntimeEnvironment) => {
     const { 
       did, 
@@ -55,8 +57,8 @@ task("mint", "Mint a new application NFT")
     const dataHashAlgorithm = algorithm === "sha256" ? 1 : 0;
     
     try {
-      const [signer] = await hre.ethers.getSigners();
-      displayTaskHeader("Mint New App", hre.network.name, signer.address);
+      const { signer, address } = await getUserSigner(hre, taskArgs as any);
+      displayTaskHeader("Mint New App", hre.network.name, address);
       
       console.log("App DID:", did);
       console.log("Interfaces:", interfacesBitmap);

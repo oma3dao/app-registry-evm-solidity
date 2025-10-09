@@ -16,6 +16,9 @@ contract OMA3AppMetadata is Ownable {
     /// @notice Emitted when metadata is set
     event MetadataSet(
         string indexed did,
+        uint8 major,
+        uint8 minor,
+        uint8 patch,
         string metadataJson,
         bytes32 metadataHash,
         uint256 timestamp
@@ -53,20 +56,29 @@ contract OMA3AppMetadata is Ownable {
     }
 
     /// @notice Sets metadata for an app - called by authorized registry only
-    /// @param did Unique identifier for the application
+    /// @param did Unique identifier for the application (base DID, not versioned)
+    /// @param major Major version number
+    /// @param minor Minor version number
+    /// @param patch Patch version number
     /// @param metadataJson JSON string containing the app metadata
     function setMetadataForRegistry(
         string memory did,
+        uint8 major,
+        uint8 minor,
+        uint8 patch,
         string memory metadataJson
     ) external onlyAuthorizedRegistry {
         _validateInputs(did, metadataJson);
         
-        // Set metadata (registry has already validated ownership)
+        // Store metadata by base DID (gas efficient - shared across versions)
         metadataJsonByDID[did] = metadataJson;
         
-        // Emit event
+        // Emit event with full version context for historical tracking
         emit MetadataSet(
             did,
+            major,
+            minor,
+            patch,
             metadataJson,
             keccak256(bytes(metadataJson)),
             block.timestamp
