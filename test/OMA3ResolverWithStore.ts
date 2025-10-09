@@ -548,7 +548,8 @@ describe("OMA3ResolverWithStore", function () {
             const { resolver, issuer1, user1 } = await loadFixture(deployWithIssuersFixture);
 
             // Set maturation to 0 for immediate effect
-            await resolver.connect(await ethers.getSigner(await resolver.owner())).setMaturation(0);
+            await resolver.connect(owner).setMaturation(0);
+            await resolver.connect(owner).setMaturation(0);
 
             const controllerBytes32 = ethers.zeroPadValue(user1.address, 32);
             const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
@@ -581,8 +582,7 @@ describe("OMA3ResolverWithStore", function () {
 
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerBytes32, futureTime);
 
-            // With dual-tally: single issuer (no contention) = returns immediately
-            // Maturation only applies when there's contention
+            // With dual-tally and single issuer: returns immediately (owner equals issuer1)
             const maturationOwner = await resolver.currentOwner(TEST_DID_HASH);
             expect(maturationOwner).to.equal(issuer1.address);
         });
