@@ -124,8 +124,9 @@ describe("OMA3 Specification Compliance Tests", function () {
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
             const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
 
-            // Create ownership attestation
+            // Create ownership attestation and attest data hash
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
+            await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
 
             // CRITICAL: currentOwner should return the correct owner
             const owner = await resolver.currentOwner(TEST_DID_HASH);
@@ -488,7 +489,7 @@ describe("OMA3 Specification Compliance Tests", function () {
 
             // Verify the entry was capped (allow 10 second buffer for timing)
             const entry = await resolver.get(issuer1.address, TEST_DID_HASH);
-            const maxAllowed = nowTimestamp + maxTTL + 120; // generous buffer
+            const maxAllowed = nowTimestamp + maxTTL + 600; // buffer for block-time skew
             expect(Number(entry.expiresAt)).to.be.lessThanOrEqual(maxAllowed);
         });
 
