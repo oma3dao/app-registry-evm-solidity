@@ -119,7 +119,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             const { resolver, issuer1, user1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             // Set maturation to 0 for immediate effect
-            await resolver.connect(await ethers.getSigner(await resolver.owner())).setMaturation(0);
+            await resolver.connect(owner).setMaturation(0);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
             const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
@@ -129,8 +129,8 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
 
             // CRITICAL: currentOwner should return the correct owner
-            const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(user1.address);
+            const ownerAddr = await resolver.currentOwner(TEST_DID_HASH);
+            expect(ownerAddr).to.equal(user1.address);
         });
 
         it("Should return zero address when no valid attestations exist", async function () {
@@ -177,7 +177,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             const { resolver, issuer1, user1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             // Set maturation to 0 for immediate effect
-            await resolver.connect(await ethers.getSigner(await resolver.owner())).setMaturation(0);
+            await resolver.connect(owner).setMaturation(0);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
 
@@ -481,7 +481,7 @@ describe("OMA3 Specification Compliance Tests", function () {
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
             const maxTTL = Number(await resolver.maxTTLSeconds());
-            const nowTimestamp = Math.floor(Date.now() / 1000);
+            const nowTimestamp = Number(await time.latest());
             const tooFarFuture = nowTimestamp + maxTTL + 3600; // Beyond max TTL
 
             // Should cap the expiry to max TTL
@@ -489,7 +489,7 @@ describe("OMA3 Specification Compliance Tests", function () {
 
             // Verify the entry was capped (allow 10 second buffer for timing)
             const entry = await resolver.get(issuer1.address, TEST_DID_HASH);
-            const maxAllowed = nowTimestamp + maxTTL + 600; // buffer for block-time skew
+            const maxAllowed = Number(entry.recordedAt) + maxTTL + 10; // compare against recordedAt
             expect(Number(entry.expiresAt)).to.be.lessThanOrEqual(maxAllowed);
         });
 
