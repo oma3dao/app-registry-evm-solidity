@@ -141,7 +141,7 @@ describe("OMA3ResolverWithStore Edge Cases Coverage", function () {
       expect(currentOwner).to.equal(ethers.ZeroAddress);
 
       // Test case 4: Valid ownership attestation exists
-      const futureTime = Math.floor(Date.now() / 1000) + 3600;
+      const futureTime = 0; // non-expiring
       await resolver.connect(deterministicSigner).upsertDirect(didHash, ethers.zeroPadValue(user1.address, 32), futureTime);
       
       currentOwner = await resolver.currentOwner(didHash);
