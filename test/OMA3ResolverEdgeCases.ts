@@ -432,10 +432,10 @@ describe("OMA3ResolverWithStore Edge Cases Coverage", function () {
       isValid = await resolver.isDataHashValid(didHash, dataHash);
       expect(typeof isValid).to.equal("boolean");
       
-      // But revocation should fail
+      // Further attestations from removed issuer should fail, but existing revocation by removed issuer should also fail
       await expect(
-        resolver.connect(issuer).revokeDataHash(didHash, dataHash)
-      ).to.be.reverted;
+        resolver.connect(deterministicSigner).revokeDataHash(didHash, dataHash)
+      ).to.be.revertedWith("NOT_AUTHORIZED_ISSUER");
         });
     });
 });
