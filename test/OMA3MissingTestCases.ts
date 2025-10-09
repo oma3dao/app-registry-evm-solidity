@@ -403,7 +403,7 @@ describe("OMA3 Missing Test Cases", function () {
                 await resolver.connect(owner).setMaturation(0);
 
                 const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-                const futureTime = Math.floor(Date.now() / 1000) + 3600;
+                const futureTime = 0; // non-expiring
 
                 // First create an attestation
                 await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
@@ -964,7 +964,7 @@ describe("OMA3 Missing Test Cases", function () {
                 const { resolver, registry, issuer1, user1, owner } = await loadFixture(deployMissingTestsFixture);
 
                 // Set maturation to 0 for immediate effect
-                await resolver.connect(await ethers.getSigner(await resolver.owner())).setMaturation(0);
+                await resolver.connect(owner).setMaturation(0);
 
                 const did = "did:oma3:full-integration-test";
                 const didHash = ethers.keccak256(ethers.toUtf8Bytes(did));
@@ -973,7 +973,7 @@ describe("OMA3 Missing Test Cases", function () {
 
                 // Step 1: Authorized issuer attests ownership
                 const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-                const futureTime = Math.floor(Date.now() / 1000) + 3600;
+                const futureTime = 0; // non-expiring
 
                 await resolver.connect(issuer1).upsertDirect(didHash, controllerAddress, futureTime);
 

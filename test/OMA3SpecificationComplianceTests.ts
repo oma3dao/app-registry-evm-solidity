@@ -122,7 +122,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(owner).setMaturation(0);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-            const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+            const futureTime = 0; // non-expiring for deterministic resolution
 
             // Create ownership attestation and attest data hash
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
@@ -269,7 +269,7 @@ describe("OMA3 Specification Compliance Tests", function () {
         it("Should allow revocation of data hash attestations", async function () {
             const { resolver, issuer1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
-            const futureTime = Math.floor(Date.now() / 1000) + 3600;
+            const futureTime = 0; // non-expiring
 
             // Attest data hash
             await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
@@ -297,7 +297,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(owner).setMaturation(0);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-            const futureTime = Math.floor(Date.now() / 1000) + 3600;
+            const futureTime = 0; // non-expiring
             const deadline = Math.floor(Date.now() / 1000) + 7200; // 2 hours from now
             const nonce = 1;
 
@@ -516,7 +516,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             await registry.connect(owner).setDataUrlResolver(await resolver.getAddress());
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-            const futureTime = Math.floor(Date.now() / 1000) + 3600;
+            const futureTime = 0; // non-expiring
 
             // Step 1: Authorized issuer attests ownership
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);

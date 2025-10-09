@@ -379,7 +379,7 @@ describe("OMA3 Security and Edge Cases", function () {
             const { resolver, issuer1, user1 } = await loadFixture(deploySecurityFixture);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
-            const futureTime = Math.floor(Date.now() / 1000) + 3600;
+            const futureTime = 0; // non-expiring
 
             // Rapid create -> revoke -> create cycle
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
