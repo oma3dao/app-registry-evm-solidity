@@ -136,8 +136,8 @@ describe("OMA3 Specification Compliance Tests", function () {
         it("Should return zero address when no valid attestations exist", async function () {
             const { resolver } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
-            const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(ethers.ZeroAddress);
+            const resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(ethers.ZeroAddress);
         });
 
         it("Should respect maturation period for ownership changes", async function () {
@@ -169,8 +169,8 @@ describe("OMA3 Specification Compliance Tests", function () {
 
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, pastTime);
 
-            const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(ethers.ZeroAddress);
+            const resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(ethers.ZeroAddress);
         });
 
         it("Should handle non-expiring attestations (expiresAt = 0)", async function () {
@@ -184,15 +184,15 @@ describe("OMA3 Specification Compliance Tests", function () {
             // Create non-expiring attestation
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, 0);
 
-            const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(user1.address);
+            const resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(user1.address);
         });
 
         it("Should allow revocation of ownership attestations", async function () {
             const { resolver, issuer1, user1, owner } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             // Set maturation to 0 for immediate effect
-            await resolver.connect(await ethers.getSigner(await resolver.owner())).setMaturation(0);
+            await resolver.connect(owner).setMaturation(0);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
             const futureTime = Math.floor(Date.now() / 1000) + 3600;
@@ -201,8 +201,8 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
 
             // Verify owner
-            let owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(user1.address);
+            let resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(user1.address);
 
             // Revoke attestation
             await expect(resolver.connect(issuer1).revokeDirect(TEST_DID_HASH))
@@ -210,8 +210,8 @@ describe("OMA3 Specification Compliance Tests", function () {
                 .withArgs(issuer1.address, TEST_DID_HASH, anyValue, anyValue);
 
             // Verify no owner
-            owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(ethers.ZeroAddress);
+            resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(ethers.ZeroAddress);
         });
     });
 
@@ -291,10 +291,10 @@ describe("OMA3 Specification Compliance Tests", function () {
 
     describe("Specification Requirement: EIP-712 Delegated Operations", function () {
         it("Should allow delegated ownership attestations with valid signatures", async function () {
-            const { resolver, issuer1, user1 } = await loadFixture(deployWithAuthorizedIssuersFixture);
+            const { resolver, issuer1, user1, owner } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             // Set maturation to 0 for immediate effect
-            await resolver.connect(await ethers.getSigner(await resolver.owner())).setMaturation(0);
+            await resolver.connect(owner).setMaturation(0);
 
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
             const futureTime = Math.floor(Date.now() / 1000) + 3600;
@@ -345,8 +345,8 @@ describe("OMA3 Specification Compliance Tests", function () {
                 .to.emit(resolver, "Upsert");
 
             // Verify owner
-            const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(user1.address);
+            const resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(user1.address);
         });
 
         it("Should prevent replay attacks with nonce management", async function () {
@@ -557,10 +557,10 @@ describe("OMA3 Specification Compliance Tests", function () {
         });
 
         it("Should handle competing ownership claims correctly", async function () {
-            const { resolver, issuer1, issuer2, user1, user2 } = await loadFixture(deployWithAuthorizedIssuersFixture);
+            const { resolver, issuer1, issuer2, user1, user2, owner } = await loadFixture(deployWithAuthorizedIssuersFixture);
 
             // Set maturation to 0 for immediate effect
-            await resolver.connect(await ethers.getSigner(await resolver.owner())).setMaturation(0);
+            await resolver.connect(owner).setMaturation(0);
 
             const controller1 = ethers.zeroPadValue(user1.address, 32);
             const controller2 = ethers.zeroPadValue(user2.address, 32);
@@ -571,8 +571,8 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(issuer2).upsertDirect(TEST_DID_HASH, controller2, futureTime);
 
             // With contention and disagreement, dual-tally returns zero address
-            const owner = await resolver.currentOwner(TEST_DID_HASH);
-            expect(owner).to.equal(ethers.ZeroAddress);
+            const resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
+            expect(resolvedOwner).to.equal(ethers.ZeroAddress);
         });
     });
 
