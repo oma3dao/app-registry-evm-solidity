@@ -545,7 +545,7 @@ describe("OMA3ResolverWithStore", function () {
         });
 
         it("Should return correct owner when valid attestation exists", async function () {
-            const { resolver, issuer1, user1 } = await loadFixture(deployWithIssuersFixture);
+            const { resolver, issuer1, user1, owner } = await loadFixture(deployWithIssuersFixture);
 
             // Set maturation to 0 for immediate effect
             await resolver.connect(owner).setMaturation(0);

@@ -19,12 +19,8 @@ describe("OMA3ResolverWithStore Edge Cases Coverage", function () {
 
     // Set up resolver - use deterministic issuer addresses that the contract expects
     // The contract generates issuers using keccak256(abi.encodePacked("issuer", i))
-    for (let i = 0; i < 5; i++) {
-      const deterministicIssuer = ethers.getAddress(
-        ethers.keccak256(ethers.solidityPacked(["string", "uint256"], ["issuer", i])).slice(0, 42)
-      );
-      await resolver.addAuthorizedIssuer(deterministicIssuer);
-    }
+    // Authorize real signer as issuer to ensure currentOwner can resolve
+    await resolver.addAuthorizedIssuer(issuer.address);
   });
 
   describe("isDataHashValid Edge Cases", function () {
@@ -145,7 +141,7 @@ describe("OMA3ResolverWithStore Edge Cases Coverage", function () {
       await resolver.connect(deterministicSigner).upsertDirect(didHash, ethers.zeroPadValue(user1.address, 32), futureTime);
       
       currentOwner = await resolver.currentOwner(didHash);
-      expect(currentOwner).to.equal(user1.address); // Should return the attested owner
+      expect(currentOwner).to.equal(user1.address);
         });
     });
 
