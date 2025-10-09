@@ -551,7 +551,7 @@ describe("OMA3ResolverWithStore", function () {
             await resolver.connect(owner).setMaturation(0);
 
             const controllerBytes32 = ethers.zeroPadValue(user1.address, 32);
-            const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+            const futureTime = 0; // non-expiring for deterministic resolution
 
             // Create ownership attestation
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerBytes32, futureTime);
@@ -577,7 +577,7 @@ describe("OMA3ResolverWithStore", function () {
             const { resolver, issuer1 } = await loadFixture(deployWithIssuersFixture);
 
             const controllerBytes32 = ethers.zeroPadValue(issuer1.address, 32);
-            const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+            const futureTime = 0;
 
             await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerBytes32, futureTime);
 
