@@ -185,8 +185,9 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
         it("Should allow minting when data hash is attested", async function () {
             const { registry, resolver, issuer, user1 } = await loadFixture(deployWithResolverFixture);
 
-            // Attest data hash
-            await resolver.connect(issuer).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, 0);
+            // Compute correct data hash for metadata and attest it
+            const correctDataHash = ethers.keccak256(ethers.toUtf8Bytes(TEST_METADATA_JSON));
+            await resolver.connect(issuer).attestDataHash(TEST_DID_HASH, correctDataHash, 0);
 
             // Set maturation to 0 for immediate effect
             await resolver.connect(await ethers.getSigner(await registry.owner())).setMaturation(0);
@@ -195,10 +196,7 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
             const controllerBytes32 = ethers.zeroPadValue(user1.address, 32);
             await resolver.connect(issuer).upsertDirect(TEST_DID_HASH, controllerBytes32, 0);
 
-            // Compute correct data hash for metadata
-            const correctDataHash = ethers.keccak256(ethers.toUtf8Bytes(TEST_METADATA_JSON));
-
-            // Should fail with NOT_DID_OWNER (expected behavior)
+            // Should succeed when ownership and data hash are valid
             await expect(registry.connect(user1).mint(
                 TEST_DID,
                 1, // interfaces
@@ -210,7 +208,7 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
                 1, 0, 0, // version
                 [],
                 TEST_METADATA_JSON
-            )).to.be.revertedWith("NOT_DID_OWNER");
+            )).to.not.be.reverted;
         });
 
         it("Should reject minting when data hash is not attested", async function () {
@@ -241,7 +239,7 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
                 1, 0, 0, // version
                 [],
                 TEST_METADATA_JSON
-            )).to.be.revertedWith("NOT_DID_OWNER");
+            )).to.be.revertedWith("DATA_HASH_NOT_ATTESTED");
         });
 
         it("Should allow minting when no data URL resolver is set", async function () {
@@ -311,7 +309,7 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
             // Set maturation to 0 for immediate effect
             await resolver.connect(await ethers.getSigner(await registry.owner())).setMaturation(0);
 
-            // Should be able to mint
+            // Should revert due to data hash not attested
             await expect(registry.connect(user1).mint(
                 TEST_DID,
                 1, // interfaces
@@ -323,7 +321,7 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
                 1, 0, 0, // version
                 [],
                 TEST_METADATA_JSON
-            )).to.be.revertedWith("NOT_DID_OWNER");
+            )).to.be.revertedWith("DATA_HASH_NOT_ATTESTED");
 
             // Test that resolver is properly set
             const ownershipResolver = await registry.ownershipResolver();
@@ -449,19 +447,21 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
             // Attest data hash
             await resolver.connect(issuer).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, 0);
 
-            // The mint function uses nonReentrant modifier, so this should be safe
+            // The mint function uses nonReentrant; with valid ownership+data hash, this should succeed
+            const correctDataHash = ethers.keccak256(ethers.toUtf8Bytes(TEST_METADATA_JSON));
+            await resolver.connect(issuer).attestDataHash(TEST_DID_HASH, correctDataHash, 0);
             await expect(registry.connect(user1).mint(
                 TEST_DID,
                 1, // interfaces
                 "https://example.com/data",
-                TEST_DATA_HASH,
+                correctDataHash,
                 0, // keccak256
                 "token123",
                 "contract123",
                 1, 0, 0, // version
                 [],
                 TEST_METADATA_JSON
-            )).to.be.revertedWith("NOT_DID_OWNER");
+            )).to.not.be.reverted;
         });
     });
 });
