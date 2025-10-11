@@ -209,7 +209,7 @@ async function saveDeploymentInfo(
   console.log(`npx hardhat get-metadata-json --did "did:oma3:example" --network ${network}`);
 }
 
-task("deploy-system", "Deploy the OMA3 App Registry + Metadata + Resolver system (development only - use Thirdweb Dashboard for production)")
+task("deploy-system", "Deploy the OMATrust App Registry + Metadata + Resolver system (development only - use Thirdweb Dashboard for production)")
   .addFlag("noLink", "Skip linking Registry, Metadata, and Resolver contracts")
   .addFlag("noTest", "Skip integration test after deployment (default is to test)")
   .addOptionalParam("confirmations", "Number of block confirmations to wait (default: 1 for testnets, 5 for mainnet)", undefined)
