@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 import { getDeployerSigner, verifyBytecode, logTransactionForVerification } from "../shared/signer-utils";
 
-task("deploy-registry", "Deploy only the OMA3 App Registry contract (development only - use Thirdweb Dashboard for production)")
+task("deploy-registry", "Deploy only the OMATrust App Registry contract (development only - use Thirdweb Dashboard for production)")
   .setAction(async (taskArgs, hre) => {
     console.log("Note: This is for development/testing only.");
     console.log("For production deployment, use Thirdweb Dashboard for maximum security.");
