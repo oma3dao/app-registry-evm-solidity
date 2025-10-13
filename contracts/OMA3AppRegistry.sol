@@ -856,6 +856,60 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     }
 
     /**
+     * @dev Returns active applications filtered by interface type with pagination
+     * @param interfaceMask The interface mask to filter by (1=Human, 2=API, 4=Smart Contract)
+     *        Uses OR logic: if (app.interfaces & interfaceMask) != 0, app is included
+     * @param startIndex The starting index for pagination (0-based)
+     * @return apps Array of matching apps for this page
+     * @return nextStartIndex Starting index for next page (0 if last page)
+     * 
+     * Examples:
+     * - interfaceMask = 1: Returns apps with Human interface
+     * - interfaceMask = 2: Returns apps with API interface  
+     * - interfaceMask = 3: Returns apps with Human OR API interfaces
+     * - interfaceMask = 7: Returns apps with any interface
+     */
+    function getAppsByInterface(uint16 interfaceMask, uint256 startIndex)
+        external
+        view
+        returns (App[] memory apps, uint256 nextStartIndex)
+    {
+        // Only search active apps for public browsing
+        uint256 totalActive = _activeTokenIds.length;
+        
+        if (startIndex >= totalActive) {
+            return (new App[](0), 0);
+        }
+        
+        // Collect matching apps up to MAX_APPS_PER_PAGE
+        App[] memory tempApps = new App[](MAX_APPS_PER_PAGE);
+        uint256 collected = 0;
+        uint256 i;
+        
+        for (i = startIndex; i < totalActive && collected < MAX_APPS_PER_PAGE; i++) {
+            uint256 tokenId = _activeTokenIds[i];
+            App storage app = _apps[tokenId];
+            
+            // Check if app has any of the requested interfaces (OR logic)
+            if ((app.interfaces & interfaceMask) != 0) {
+                tempApps[collected] = app;
+                collected++;
+            }
+        }
+        
+        // Return exactly what we collected
+        apps = new App[](collected);
+        for (uint256 j = 0; j < collected; j++) {
+            apps[j] = tempApps[j];
+        }
+        
+        // Calculate next start index: continue if we didn't scan all active apps
+        nextStartIndex = (i < totalActive) ? i : 0;
+        
+        return (apps, nextStartIndex);
+    }
+
+    /**
      * @dev Get total number of apps by owner (current NFT owner, not original minter)
      * Uses ERC721Enumerable's balanceOf for accurate ownership tracking
      * @param owner The owner's address

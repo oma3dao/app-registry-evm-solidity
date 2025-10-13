@@ -11,6 +11,7 @@ dotenvConfig();
 // Import task files - Registry tasks
 import "./tasks/registry/registry-get-app";
 import "./tasks/registry/registry-get-apps";
+import "./tasks/registry/registry-get-apps-by-interface";
 import "./tasks/registry/registry-get-apps-by-owner";
 import "./tasks/registry/registry-get-apps-by-status";
 import "./tasks/registry/registry-get-did-hash";
@@ -90,9 +91,9 @@ if (privateKeyFromSsh) {
 // Network-specific contract addresses
 export const NETWORK_CONTRACTS = {
   omachainTestnet: {
-    registry: "0xf978773a2f393CC840a7FE9991025ea8a220b4DE",
-    metadata: "0x2b93eeEC89C2899D79516c68e2A5345743418A06",
-    resolver: "0x80C7bC75bc23238cF948eBaedC474DCaCA1835E2"
+    registry: "0x9AFBaA695D801b0C5d1F2c5F153ce7518cD04861",
+    metadata: "0x84724AB9899455ca6EC292C285978c535b7982aC",
+    resolver: "0x77E058106762AeA4A567f2919Ef896bb6A82f914"
   },
   omachainMainnet: {
     registry: "0x", 

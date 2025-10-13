@@ -211,6 +211,9 @@ function getAppsByStatus(uint8 status, uint256 startIndex)
 function getAppsByOwner(address owner, uint256 startIndex) 
     external view returns (App[] memory apps, uint256 nextStartIndex)
 
+function getAppsByInterface(uint16 interfaceMask, uint256 startIndex)
+    external view returns (App[] memory apps, uint256 nextStartIndex)
+
 function getApps(uint256 startIndex) 
     external view returns (App[] memory apps, uint256 nextStartIndex)
 
@@ -230,6 +233,55 @@ function getTotalAppsByOwner(address owner)
 - `getAppsByOwner(owner, 0)` returns apps at positions 0-2 (all 3 apps)
 - `getAppsByOwner(owner, 1)` returns apps at positions 1-2 (apps with token IDs 2, 3)
 - The apps themselves still have token IDs 1, 2, 3 regardless of pagination
+
+**Interface Filtering with `getAppsByInterface`**:
+
+The `getAppsByInterface` function filters active apps by interface type using a bitmask:
+- `1` = Human interface (websites, apps with UI)
+- `2` = API interface (REST, GraphQL, JSON-RPC, MCP, A2A)
+- `4` = Smart Contract interface (on-chain contracts)
+
+Uses OR logic: an app matches if it has ANY of the requested interfaces.
+
+**Examples:**
+```typescript
+// Get only API apps
+const result = await registry.getAppsByInterface(2, 0);
+
+// Get Human OR API apps (3 = 1 | 2)
+const result = await registry.getAppsByInterface(3, 0);
+
+// Get all apps with any interface (7 = 1 | 2 | 4)
+const result = await registry.getAppsByInterface(7, 0);
+```
+
+**Hardhat task:**
+```bash
+# Get API apps
+npx hardhat registry:get-apps-by-interface \
+  --address <REGISTRY_ADDRESS> \
+  --interface api \
+  --network omachainTestnet
+
+# Get Human or API apps using names
+npx hardhat registry:get-apps-by-interface \
+  --address <REGISTRY_ADDRESS> \
+  --interface human,api \
+  --network omachainTestnet
+
+# Get Smart Contract apps using mask
+npx hardhat registry:get-apps-by-interface \
+  --address <REGISTRY_ADDRESS> \
+  --interface 4 \
+  --network omachainTestnet
+
+# Pagination: get next page
+npx hardhat registry:get-apps-by-interface \
+  --address <REGISTRY_ADDRESS> \
+  --interface api \
+  --start 50 \
+  --network omachainTestnet
+```
 
 #### Trait Filtering
 

@@ -196,10 +196,9 @@ Resolver: 0x9abc...
 
 #### **Step 2: Update configuration files**
 ```bash
-# Update these 3 files with the new addresses:
-# 1. contract-addresses.txt
-# 2. hardhat.config.ts → NETWORK_CONTRACTS.omachainTestnet
-# 3. app-registry-frontend/src/config/chains.ts
+# Update these 2 files with the new addresses in contract-addresses.txt:
+# 1. hardhat.config.ts → NETWORK_CONTRACTS.omachainTestnet
+# 2. app-registry-frontend/src/config/chains.ts
 ```
 
 #### **Step 3: Add authorized issuers (REQUIRED)**

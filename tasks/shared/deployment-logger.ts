@@ -128,7 +128,7 @@ function updateActiveSummary(filePath: string, record: DeploymentRecord): void {
     ? summarySection.indexOf('# ===', sectionStart)
     : nextSectionStart;
 
-  // Extract existing values so we only update fields we deployed, leaving others intact
+  // Extract existing values from this section
   const targetSection = summarySection.substring(sectionStart, sectionEnd);
   const getExisting = (label: string): string | undefined => {
     const m = targetSection.match(new RegExp(`^${label}:\\s+(.*)$`, 'm'));
@@ -138,6 +138,10 @@ function updateActiveSummary(filePath: string, record: DeploymentRecord): void {
   const existingRegistry = getExisting('Registry');
   const existingMetadata = getExisting('Metadata');
   const existingResolver = getExisting('Resolver');
+
+  // Extract and preserve Issuers from this specific section
+  const issuersMatch = targetSection.match(/Issuers:\n((?:0x[a-fA-F0-9]{40}\n?)*)/);
+  const existingIssuers = issuersMatch ? issuersMatch[0] : ''; // Keep full "Issuers:\n..." block
 
   const mergedRegistry = (record.registry !== undefined && record.registry !== '')
     ? record.registry
@@ -160,6 +164,11 @@ function updateActiveSummary(filePath: string, record: DeploymentRecord): void {
   newSection += `Metadata:  ${mergedMetadata}\n`;
   newSection += `Resolver:  ${mergedResolver}\n`;
   newSection += `Deployer:  ${record.deployer}\n`;
+  
+  // Add back the Issuers section if it existed
+  if (existingIssuers) {
+    newSection += `\n${existingIssuers}`;
+  }
 
   // Replace the section
   const beforeSection = summarySection.substring(0, sectionStart);
