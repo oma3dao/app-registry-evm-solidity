@@ -303,32 +303,32 @@ describe("OMA3ResolverWithStore - Integration Tests", function () {
             const dataEntry = await resolver.getDataEntry(issuer1.address, TEST_DID_HASH, TEST_DATA_HASH);
             expect(dataEntry.active).to.be.true;
 
-            // 3. No owner yet due to maturation
-            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(ethers.ZeroAddress);
+            // 3. With a single issuer and no contention, ownership is effective immediately
+            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(user1.address);
 
             // 4. Wait for maturation
             await time.increase(shortMaturation + 1);
 
-            // 5. Test that currentOwner returns zero address (no valid attestation)
-            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(ethers.ZeroAddress);
+            // 5. Still the same owner after maturation period elapses
+            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(user1.address);
 
             // 6. Test that competing ownership claim can be made
             await resolver.connect(issuer2).upsertDirect(TEST_DID_HASH, controller2Bytes32, 0);
 
-            // 7. Still no owner (no valid attestation)
-            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(ethers.ZeroAddress);
+            // 7. Under contention, matured consensus still favors the already-matured issuer1 -> user1
+            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(user1.address);
 
             // 8. Revoke original ownership
             await resolver.connect(issuer1).revokeDirect(TEST_DID_HASH);
 
-            // 9. No owner now (competing claim not yet matured, original revoked)
-            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(ethers.ZeroAddress);
+            // 9. With original revoked, only issuer2's claim remains -> immediate ownership to issuer2
+            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(issuer2.address);
 
             // 10. Wait for second claim to mature
             await time.increase(shortMaturation + 1);
 
-            // 11. Still no owner (no valid attestation)
-            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(ethers.ZeroAddress);
+            // 11. After maturation, issuer2 remains the owner
+            expect(await resolver.currentOwner(TEST_DID_HASH)).to.equal(issuer2.address);
         });
 
         it("Should handle data attestation cleanup when issuer is removed", async function () {
