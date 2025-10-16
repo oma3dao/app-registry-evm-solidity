@@ -364,19 +364,19 @@ describe("Hardhat Tasks - Simplified", function () {
       
       const metaverseTrait = ethers.keccak256(ethers.toUtf8Bytes("metaverse"));
       const nonExistentTrait = ethers.keccak256(ethers.toUtf8Bytes("nonexistent"));
-      
-      // Has the new trait (using hasAnyTraits)
-      expect(await registryContract.hasAnyTraits(advancedDID, 1, [metaverseTrait])).to.be.true;
-      
-      // Doesn't have non-existent trait
-      expect(await registryContract.hasAnyTraits(advancedDID, 1, [nonExistentTrait])).to.be.false;
-      
-      // Check multiple traits - hasAllTraits requires ALL traits to be present
       const gamingTrait = ethers.keccak256(ethers.toUtf8Bytes("gaming"));
-      expect(await registryContract.hasAllTraits(advancedDID, 1, [metaverseTrait, gamingTrait])).to.be.false; // gaming was replaced
       
-      // Check that hasAllTraits works when all traits are present
-      expect(await registryContract.hasAllTraits(advancedDID, 1, [metaverseTrait])).to.be.true;
+      // Get the app and check trait hashes directly
+      const app = await registryContract.getApp(advancedDID, 1);
+      
+      // Should have metaverse trait
+      expect(app.traitHashes).to.include(metaverseTrait);
+      
+      // Should not have non-existent trait
+      expect(app.traitHashes).to.not.include(nonExistentTrait);
+      
+      // Should not have gaming trait (was replaced)
+      expect(app.traitHashes).to.not.include(gamingTrait);
     });
 
     it("should get apps by different statuses", async function () {

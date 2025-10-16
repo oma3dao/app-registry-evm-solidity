@@ -4809,8 +4809,11 @@ describe("OMA3AppRegistry", function () {
     const totalDeprecated = await registry.connect(minter1).getTotalAppsByStatus(1);
     expect(totalDeprecated).to.equal(105);
 
-    // Test hasAllTraits function to cover the remaining uncovered lines
-    // First, mint an app with keywords
+    // Test trait hashes storage
+    // Mint an app with trait hashes
+    const web3Hash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3"));
+    const defiHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("defi"));
+    
     await registry.connect(minter1).mint(
       "did:oma3:keywords-test",
       1, // interfaces bitmap
@@ -4820,43 +4823,15 @@ describe("OMA3AppRegistry", function () {
       "",
       "",
       1, 0, 0, 
-      [hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")), hre.ethers.keccak256(hre.ethers.toUtf8Bytes("defi"))], // traitHashes
+      [web3Hash, defiHash], // traitHashes
       ""
     );
 
-    // Test hasAllTraits with matching keywords
-    const hasAll = await registry.hasAllTraits("did:oma3:keywords-test", 1, [
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")),
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("defi"))
-    ]);
-    expect(hasAll).to.be.true;
-
-    // Test hasAllTraits with partial keywords (should return false)
-    const hasPartial = await registry.hasAllTraits("did:oma3:keywords-test", 1, [
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3"))
-    ]);
-    expect(hasPartial).to.be.true; // This should be true since it has all the requested keywords
-
-    // Test hasAllTraits with non-matching keywords (should return false)
-    const hasNone = await registry.hasAllTraits("did:oma3:keywords-test", 1, [
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("blockchain"))
-    ]);
-    expect(hasNone).to.be.false;
-
-    // Test hasAnyTraits function to cover the remaining uncovered lines
-    // Test hasAnyTraits with matching keywords (should return true)
-    const hasAny = await registry.hasAnyTraits("did:oma3:keywords-test", 1, [
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("web3")),
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("blockchain"))
-    ]);
-    expect(hasAny).to.be.true; // Should return true because it has "web3"
-
-    // Test hasAnyTraits with no matching keywords (should return false)
-    const hasAnyNone = await registry.hasAnyTraits("did:oma3:keywords-test", 1, [
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("blockchain")),
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("ethereum"))
-    ]);
-    expect(hasAnyNone).to.be.false;
+    // Verify traits are stored correctly
+    const keywordApp = await registry.getApp("did:oma3:keywords-test", 1);
+    expect(keywordApp.traitHashes.length).to.equal(2);
+    expect(keywordApp.traitHashes[0]).to.equal(web3Hash);
+    expect(keywordApp.traitHashes[1]).to.equal(defiHash);
   });
 
   it("should cover updateStatus no-op case (same status)", async function () {
