@@ -49,6 +49,10 @@ task("deploy-metadata", "Deploy only the OMA3 App Metadata contract")
     });
 
     console.log("\n⚠️  Next steps:");
-    console.log("1. Update hardhat.config.ts NETWORK_CONTRACTS");
-    console.log("2. Update frontend src/config/chains.ts");
+    console.log("1. Update contract-addresses.txt active deployment section with this new metadata address");
+    console.log("2. Update hardhat.config.ts NETWORK_CONTRACTS with this metadata address");
+    console.log("3. Update frontend src/config/chains.ts with this metadata address");
+    console.log("4. Authorize registry contract to use this metadata:");
+    console.log(`   npx hardhat metadata-authorize-registry --network ${networkName} --registry <REGISTRY_ADDRESS>`);
+    console.log("\nNote: The metadata contract must authorize the registry before apps can be registered.");
   });

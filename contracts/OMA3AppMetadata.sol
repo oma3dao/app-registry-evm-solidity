@@ -41,14 +41,14 @@ contract OMA3AppMetadata is Ownable {
     /// @notice Constructor - sets the deployer as owner
     constructor() Ownable(msg.sender) {}
 
-    /// @notice One-time function to set the authorized registry
+    /// @notice Sets or updates the authorized registry address
     /// @param _registryAddress Address of the registry contract
+    /// @dev Can be called multiple times by owner to update the registry
     function setAuthorizedRegistry(address _registryAddress) 
         external 
         onlyOwner 
     {
         require(_registryAddress != address(0), string.concat(ERROR_PREFIX, "Invalid registry address"));
-        require(authorizedRegistry == address(0), string.concat(ERROR_PREFIX, "Registry already set"));
         
         authorizedRegistry = _registryAddress;
         

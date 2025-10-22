@@ -17,7 +17,6 @@ import "./tasks/registry/registry-get-apps-by-status";
 import "./tasks/registry/registry-get-did-hash";
 import "./tasks/registry/registry-has-traits";
 import "./tasks/registry/registry-mint";
-import "./tasks/registry/registry-set-metadata-json";
 import "./tasks/registry/registry-token-uri";
 import "./tasks/registry/registry-total-supply";
 import "./tasks/registry/registry-update-app-controlled";
@@ -91,8 +90,8 @@ if (privateKeyFromSsh) {
 // Network-specific contract addresses
 export const NETWORK_CONTRACTS = {
   omachainTestnet: {
-    registry: "0x9AFBaA695D801b0C5d1F2c5F153ce7518cD04861",
-    metadata: "0x84724AB9899455ca6EC292C285978c535b7982aC",
+    registry: "0x63A7C12f54B4f42Cae7234f7e20c7A08f725B9F9",
+    metadata: "0xFdd87eA429D963eCB671D409128dC94BFf5f0694",
     resolver: "0x77E058106762AeA4A567f2919Ef896bb6A82f914"
   },
   omachainMainnet: {

@@ -26,15 +26,48 @@ task("get-app", "Fetches an application by its DID and major version")
       
       console.log("Application found:");
       console.log("DID:", app.did);
-      console.log("Interfaces:", app.interfaces);
+      console.log("Minter:", app.minter);
+      console.log("Major Version:", app.versionMajor);
+      
+      // Display version history
+      const versionHistory = app.versionHistory || [];
+      if (versionHistory.length > 0) {
+        console.log("Version History:");
+        versionHistory.forEach((version: any, index: number) => {
+          console.log(`  ${index + 1}. ${version.major}.${version.minor}.${version.patch}`);
+        });
+        
+        // Show current version
+        const currentVersion = versionHistory[versionHistory.length - 1];
+        console.log(`Current Version: ${currentVersion.major}.${currentVersion.minor}.${currentVersion.patch}`);
+      } else {
+        console.log("Version History: No versions recorded");
+        console.log("Current Version: 1.0.0 (default)");
+      }
+      
+      // Display interfaces with human-readable format
+      const interfacesNum = Number(app.interfaces);
+      console.log("Interfaces:", interfacesNum, `(Human: ${!!(interfacesNum & 1)}, API: ${!!(interfacesNum & 2)}, Contract: ${!!(interfacesNum & 4)})`);
+      
+      // Display status with human-readable format
+      const statusNum = Number(app.status);
+      const statusLabels = ['Active', 'Deprecated', 'Replaced'];
+      console.log("Status:", statusNum, `(${statusLabels[statusNum] || 'Unknown'})`);
+      
       console.log("Data URL:", app.dataUrl);
       console.log("Data Hash:", app.dataHash);
       console.log("Data Hash Algorithm:", app.dataHashAlgorithm);
-      console.log("Major Version:", app.versionMajor);
-      console.log("Minter:", app.minter);
-      console.log("Status:", app.status);
-      console.log("Contract ID:", app.contractId);
-      console.log("Fungible Token ID:", app.fungibleTokenId);
+      console.log("Contract ID:", app.contractId || "(none)");
+      console.log("Fungible Token ID:", app.fungibleTokenId || "(none)");
+      
+      // Display trait hashes
+      const traitHashes = app.traitHashes || [];
+      console.log("Trait Hashes:", traitHashes.length);
+      if (traitHashes.length > 0) {
+        traitHashes.forEach((hash: string, index: number) => {
+          console.log(`  ${index + 1}. ${hash}`);
+        });
+      }
 
       displayTaskCompletion(true, "Application retrieved successfully");
 

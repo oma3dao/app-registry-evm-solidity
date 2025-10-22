@@ -6,10 +6,10 @@
 
 ### Testnet (omachainTestnet)
 Network: omachainTestnet (Chain ID: 66238)
-Last Updated: 2025-10-13 06:11:24 UTC
+Last Updated: 2025-10-17 06:42:04 UTC
 
-Registry:  0x9AFBaA695D801b0C5d1F2c5F153ce7518cD04861
-Metadata:  0x84724AB9899455ca6EC292C285978c535b7982aC
+Registry:  0x63A7C12f54B4f42Cae7234f7e20c7A08f725B9F9
+Metadata:  0xFdd87eA429D963eCB671D409128dC94BFf5f0694
 Resolver:  0x77E058106762AeA4A567f2919Ef896bb6A82f914
 Deployer:  0xC8cb41dD6F509f28cA4194f8e1574911281354eF
 
@@ -113,5 +113,35 @@ Deployed Contracts:
 Deployment Details:
   Block Confirmations: 1
   Integration Tests: ✅ PASSED
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #6 ===
+Timestamp: 2025-10-17 06:01:35 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: Individual Contract (Registry)
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  Registry:  0x63A7C12f54B4f42Cae7234f7e20c7A08f725B9F9
+
+Deployment Details:
+  Block Confirmations: 1
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #7 ===
+Timestamp: 2025-10-17 06:42:04 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: Individual Contract (Metadata)
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  Metadata:  0xFdd87eA429D963eCB671D409128dC94BFf5f0694
+
+Deployment Details:
+  Block Confirmations: 1
   Verification Status: Pending (run verify commands if supported by explorer)
 ============================================================================

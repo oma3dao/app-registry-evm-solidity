@@ -471,45 +471,15 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Set metadata for an existing app (allows developers to update metadata after mint)
-     * @param didString The DID as string
-     * @param major The major version of the app
-     * @param minor The minor version for this metadata update
-     * @param patch The patch version for this metadata update
-     * @param metadataJson JSON string containing the app metadata
-     * @param dataHash Hash of the metadata JSON
-     * @param dataHashAlgorithm Algorithm used for dataHash (0=keccak256, 1=sha256)
+     * NOTE: The public setMetadataJson() function has been removed.
      * 
-     * Note: This updates versionHistory with the new version and sets metadata
+     * Metadata updates are now handled atomically via updateAppControlled() with the 
+     * metadataJson parameter. This ensures:
+     * - Single version history entry per update
+     * - Proper semantic versioning validation
+     * - Consistent dataHash updates on the App struct
+     * - Atomic transaction (all or nothing)
      */
-    function setMetadataJson(
-        string memory didString,
-        uint8 major,
-        uint8 minor,
-        uint8 patch,
-        string memory metadataJson,
-        bytes32 dataHash,
-        uint8 dataHashAlgorithm
-    ) external onlyAppOwner(didString, major) nonReentrant {
-        bytes32 didHash = getDidHash(didString);
-        uint256 tokenId = _didMajorToToken[didHash][major];
-        
-        if (tokenId == 0) revert DIDHashNotFound(didHash);
-        
-        App storage app = _apps[tokenId];
-        
-        // Add new version to history (consistent with updateAppControlled)
-        app.versionHistory.push(Version({
-            major: major,
-            minor: minor,
-            patch: patch
-        }));
-        
-        emit VersionAdded(didHash, major, tokenId, minor, patch);
-        
-        // Set metadata with full version context
-        _setMetadataJson(didString, major, minor, patch, metadataJson, dataHash, dataHashAlgorithm);
-    }
 
     /**
      * @dev Internal function to set metadata with validation
@@ -597,8 +567,10 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @param newTraitHashes New trait hashes (empty array [] = no change)
      * @param newMinor New minor version (must be > current if interfaces change)
      * @param newPatch New patch version (must be > current if data/trait changes, unless minor++)
+     * @param metadataJson Optional metadata JSON string (empty string "" = no metadata update)
      * @notice Trait changes require new data hash for auditability
      * @notice Interface changes require minor increment, data/trait changes require patch increment
+     * @notice Metadata is only stored if provided and different from current
      */
     function updateAppControlled(
         string memory didString,
@@ -609,7 +581,8 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         uint16 newInterfaces,
         bytes32[] memory newTraitHashes,
         uint8 newMinor,
-        uint8 newPatch
+        uint8 newPatch,
+        string memory metadataJson
     ) external onlyAppOwner(didString, major) nonReentrant {
         bytes32 didHash = getDidHash(didString);
         uint256 tokenId = _resolveTokenByHash(didHash, major);
@@ -700,6 +673,11 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         }));
         
         emit VersionAdded(didHash, major, tokenId, newMinor, newPatch);
+        
+        // Store metadata if provided (only pass if metadata actually changed)
+        if (bytes(metadataJson).length > 0) {
+            _setMetadataJson(didString, major, newMinor, newPatch, metadataJson, newDataHash, newDataHashAlgorithm);
+        }
     }
 
     /**

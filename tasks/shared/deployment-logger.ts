@@ -81,7 +81,9 @@ export async function logDeployment(record: DeploymentRecord): Promise<void> {
   
   // Update the active deployments summary at the top
   try {
+    console.log(`📝 Updating active deployment summary...`);
     updateActiveSummary(filePath, record);
+    console.log(`✅ Active deployment summary updated`);
   } catch (error) {
     console.warn(`⚠️  Failed to update active deployments summary:`, error);
   }
