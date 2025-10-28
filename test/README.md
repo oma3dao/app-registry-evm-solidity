@@ -8,7 +8,7 @@ This directory contains comprehensive test suites for the OMA3 system, including
 - **`OMA3ResolverWithStore.ts`** - Main unit tests covering all basic functionality
 - **`OMA3ResolverIntegration.ts`** - Complex integration scenarios and edge cases
 - **`OMA3AppRegistry.ts`** - Registry contract tests with pagination validation
-- **`OMA3AppRegistryLegacy.ts`** - Legacy registry contract tests
+- **`OMA3AppRegistryLegacy.ts`** - **DEPRECATED** Legacy registry contract tests (contract moved to `contracts/deprecated/`)
 
 ### Helpers
 - **`helpers/testUtils.ts`** - Utility functions and test scenario builders
@@ -381,11 +381,16 @@ npx hardhat compile
 # Run all registry tests (includes pagination tests with 100+ apps)
 npx hardhat test test/OMA3AppRegistry.ts
 
-# Run legacy registry tests
+# Run legacy registry tests (DEPRECATED - contract in contracts/deprecated/)
 npx hardhat test test/OMA3AppRegistryLegacy.ts
+
+# Run factory tests (DEPRECATED - contract in contracts/deprecated/)
+npx hardhat test test/OMA3SystemFactory.ts
 ```
 
 **Note**: Pagination tests properly validate `MAX_APPS_PER_PAGE = 100` by minting 100-105 apps in the test fixtures.
+
+**Deprecated Contracts**: `OMA3AppRegistryLegacy` and `OMA3SystemFactory` have been moved to `contracts/deprecated/` but their tests remain functional for historical reference.
 
 #### **OMATrust Resolver Testing**
 

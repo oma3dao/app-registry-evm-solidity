@@ -52,14 +52,6 @@ import "./tasks/metadata/metadata-get-json";
 // Import task files - Resolver tasks
 import "./tasks/resolver";
 
-// Import task files - EAS tasks
-import "./tasks/eas/eas-register-schema";
-import "./tasks/eas/eas-get-schema";
-import "./tasks/eas/eas-attest";
-import "./tasks/eas/eas-get-attestation";
-import "./tasks/eas/eas-revoke";
-import "./tasks/eas/eas-encode-data";
-
 // Load deployment key from configurable SSH file path
 const deploymentKeyPath = process.env.DEPLOYMENT_KEY_PATH || path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
 

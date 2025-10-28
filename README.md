@@ -385,6 +385,15 @@ The `deploy-system` script deploys and links three contracts:
 
 All contracts are automatically linked together with proper authorization settings.
 
+### Deprecated Contracts
+
+The `contracts/deprecated/` folder contains legacy contracts that are no longer used:
+
+- **OMA3AppRegistryLegacy** - Original ERC721-based registry (replaced by current architecture)
+- **OMA3SystemFactory** - Factory deployment pattern (replaced by direct deployment)
+
+These are preserved for historical reference and test documentation. See contract file headers for deprecation details.
+
 ### Configuring the Resolver
 
 After deployment, you can configure the resolver's security parameters using granular admin tasks:

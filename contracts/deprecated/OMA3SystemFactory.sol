@@ -1,13 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "./OMA3AppRegistry.sol";
-import "./OMA3AppMetadata.sol";
+import "../OMA3AppRegistry.sol";
+import "../OMA3AppMetadata.sol";
 
 /**
  * @title OMA3SystemFactory
- * @notice Factory contract for deploying and linking OMA3AppRegistry and OMA3AppMetadata contracts
+ * @notice DEPRECATED: Factory contract for deploying and linking OMA3AppRegistry and OMA3AppMetadata contracts
  * @dev This contract deploys both contracts, links them together, and transfers ownership to the deployer
+ * 
+ * @notice This contract has been deprecated. Manual deployment is now preferred.
+ * It is kept for historical reference and test coverage documentation.
+ * 
+ * Deprecated: October 2025
+ * Reason: Factory pattern adds unnecessary complexity; direct deployment is simpler and more transparent
+ * 
+ * DO NOT USE THIS CONTRACT FOR NEW DEPLOYMENTS
  * 
  * Security considerations:
  * - One-time use only (self-destructs after deployment)

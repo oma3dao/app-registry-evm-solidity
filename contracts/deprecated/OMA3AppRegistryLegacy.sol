@@ -8,7 +8,15 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title OMA3AppRegistryLegacy
- * @dev Legacy Registry for OMA3 applications using ERC721 tokens
+ * @dev DEPRECATED: Legacy Registry for OMA3 applications using ERC721 tokens
+ * 
+ * @notice This contract has been deprecated and replaced by the OMA3AppRegistry system.
+ * It is kept for historical reference and test coverage documentation.
+ * 
+ * Deprecated: October 2025
+ * Reason: Replaced by OMA3AppRegistry + OMA3AppMetadata architecture for better separation of concerns
+ * 
+ * DO NOT USE THIS CONTRACT FOR NEW DEPLOYMENTS
  */
 contract OMA3AppRegistryLegacy is ERC721, Ownable, ReentrancyGuard {
     using Strings for uint256;
