@@ -25,6 +25,7 @@ import "./tasks/deploy/system";
 import "./tasks/deploy/registry";
 import "./tasks/deploy/metadata";
 import "./tasks/deploy/resolver";
+import "./tasks/deploy/eas-system";
 
 // Import task files - Admin tasks
 import "./tasks/admin/registry-set-metadata-contract";
@@ -50,6 +51,14 @@ import "./tasks/metadata/metadata-get-json";
 
 // Import task files - Resolver tasks
 import "./tasks/resolver";
+
+// Import task files - EAS tasks
+import "./tasks/eas/eas-register-schema";
+import "./tasks/eas/eas-get-schema";
+import "./tasks/eas/eas-attest";
+import "./tasks/eas/eas-get-attestation";
+import "./tasks/eas/eas-revoke";
+import "./tasks/eas/eas-encode-data";
 
 // Load deployment key from configurable SSH file path
 const deploymentKeyPath = process.env.DEPLOYMENT_KEY_PATH || path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
@@ -92,35 +101,59 @@ export const NETWORK_CONTRACTS = {
   omachainTestnet: {
     registry: "0x63A7C12f54B4f42Cae7234f7e20c7A08f725B9F9",
     metadata: "0xFdd87eA429D963eCB671D409128dC94BFf5f0694",
-    resolver: "0x77E058106762AeA4A567f2919Ef896bb6A82f914"
+    resolver: "0x77E058106762AeA4A567f2919Ef896bb6A82f914",
+    easSchemaRegistry: "0x9a530e23370C7d820FbaB2E0a884c58be5E4e919",
+    easContract: "0xDc120C00E62822329A4d8C7808f5a43C9CbfC1f8"
   },
   omachainMainnet: {
     registry: "0x", 
     metadata: "0x", 
-    resolver: "0x"  
+    resolver: "0x",
+    easSchemaRegistry: "0x",
+    easContract: "0x"
   },
   hardhat: {
     registry: "0x", // Will be set automatically during local deployment
     metadata: "0x", // Will be set automatically during local deployment
-    resolver: "0x"  // Will be set automatically during local deployment
+    resolver: "0x",  // Will be set automatically during local deployment
+    easSchemaRegistry: "0x",
+    easContract: "0x"
   },
   localhost: {
     registry: "0x", // Will be set automatically during local deployment
     metadata: "0x", // Will be set automatically during local deployment
-    resolver: "0x"  // Will be set automatically during local deployment
+    resolver: "0x",  // Will be set automatically during local deployment
+    easSchemaRegistry: "0x",
+    easContract: "0x"
   }
 };
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.24",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200
+    compilers: [
+      {
+        version: "0.8.24",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200
+          },
+          viaIR: true,
+          evmVersion: "cancun"
+        }
       },
-      viaIR: true
-    }
+      {
+        version: "0.8.28",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200
+          },
+          viaIR: true,
+          evmVersion: "cancun"
+        }
+      }
+    ]
   },
   networks: {
     omachainTestnet: {

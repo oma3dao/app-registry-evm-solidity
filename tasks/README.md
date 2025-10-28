@@ -349,6 +349,194 @@ npx hardhat registry-set-metadata-contract --network omachainTestnet --metadata 
 
 ---
 
+### **Deploy EAS System** (Ethereum Attestation Service)
+
+Use this to deploy the EAS (Ethereum Attestation Service) contracts for on-chain attestations.
+
+#### **What is EAS?**
+EAS provides a standard way to make attestations on-chain. You can use it for:
+- Verifying app ownership
+- Attesting to app metadata
+- Creating reputation systems
+- Any other attestation use case
+
+#### **Step 1: Deploy EAS contracts**
+```bash
+npx hardhat deploy-eas-system --network omachainTestnet --confirmations 1
+```
+
+This will deploy:
+- **SchemaRegistry**: Manages attestation schemas
+- **EAS**: Main attestation contract
+
+**Save these addresses!** You'll see output like:
+```
+SchemaRegistry: 0x1234...
+EAS: 0x5678...
+```
+
+#### **Step 2: Update hardhat.config.ts**
+
+Copy the deployed addresses to your Hardhat config:
+
+```typescript
+// hardhat.config.ts → NETWORK_CONTRACTS.omachainTestnet
+easSchemaRegistry: "0x1234...",  // From deployment output
+easContract: "0x5678...",         // From deployment output
+```
+
+#### **Step 3: Test the deployment**
+
+Run a sanity test to verify everything works:
+
+**Option A: TypeScript test script (recommended)**
+```bash
+npx hardhat run scripts/test/test-eas-simple.ts --network omachainTestnet
+```
+
+**Option B: Shell script**
+```bash
+chmod +x scripts/test/test-eas-deployment.sh
+./scripts/test/test-eas-deployment.sh omachainTestnet
+```
+
+**What the test does:**
+1. Registers a test schema (`string testName,uint8 testScore`)
+2. Retrieves the schema to verify registration
+3. Creates a test attestation with sample data
+4. Retrieves the attestation to verify it was stored correctly
+
+If all steps pass ✅, your deployment is working correctly!
+
+#### **Step 4: Update frontend configs**
+
+Copy the same addresses to any frontends using EAS:
+
+```typescript
+// Example: rep-attestation-frontend/src/config/chains.ts
+export const omachainTestnet = {
+  // ... other config
+  contracts: {
+    easSchemaRegistry: "0x1234...",
+    easContract: "0x5678...",
+  }
+}
+```
+
+#### **Step 5: (Optional) Deploy custom resolvers**
+
+If you need gasless attestations or rate limiting:
+
+```bash
+# Deploy RateLimitResolver
+npx hardhat run scripts/deploy-rate-limit-resolver.js --network omachainTestnet
+
+# Deploy GaslessSchemaResolver  
+npx hardhat run scripts/deploy-gasless-resolver.js --network omachainTestnet
+```
+
+**✅ EAS deployment complete!**
+
+**Next steps:**
+- Register schemas for your use case
+- Integrate attestation creation into your app
+- Set up indexing for attestation queries (optional)
+
+---
+
+### **EAS/** - Ethereum Attestation Service Tasks
+
+Interact with EAS contracts for creating and managing attestations:
+
+#### **Register a Schema**
+```bash
+# Register a simple schema
+npx hardhat eas-register-schema \
+  --network omachainTestnet \
+  --schema "string name,uint8 score"
+
+# Register with custom resolver
+npx hardhat eas-register-schema \
+  --network omachainTestnet \
+  --schema "string name,uint8 score" \
+  --resolver 0xYOUR_RESOLVER_ADDRESS \
+  --revocable true
+```
+
+#### **Get Schema Details**
+```bash
+npx hardhat eas-get-schema \
+  --network omachainTestnet \
+  --uid 0xSCHEMA_UID
+```
+
+#### **Create an Attestation**
+```bash
+# Simple attestation (auto-encode data)
+npx hardhat eas-attest \
+  --network omachainTestnet \
+  --schema 0xSCHEMA_UID \
+  --recipient 0xRECIPIENT_ADDRESS \
+  --types "string,uint8" \
+  --values "Alice,95"
+
+# With expiration
+npx hardhat eas-attest \
+  --network omachainTestnet \
+  --schema 0xSCHEMA_UID \
+  --recipient 0xRECIPIENT_ADDRESS \
+  --types "string,uint8,address" \
+  --values "Bob,100,0x123..." \
+  --expiration 1735689600
+
+# Or use pre-encoded data
+npx hardhat eas-attest \
+  --network omachainTestnet \
+  --schema 0xSCHEMA_UID \
+  --recipient 0xRECIPIENT_ADDRESS \
+  --data 0xENCODED_DATA
+```
+
+#### **Encode Data (Helper)**
+```bash
+# Encode data separately if needed
+npx hardhat eas-encode-data \
+  --types "string,uint8,address" \
+  --values "Alice,95,0x123..."
+```
+
+#### **Get Attestation Details**
+```bash
+npx hardhat eas-get-attestation \
+  --network omachainTestnet \
+  --uid 0xATTESTATION_UID
+```
+
+#### **Revoke an Attestation**
+```bash
+npx hardhat eas-revoke \
+  --network omachainTestnet \
+  --schema 0xSCHEMA_UID \
+  --uid 0xATTESTATION_UID
+```
+
+**EAS Task Parameters:**
+- `--schema`: Schema definition or UID (bytes32)
+- `--uid`: Schema or attestation UID (bytes32)
+- `--recipient`: Address receiving the attestation
+- `--data`: ABI-encoded attestation data (optional if using --types/--values)
+- `--types`: Comma-separated types for auto-encoding (e.g., "string,uint8")
+- `--values`: Comma-separated values for auto-encoding (e.g., "Alice,95")
+- `--resolver`: Custom resolver address (optional)
+- `--revocable`: Whether attestations can be revoked (default: true)
+- `--expiration`: Unix timestamp for expiration (0 = never)
+- `--refuid`: Referenced attestation UID (optional)
+
+**Complete Example Workflow:**
+See `tasks/samples/eas-workflow-example.md` for a full end-to-end example of creating an app rating system with EAS.
+
+---
+
 ### **Admin Commands Reference**
 
 Quick reference for common admin operations:
