@@ -173,25 +173,49 @@ npx hardhat renounce-ownership  # ⚠️ DANGEROUS!
 
 ## 🚀 Deployment Workflows
 
-### **USE CASE 1: Initial System Deployment** (First time setup)
+### **USE CASE 1: Complete System Deployment**
 
-Use this when deploying to a new network for the first time.
+Use this when deploying all contracts to a network.
+
+#### **Step 0: Compile contracts**
+```bash
+npx hardhat compile
+```
+
+This compiles all Solidity contracts and generates artifacts needed for deployment.
 
 #### **Step 1: Deploy the system**
 ```bash
+# Deploy and automatically update frontend ABIs
+npx hardhat deploy-system \
+  --network omachainTestnet \
+  --confirmations 1 \
+  --update-abis ../app-registry-frontend
+
+# Or deploy without updating ABIs
 npx hardhat deploy-system --network omachainTestnet --confirmations 1
 ```
 
 This will:
 - Deploy Registry, Metadata, and Resolver contracts
 - Automatically link them together
+- Run integration tests
+- Update frontend ABIs (if --update-abis specified)
 - Output all contract addresses
+- Save deployment info to `contract-addresses.txt`
 
-**Save these addresses!** You'll see output like:
+**Deployment addresses are saved to `contract-addresses.txt`** in the project root. You'll see output like:
 ```
 Registry: 0x1234...
 Metadata: 0x5678...
 Resolver: 0x9abc...
+```
+
+All deployments are tracked in `contract-addresses.txt` with timestamps and network info.
+
+**If you didn't use --update-abis**, run this separately (path is required):
+```bash
+npx hardhat update-frontend-abis --frontend-path ../app-registry-frontend
 ```
 
 #### **Step 2: Update configuration files**
@@ -243,6 +267,9 @@ npx hardhat verify --network omachainTestnet <RESOLVER_ADDRESS>
 
 #### **Step 6: Test the deployment**
 ```bash
+# Check contract status and configuration
+npx hardhat check-contracts --network omachainTestnet
+
 # Should return empty array for new deployment
 npx hardhat get-apps --network omachainTestnet
 
@@ -259,6 +286,11 @@ npx hardhat get-apps --network omachainTestnet
 Use this when you need to fix a bug in one contract without redeploying everything.
 
 **Example: Upgrading the Resolver (like fixing the issuer array bug)**
+
+#### **Step 0: Compile contracts**
+```bash
+npx hardhat compile
+```
 
 #### **Step 1: Deploy the new contract**
 ```bash
@@ -280,12 +312,16 @@ Resolver: 0xNEW_ADDRESS_HERE
 
 #### **Step 3: Link the new Resolver to Registry**
 ```bash
-# Point Registry to new Resolver (2 transactions)
+# Point Registry to new Resolver (3 transactions)
 npx hardhat registry-set-ownership-resolver \
   --network omachainTestnet \
   --resolver 0xNEW_RESOLVER_ADDRESS
 
 npx hardhat registry-set-dataurl-resolver \
+  --network omachainTestnet \
+  --resolver 0xNEW_RESOLVER_ADDRESS
+
+npx hardhat registry-set-registration-resolver \
   --network omachainTestnet \
   --resolver 0xNEW_RESOLVER_ADDRESS
 ```
@@ -360,6 +396,11 @@ EAS provides a standard way to make attestations on-chain. You can use it for:
 - Creating reputation systems
 - Any other attestation use case
 
+#### **Step 0: Compile contracts**
+```bash
+npx hardhat compile
+```
+
 #### **Step 1: Deploy EAS contracts**
 ```bash
 npx hardhat deploy-eas-system --network omachainTestnet --confirmations 1
@@ -375,47 +416,39 @@ SchemaRegistry: 0x1234...
 EAS: 0x5678...
 ```
 
-#### **Step 2: Update hardhat.config.ts**
+#### **Step 2: Update configuration files**
 
-Copy the deployed addresses to your Hardhat config:
+After deployment, update the EAS contract addresses in your configuration files:
 
+**A. Update `app-registry-evm-solidity/hardhat.config.ts`:**
 ```typescript
 // hardhat.config.ts → NETWORK_CONTRACTS.omachainTestnet
 easSchemaRegistry: "0x1234...",  // From deployment output
 easContract: "0x5678...",         // From deployment output
 ```
 
-#### **Step 3: Test the deployment**
-
-Run a sanity test to verify everything works:
-
-**Option A: TypeScript test script (recommended)**
-```bash
-npx hardhat run scripts/test/test-eas-simple.ts --network omachainTestnet
-```
-
-**Option B: Shell script**
-```bash
-chmod +x scripts/test/test-eas-deployment.sh
-./scripts/test/test-eas-deployment.sh omachainTestnet
-```
-
-**What the test does:**
-1. Registers a test schema (`string testName,uint8 testScore`)
-2. Retrieves the schema to verify registration
-3. Creates a test attestation with sample data
-4. Retrieves the attestation to verify it was stored correctly
-
-If all steps pass ✅, your deployment is working correctly!
-
-#### **Step 4: Update frontend configs**
-
-Copy the same addresses to any frontends using EAS:
-
+**B. Update `rep-attestation-tools-evm-solidity/hardhat.config.ts`:**
 ```typescript
-// Example: rep-attestation-frontend/src/config/chains.ts
+export const EAS_SCHEMA_REGISTRY_ADDRESSES = {
+  omachainTestnet: "0x1234...",  // From deployment output
+};
+
+export const EAS_CONTRACT_ADDRESSES = {
+  omachainTestnet: "0x5678...",  // From deployment output
+};
+```
+
+**C. Update `rep-attestation-frontend/src/config/attestation-services.ts` and `chains.ts`:**
+```typescript
+// attestation-services.ts
+export const EAS_CONFIG: AttestationServiceConfig = {
+  contracts: {
+    66238: '0x5678...',  // EAS contract on OMAchain testnet
+  }
+}
+
+// chains.ts
 export const omachainTestnet = {
-  // ... other config
   contracts: {
     easSchemaRegistry: "0x1234...",
     easContract: "0x5678...",
@@ -423,24 +456,49 @@ export const omachainTestnet = {
 }
 ```
 
+#### **Step 3: Test the deployment (IMPORTANT!)**
+
+Run the EAS sanity test to verify everything works:
+
+```bash
+npx hardhat eas-sanity --network omachainTestnet
+```
+
+**What the test does:**
+1. Registers a test schema
+2. Creates a test attestation
+3. Verifies retrieval works correctly
+
+If all steps pass ✅, your deployment is working!
+
+**If the test fails**, check that EAS addresses are correctly configured in `hardhat.config.ts`.
+
+#### **Step 4: Deploy OMA3 reputation schemas**
+
+Deploy the standard OMA3 attestation schemas:
+
+```bash
+cd ../rep-attestation-tools-evm-solidity
+npx hardhat generate-eas-object --schema schemas-json/endorsement.schema.json --network omachainTestnet
+npx hardhat deploy-eas-schema --file generated/Endorsement.eastest.json --network omachainTestnet
+
+# Update frontend with new schema UIDs
+cd ../rep-attestation-frontend
+npm run update-schemas ../rep-attestation-tools-evm-solidity
+```
+
+See the [rep-attestation-tools-evm-solidity README](../../rep-attestation-tools-evm-solidity/README.md) for complete schema deployment instructions.
+
 #### **Step 5: (Optional) Deploy custom resolvers**
 
 If you need gasless attestations or rate limiting:
 
 ```bash
-# Deploy RateLimitResolver
 npx hardhat run scripts/deploy-rate-limit-resolver.js --network omachainTestnet
-
-# Deploy GaslessSchemaResolver  
 npx hardhat run scripts/deploy-gasless-resolver.js --network omachainTestnet
 ```
 
 **✅ EAS deployment complete!**
-
-**Next steps:**
-- Register schemas for your use case
-- Integrate attestation creation into your app
-- Set up indexing for attestation queries (optional)
 
 ---
 
@@ -549,6 +607,11 @@ npx hardhat resolver-remove-issuer --network <network> --issuer <address>
 # Adjust resolver settings
 npx hardhat resolver-set-maturation --network <network> --duration <seconds>
 npx hardhat resolver-set-max-ttl --network <network> --duration <seconds>
+
+# Configure registry resolvers (for individual contract deployments)
+npx hardhat registry-set-ownership-resolver --network <network> --resolver <address>
+npx hardhat registry-set-dataurl-resolver --network <network> --resolver <address>
+npx hardhat registry-set-registration-resolver --network <network> --resolver <address>
 
 # View attestations
 npx hardhat resolver-view-attestations --network <network> --did <did-string>

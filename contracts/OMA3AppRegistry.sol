@@ -116,6 +116,10 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     error DIDHashNotFound(bytes32 didHash);     // No app found for the given DID hash
     error DataHashRequiredForTraitChange();     // New data hash required when updating traits
     error DataHashMismatch(bytes32 computed, bytes32 provided); // Computed hash doesn't match provided dataHash
+    
+    // ERC-8004 required errors
+    error InvalidAgent(uint256 tokenId);        // Invalid or non-existent agent token
+    error MetadataUnavailable(uint256 tokenId, string key); // Metadata key not available for this token
 
 
     // Storage
@@ -325,7 +329,7 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     function getDIDByTokenId(
         uint256 tokenId
     ) external view returns (string memory) {
-        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
+        if (_ownerOf(tokenId) == address(0)) revert InvalidAgent(tokenId);
         return _apps[tokenId].did;
     }
 
@@ -335,7 +339,7 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
      *      or a data:application/json;base64 URI per the OMA3 spec.
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
+        if (_ownerOf(tokenId) == address(0)) revert InvalidAgent(tokenId);
         return _apps[tokenId].dataUrl;
     }
 
@@ -351,7 +355,11 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         override(ERC721Enumerable)
         returns (bool)
     {
-        return super.supportsInterface(interfaceId);
+        // ERC-8004 interface ID: calculated from register(string) and getMetadata(uint256,string) function selectors
+        // bytes4(keccak256("register(string)")) ^ bytes4(keccak256("getMetadata(uint256,string)"))
+        return 
+            interfaceId == 0x6d9ad0dc || // ERC-8004 interface ID
+            super.supportsInterface(interfaceId);
     }
 
 
@@ -812,6 +820,55 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         uint256 tokenId = _resolveToken(didString, major);
         if (tokenId == 0) revert AppNotFound(didString, major);
         return _apps[tokenId];
+    }
+
+    /**
+     * @notice Get metadata value for a specific key (ERC-8004 compliance)
+     * @dev Returns raw bytes values matching ERC-8004 reference implementation
+     *      Strings are returned as bytes(string), primitives as abi.encodePacked()
+     * @param tokenId The token ID to query
+     * @param key The metadata key to retrieve
+     * @return value The metadata value as raw bytes
+     */
+    function getMetadata(uint256 tokenId, string memory key) external view returns (bytes memory value) {
+        if (_ownerOf(tokenId) == address(0)) revert InvalidAgent(tokenId);
+        
+        App storage app = _apps[tokenId];
+        bytes32 keyHash = keccak256(bytes(key));
+        
+        // Map keys to App struct fields
+        // Strings: return bytes(string) for direct string conversion
+        // Primitives: return abi.encodePacked() for compact encoding
+        if (keyHash == keccak256(bytes("dataUrl")) || keyHash == keccak256(bytes("agentURI"))) {
+            return bytes(app.dataUrl);
+        } else if (keyHash == keccak256(bytes("did"))) {
+            return bytes(app.did);
+        } else if (keyHash == keccak256(bytes("fungibleTokenId"))) {
+            return bytes(app.fungibleTokenId);
+        } else if (keyHash == keccak256(bytes("contractId"))) {
+            return bytes(app.contractId);
+        } else if (keyHash == keccak256(bytes("dataHash"))) {
+            return abi.encodePacked(app.dataHash);
+        } else if (keyHash == keccak256(bytes("dataHashAlgorithm"))) {
+            return abi.encodePacked(app.dataHashAlgorithm);
+        } else if (keyHash == keccak256(bytes("interfaces"))) {
+            return abi.encodePacked(app.interfaces);
+        } else if (keyHash == keccak256(bytes("status"))) {
+            return abi.encodePacked(app.status);
+        } else if (keyHash == keccak256(bytes("versionMajor"))) {
+            return abi.encodePacked(app.versionMajor);
+        } else if (keyHash == keccak256(bytes("minter"))) {
+            return abi.encodePacked(app.minter);
+        } else if (keyHash == keccak256(bytes("traitHashes"))) {
+            // For arrays, we need to encode them properly
+            // abi.encodePacked concatenates array elements without length prefix
+            return abi.encode(app.traitHashes);
+        } else if (keyHash == keccak256(bytes("versionHistory"))) {
+            // Version history is a struct array, needs full encoding
+            return abi.encode(app.versionHistory);
+        } else {
+            revert MetadataUnavailable(tokenId, key);
+        }
     }
 
     /**

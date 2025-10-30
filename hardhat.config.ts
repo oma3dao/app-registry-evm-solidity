@@ -26,11 +26,15 @@ import "./tasks/deploy/registry";
 import "./tasks/deploy/metadata";
 import "./tasks/deploy/resolver";
 import "./tasks/deploy/eas-system";
+import "./tasks/deploy/update-frontend-abis";
+import "./tasks/deploy/check-contracts";
+import "./tasks/deploy/eas-sanity";
 
 // Import task files - Admin tasks
 import "./tasks/admin/registry-set-metadata-contract";
 import "./tasks/admin/registry-set-ownership-resolver";
 import "./tasks/admin/registry-set-dataurl-resolver";
+import "./tasks/admin/registry-set-registration-resolver";
 import "./tasks/admin/registry-set-require-attestation";
 import "./tasks/admin/registry-transfer-owner";
 import "./tasks/admin/metadata-authorize-registry";
@@ -91,11 +95,11 @@ if (privateKeyFromSsh) {
 // Network-specific contract addresses
 export const NETWORK_CONTRACTS = {
   omachainTestnet: {
-    registry: "0x63A7C12f54B4f42Cae7234f7e20c7A08f725B9F9",
-    metadata: "0xFdd87eA429D963eCB671D409128dC94BFf5f0694",
-    resolver: "0x77E058106762AeA4A567f2919Ef896bb6A82f914",
-    easSchemaRegistry: "0x9a530e23370C7d820FbaB2E0a884c58be5E4e919",
-    easContract: "0xDc120C00E62822329A4d8C7808f5a43C9CbfC1f8"
+    registry: "0x29387aE755214b5e9221D06BdDB6f21eE5A1a50a",
+    metadata: "0x9a530e23370C7d820FbaB2E0a884c58be5E4e919",
+    resolver: "0xDc120C00E62822329A4d8C7808f5a43C9CbfC1f8",
+    easSchemaRegistry: "0x7946127D2f517c8584FdBF801b82F54436EC6FC7",
+    easContract: "0x8835AF90f1537777F52E482C8630cE4e947eCa32"
   },
   omachainMainnet: {
     registry: "0x", 

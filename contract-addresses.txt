@@ -6,11 +6,11 @@
 
 ### Testnet (omachainTestnet)
 Network: omachainTestnet (Chain ID: 66238)
-Last Updated: 2025-10-17 06:42:04 UTC
+Last Updated: 2025-10-30 18:22:56 UTC
 
-Registry:  0x63A7C12f54B4f42Cae7234f7e20c7A08f725B9F9
-Metadata:  0xFdd87eA429D963eCB671D409128dC94BFf5f0694
-Resolver:  0x77E058106762AeA4A567f2919Ef896bb6A82f914
+Registry:  0x29387aE755214b5e9221D06BdDB6f21eE5A1a50a
+Metadata:  0x9a530e23370C7d820FbaB2E0a884c58be5E4e919
+Resolver:  0xDc120C00E62822329A4d8C7808f5a43C9CbfC1f8
 Deployer:  0xC8cb41dD6F509f28cA4194f8e1574911281354eF
 
 Issuers:
@@ -143,5 +143,158 @@ Deployed Contracts:
 
 Deployment Details:
   Block Confirmations: 1
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #8 ===
+Timestamp: 2025-10-29 17:42:13 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: Individual Contract (Resolver)
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  Resolver:  0xfD1410e3A80A0f311804a09C656d98a82B7c5d9f
+
+Deployment Details:
+  Block Confirmations: 1
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #9 ===
+Timestamp: 2025-10-29 17:42:58 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: Individual Contract (Registry)
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  Registry:  0xb493465Bcb2151d5b5BaD19d87f9484c8B8A8e83
+
+Deployment Details:
+  Block Confirmations: 1
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #10 ===
+Timestamp: 2025-10-29 18:22:06 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: Individual Contract (Metadata)
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  Metadata:  0xbb2634184fB9C3B73C566fa927bD7ddC87Da6436
+
+Deployment Details:
+  Block Confirmations: 1
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #11 ===
+Timestamp: 2025-10-29 18:24:45 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: Full System Deployment
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  Registry:  0xe2548AAdFEfc7C086DbCf025D699C487A3993C5f
+  Metadata:  0xd512c8F14d3b0bfF5DE03BbD5f82B01591dA5CC6
+  Resolver:  0xE2d601F18166F6632f80d2Fa0Ab474B6d251D400
+
+Deployment Details:
+  Block Confirmations: 1
+  Integration Tests: ✅ PASSED
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #12 ===
+Timestamp: 2025-10-30 01:25:19 UTC
+Network: hardhat (Chain ID: 31337)
+Type: Full System Deployment
+Method: Hardhat (SSH Key)
+Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Deployed Contracts:
+  Registry:  0x5081a39b8A5f0E35a8D959395a630b68B74Dd30f
+  Metadata:  0x1fA02b2d6A771842690194Cf62D91bdd92BfE28d
+  Resolver:  0xdbC43Ba45381e02825b14322cDdd15eC4B3164E6
+
+Deployment Details:
+  Block Confirmations: 1
+  Integration Tests: ✅ PASSED
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #13 ===
+Timestamp: 2025-10-30 01:26:25 UTC
+Network: hardhat (Chain ID: 31337)
+Type: Full System Deployment
+Method: Hardhat (SSH Key)
+Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Deployed Contracts:
+  Registry:  0x5081a39b8A5f0E35a8D959395a630b68B74Dd30f
+  Metadata:  0x1fA02b2d6A771842690194Cf62D91bdd92BfE28d
+  Resolver:  0xdbC43Ba45381e02825b14322cDdd15eC4B3164E6
+
+Deployment Details:
+  Block Confirmations: 1
+  Integration Tests: ✅ PASSED
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #14 ===
+Timestamp: 2025-10-30 04:27:28 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: Full System Deployment
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  Registry:  0xE4618302cf2E2Af9c058c4342e7F19b8D9De53A6
+  Metadata:  0xE07048383ed7E508fFC73c05651192547ae8Bf0a
+  Resolver:  0x0b26deF9aC89389CCd6b95C6a5c32B2e382cC345
+
+Deployment Details:
+  Block Confirmations: 1
+  Integration Tests: ✅ PASSED
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #15 ===
+Timestamp: 2025-10-30 04:59:26 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: Full System Deployment
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  Registry:  0x630F747aa24b2469850488FA5bcB3AaB6e072D44
+  Metadata:  0x09BdAa14C874222D9A8159996D07f9e594b3cB2a
+  Resolver:  0x68CCb1B002bb7C22f4412bC63e1dC9dCd3A8ea5f
+
+Deployment Details:
+  Block Confirmations: 1
+  Integration Tests: ✅ PASSED
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #16 ===
+Timestamp: 2025-10-30 18:22:56 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: Full System Deployment
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  Registry:  0x29387aE755214b5e9221D06BdDB6f21eE5A1a50a
+  Metadata:  0x9a530e23370C7d820FbaB2E0a884c58be5E4e919
+  Resolver:  0xDc120C00E62822329A4d8C7808f5a43C9CbfC1f8
+
+Deployment Details:
+  Block Confirmations: 1
+  Integration Tests: ✅ PASSED
   Verification Status: Pending (run verify commands if supported by explorer)
 ============================================================================

@@ -387,7 +387,7 @@ All contracts are automatically linked together with proper authorization settin
 
 ### Deprecated Contracts
 
-The `contracts/deprecated/` folder contains legacy contracts that are no longer used:
+The `deprecated-contracts/` folder contains legacy contracts that are no longer used:
 
 - **OMA3AppRegistryLegacy** - Original ERC721-based registry (replaced by current architecture)
 - **OMA3SystemFactory** - Factory deployment pattern (replaced by direct deployment)

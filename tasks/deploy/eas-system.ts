@@ -58,15 +58,27 @@ task("deploy-eas-system", "Deploy EAS SchemaRegistry and EAS contracts")
     // They should be manually added to hardhat.config.ts NETWORK_CONTRACTS
     console.log("\n📝 Deployment complete - addresses logged above");
 
+    console.log("\n⚠️  IMPORTANT: Update contract addresses in THREE locations:");
+    console.log("\n1. app-registry-evm-solidity/hardhat.config.ts:");
+    console.log(`   NETWORK_CONTRACTS.${networkName}.easSchemaRegistry = "${schemaRegistryAddress}"`);
+    console.log(`   NETWORK_CONTRACTS.${networkName}.easContract = "${easAddress}"`);
+    console.log("\n2. rep-attestation-tools-evm-solidity/hardhat.config.ts:");
+    console.log(`   EAS_SCHEMA_REGISTRY_ADDRESSES.${networkName} = "${schemaRegistryAddress}"`);
+    console.log(`   EAS_CONTRACT_ADDRESSES.${networkName} = "${easAddress}"`);
+    console.log("\n3. rep-attestation-frontend/src/config/attestation-services.ts:");
+    console.log(`   EAS_CONFIG.contracts[66238] = "${easAddress}"  // for omachainTestnet`);
     console.log("\n⚠️  Next steps:");
-    console.log("1. Update hardhat.config.ts NETWORK_CONTRACTS:");
-    console.log(`   easSchemaRegistry: "${schemaRegistryAddress}",`);
-    console.log(`   easContract: "${easAddress}",`);
-    console.log("\n2. Test the deployment:");
-    console.log(`   npx hardhat run scripts/test/test-eas-simple.ts --network ${networkName}`);
-    console.log("\n3. Update frontend configs with the same addresses");
-    console.log("\n4. Register your attestation schemas:");
-    console.log(`   npx hardhat eas-register-schema --network ${networkName} --schema "string name,uint8 score"`);
-    console.log("\n5. (Optional) Deploy custom resolvers:");
+    console.log("\n1. Test the deployment:");
+    console.log(`   npx hardhat eas-sanity --network ${networkName}`);
+    console.log("\n2. Deploy all OMA3 reputation schemas:");
+    console.log(`   See: ../rep-attestation-tools-evm-solidity/README.md`);
+    console.log(`   cd ../rep-attestation-tools-evm-solidity`);
+    console.log(`   npx hardhat generate-eas-object --schema schemas-json/endorsement.schema.json --network ${networkName}`);
+    console.log(`   npx hardhat deploy-eas-schema --file generated/Endorsement.eastest.json --network ${networkName}`);
+    console.log(`   # Repeat for all schemas: certification, security-assessment, user-review, etc.`);
+    console.log("\n3. Update frontend with new schema UIDs:");
+    console.log(`   cd ../rep-attestation-frontend`);
+    console.log(`   node scripts/update-schemas.js ../rep-attestation-tools-evm-solidity`);
+    console.log("\n4. (Optional) Deploy custom resolvers:");
     console.log(`   // RateLimitResolver, GaslessSchemaResolver, etc.`);
   });
