@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./OMA3MetadataKeys.sol";
 
 // Interface for ownership resolver
 interface IOMA3OwnershipResolver {
@@ -12,18 +13,53 @@ interface IOMA3OwnershipResolver {
 
 // Interface for data URL attestation resolver
 interface IOMA3DataUrlResolver {
-    function checkDataHashAttestation(bytes32 didHash, bytes32 dataHash) external view returns (bool);
+    function checkDataHashAttestation(
+        bytes32 didHash,
+        bytes32 dataHash
+    ) external view returns (bool);
+}
+
+// Interface for registration resolver
+interface IOMA3RegistrationResolver {
+    struct RegistrationStoredParams {
+        string didString;
+        uint16 interfaces;
+        string tokenURI;
+        bytes32 dataHash;
+        uint8 dataHashAlgorithm;
+        string fungibleTokenId;
+        string contractId;
+        uint8 initialVersionMajor;
+        uint8 initialVersionMinor;
+        uint8 initialVersionPatch;
+        bytes32[] traitHashes;
+        string metadataJson;
+        uint64 expiresAt;
+        bool exists;
+    }
+
+    function loadAndConsumeRegister(
+        address user,
+        string memory tokenURI
+    ) external returns (RegistrationStoredParams memory);
 }
 
 // Interface for metadata contract
 interface IOMA3AppMetadata {
-    function setMetadataForRegistry(string memory did, uint8 major, uint8 minor, uint8 patch, string memory metadataJson) external;
+    function setMetadataForRegistry(
+        string memory did,
+        uint8 major,
+        uint8 minor,
+        uint8 patch,
+        string memory metadataJson
+    ) external;
 }
 
 
 /**
  * @title OMA3AppRegistry
  * @dev Registry for OMA3 applications using ERC721 tokens with enumeration
+ * @notice Implements ERC-8004 Identity Registry functions for ecosystem compatibility
  */
 contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
 
@@ -115,7 +151,8 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     // Resolvers for ownership and data validation
     IOMA3OwnershipResolver public ownershipResolver;
     IOMA3DataUrlResolver public dataUrlResolver;
-    
+    IOMA3RegistrationResolver public registrationResolver;
+
     // Feature flags
     bool public requireDataUrlAttestation; // Default: false (disabled)
 
@@ -131,14 +168,22 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     // (ERC721Enumerable extension would add this but with higher gas costs)
     uint256 private _totalTokens; // Our custom counter for sequential token IDs and total supply
 
+    // ERC-8004 MetadataEntry struct
+    struct MetadataEntry {
+        string key;
+        bytes value;
+    }
+
     // Events (indexed by didHash + major + tokenId for both DID-based and NFT ecosystem compatibility)
     // Note: For cross-chain DID resolution, use the canonical OMA3 deduplicator on OMAChain
-    event AppMinted(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, address minter, uint16 interfaces, uint256 registrationBlock, uint256 registrationTimestamp);
     event StatusUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 newStatus, uint256 timestamp);
     event DataUrlUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, string newDataUrl, bytes32 newDataHash, uint8 dataHashAlgorithm);
     event VersionAdded(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 minor, uint8 patch);
     event TraitsUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, bytes32[] newTraitHashes);
     event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint16 newInterfaces);
+    
+    // ERC-8004 compliant Registered event (replaces AppMinted for standard compatibility)
+    event Registered(uint256 indexed tokenId, string dataUrl, address indexed registerer, bytes32 indexed didHash, uint8 versionMajor, uint16 interfaces, uint256 registrationBlock, uint256 registrationTimestamp);
 
     constructor() ERC721("OMA3 App Registry", "OMA3APP") Ownable(msg.sender) {}
 
@@ -160,7 +205,15 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(_resolver != address(0), "Invalid data URL resolver address");
         dataUrlResolver = IOMA3DataUrlResolver(_resolver);
     }
-    
+
+    function setRegistrationResolver(address _resolver) external onlyOwner {
+        require(
+            _resolver != address(0),
+            "Invalid registration resolver address"
+        );
+        registrationResolver = IOMA3RegistrationResolver(_resolver);
+    }
+
     /**
      * @dev Enable or disable dataUrl attestation requirement
      * @param _require True to require attestations, false to disable
@@ -269,7 +322,9 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @param tokenId The token ID to query
      * @return The DID string for the given token
      */
-    function getDIDByTokenId(uint256 tokenId) external view returns (string memory) {
+    function getDIDByTokenId(
+        uint256 tokenId
+    ) external view returns (string memory) {
         require(_ownerOf(tokenId) != address(0), "Nonexistent token");
         return _apps[tokenId].did;
     }
@@ -361,7 +416,54 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         uint8 initialVersionPatch,
         bytes32[] memory traitHashes,
         string memory metadataJson
-    ) external nonReentrant returns (uint256) {
+    ) public nonReentrant returns (uint256) {
+        return
+            _mintInternal(
+                didString,
+                interfaces,
+                dataUrl,
+                dataHash,
+                dataHashAlgorithm,
+                fungibleTokenId,
+                contractId,
+                initialVersionMajor,
+                initialVersionMinor,
+                initialVersionPatch,
+                traitHashes,
+                metadataJson
+            );
+    }
+
+    /**
+     * @dev Internal mint function - uses msg.sender as minter
+     * @param didString The DID as string
+     * @param interfaces Bitmap of supported interfaces
+     * @param dataUrl URL to off-chain metadata
+     * @param dataHash Hash of the off-chain data
+     * @param dataHashAlgorithm Algorithm used for dataHash
+     * @param fungibleTokenId Optional CAIP-19 token ID
+     * @param contractId Optional CAIP-10 contract address
+     * @param initialVersionMajor Initial version major number
+     * @param initialVersionMinor Initial version minor number
+     * @param initialVersionPatch Initial version patch number
+     * @param traitHashes Array of trait hashes for tagging
+     * @param metadataJson Optional JSON metadata to store on-chain (empty string to skip)
+     * @return tokenId The newly minted token ID
+     */
+    function _mintInternal(
+        string memory didString,
+        uint16 interfaces,
+        string memory dataUrl,
+        bytes32 dataHash,
+        uint8 dataHashAlgorithm,
+        string memory fungibleTokenId,
+        string memory contractId,
+        uint8 initialVersionMajor,
+        uint8 initialVersionMinor,
+        uint8 initialVersionPatch,
+        bytes32[] memory traitHashes,
+        string memory metadataJson
+    ) internal returns (uint256) {
         // Validations
         if (bytes(didString).length == 0) revert DIDCannotBeEmpty();
         if (bytes(didString).length > MAX_DID_LENGTH) revert DIDTooLong(bytes(didString).length);
@@ -462,9 +564,30 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
             _setMetadataJson(didString, initialVersionMajor, initialVersionMinor, initialVersionPatch, metadataJson, dataHash, dataHashAlgorithm);
         }
 
-        emit AppMinted(didHash, initialVersionMajor, tokenId, msg.sender, interfaces, block.number, block.timestamp);
-        if (initialVersionMajor > 0 || initialVersionMinor > 0 || initialVersionPatch > 0) {
-            emit VersionAdded(didHash, initialVersionMajor, tokenId, initialVersionMinor, initialVersionPatch);
+        // Emit ERC-8004 compliant Registered event (extended with OMATrust fields)
+        emit Registered(
+            tokenId,
+            dataUrl,
+            msg.sender,
+            didHash,
+            initialVersionMajor,
+            interfaces,
+            block.number,
+            block.timestamp
+        );
+
+        if (
+            initialVersionMajor > 0 ||
+            initialVersionMinor > 0 ||
+            initialVersionPatch > 0
+        ) {
+            emit VersionAdded(
+                didHash,
+                initialVersionMajor,
+                tokenId,
+                initialVersionMinor,
+                initialVersionPatch
+            );
         }
 
         return tokenId;
@@ -922,4 +1045,118 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         
         return (apps, 0); // Always 0 since we return all remaining apps
     }
-} 
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+    // ERC-8004 IDENTITY REGISTRY INTERFACE
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * @notice Register a new agent with tokenURI only (uses resolver pre-commit)
+     * @dev Implements ERC-8004 register(string) function
+     * @param _tokenURI The URI pointing to the agent's metadata
+     * @return The newly created agent ID (token ID)
+     */
+    function register(
+        string memory _tokenURI
+    ) external nonReentrant returns (uint256) {
+        require(
+            address(registrationResolver) != address(0),
+            "Registration resolver not set"
+        );
+
+        // Load stored params from resolver (validates tokenURI matches)
+        IOMA3RegistrationResolver.RegistrationStoredParams
+            memory storedParams = registrationResolver.loadAndConsumeRegister(
+                msg.sender,
+                _tokenURI
+            );
+
+        // Call internal mint with stored params
+        return
+            _mintInternal(
+                storedParams.didString,
+                storedParams.interfaces,
+                _tokenURI,
+                storedParams.dataHash,
+                storedParams.dataHashAlgorithm,
+                storedParams.fungibleTokenId,
+                storedParams.contractId,
+                storedParams.initialVersionMajor,
+                storedParams.initialVersionMinor,
+                storedParams.initialVersionPatch,
+                storedParams.traitHashes,
+                storedParams.metadataJson
+            );
+    }
+
+    /**
+     * @notice Register a new agent with tokenURI and metadata
+     * @dev Implements ERC-8004 register(string, MetadataEntry[]) function
+     * @param _tokenURI The URI pointing to the agent's metadata
+     * @param _metadata Array of metadata entries containing registration parameters
+     * @return The newly created agent ID (token ID)
+     */
+    function register(
+        string memory _tokenURI,
+        MetadataEntry[] memory _metadata
+    ) external nonReentrant returns (uint256) {
+        // Parse metadata entries into mint parameters
+        string memory didString;
+        uint16 interfaces = 1; // Default to human interface
+        bytes32 dataHash;
+        uint8 dataHashAlgorithm = 0; // Default to keccak256
+        string memory fungibleTokenId;
+        string memory contractId;
+        uint8 versionMajor = 1; // Default version
+        uint8 versionMinor = 0;
+        uint8 versionPatch = 0;
+        bytes32[] memory traitHashes;
+        string memory metadataJson;
+
+        // Parse metadata entries
+        for (uint256 i = 0; i < _metadata.length; i++) {
+            bytes32 keyHash = keccak256(bytes(_metadata[i].key));
+
+            if (keyHash == OMA3MetadataKeys.DID) {
+                didString = abi.decode(_metadata[i].value, (string));
+            } else if (keyHash == OMA3MetadataKeys.DATA_HASH) {
+                dataHash = abi.decode(_metadata[i].value, (bytes32));
+            } else if (keyHash == OMA3MetadataKeys.DATA_HASH_ALGORITHM) {
+                dataHashAlgorithm = abi.decode(_metadata[i].value, (uint8));
+            } else if (keyHash == OMA3MetadataKeys.INTERFACES) {
+                interfaces = abi.decode(_metadata[i].value, (uint16));
+            } else if (keyHash == OMA3MetadataKeys.FUNGIBLE_TOKEN_ID) {
+                fungibleTokenId = abi.decode(_metadata[i].value, (string));
+            } else if (keyHash == OMA3MetadataKeys.CONTRACT_ID) {
+                contractId = abi.decode(_metadata[i].value, (string));
+            } else if (keyHash == OMA3MetadataKeys.VERSION_MAJOR) {
+                versionMajor = abi.decode(_metadata[i].value, (uint8));
+            } else if (keyHash == OMA3MetadataKeys.VERSION_MINOR) {
+                versionMinor = abi.decode(_metadata[i].value, (uint8));
+            } else if (keyHash == OMA3MetadataKeys.VERSION_PATCH) {
+                versionPatch = abi.decode(_metadata[i].value, (uint8));
+            } else if (keyHash == OMA3MetadataKeys.TRAIT_HASHES) {
+                traitHashes = abi.decode(_metadata[i].value, (bytes32[]));
+            } else if (keyHash == OMA3MetadataKeys.METADATA_JSON) {
+                metadataJson = abi.decode(_metadata[i].value, (string));
+            }
+        }
+
+        // Call internal mint (it will validate required fields)
+        return
+            _mintInternal(
+                didString,
+                interfaces,
+                _tokenURI,
+                dataHash,
+                dataHashAlgorithm,
+                fungibleTokenId,
+                contractId,
+                versionMajor,
+                versionMinor,
+                versionPatch,
+                traitHashes,
+                metadataJson
+            );
+    }
+}

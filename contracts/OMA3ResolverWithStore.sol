@@ -2,9 +2,9 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./interfaces/IOMA3DidOwnershipAttestationStore.sol";
-import "./interfaces/IOMA3DataUrlAttestationStore.sol";
-import "./interfaces/IOMA3Resolver.sol";
+import "../interfaces-archive/IOMA3DidOwnershipAttestationStore.sol";
+import "../interfaces-archive/IOMA3DataUrlAttestationStore.sol";
+import "../interfaces-archive/IOMA3Resolver.sol";
 
 contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUrlAttestationStore, IOMA3Resolver, Ownable {
     // ---------- Storage ----------
@@ -14,6 +14,26 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
 
     // Data hash attestations: issuer => didHash => dataHash => DataEntry
     mapping(address => mapping(bytes32 => mapping(bytes32 => IOMA3DataUrlAttestationStore.DataEntry))) private _data;
+
+    // Stored registration parameters for ERC-8004 tokenURI-only registration
+    struct RegistrationStoredParams {
+        string didString;
+        uint16 interfaces;
+        string tokenURI;
+        bytes32 dataHash;
+        uint8 dataHashAlgorithm;
+        string fungibleTokenId;
+        string contractId;
+        uint8 initialVersionMajor;
+        uint8 initialVersionMinor;
+        uint8 initialVersionPatch;
+        bytes32[] traitHashes;
+        string metadataJson;
+        uint64 expiresAt;
+        bool exists;
+    }
+    
+    mapping(address => RegistrationStoredParams) private _registrationStoredParams;
 
     // Policy configuration (simplified for v1)
     mapping(address => bool) public isIssuer;        // allowlisted attestation issuers
@@ -291,6 +311,8 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
     // ---------- Events ----------
     event IssuerAuthorized(address indexed issuer);
     event IssuerRevoked(address indexed issuer);
+    event RegistrationParamsPrepared(address indexed who, string didString, uint64 expiresAt);
+    event RegistrationParamsConsumed(address indexed who, string didString);
 
     // ---------- Admin: set policy ----------
     function addAuthorizedIssuer(address issuer) external onlyOwner {
@@ -323,5 +345,89 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
     
     function setMaxTTL(uint64 durationSeconds) external onlyOwner {
         maxTTLSeconds = durationSeconds;
+    }
+
+    // ---------- Registration Stored Params Functions (ERC-8004 Support) ----------
+    
+    /**
+     * @notice Prepare registration parameters for tokenURI-only registration
+     * @dev Stores all required registration data keyed by msg.sender
+     * @param didString The DID string
+     * @param interfaces Interface bitmap
+     * @param tokenURI The expected tokenURI for validation
+     * @param dataHash Hash of the metadata
+     * @param dataHashAlgorithm Algorithm used for hashing (0=keccak256, 1=sha256)
+     * @param fungibleTokenId CAIP-19 token ID (optional)
+     * @param contractId CAIP-10 contract address (optional)
+     * @param initialVersionMajor Major version number
+     * @param initialVersionMinor Minor version number
+     * @param initialVersionPatch Patch version number
+     * @param traitHashes Array of trait hashes
+     * @param metadataJson Optional JSON metadata to store on-chain
+     * @param expiresAt Unix timestamp when these params expire (0 = no expiry)
+     */
+    function prepareRegister(
+        string memory didString,
+        uint16 interfaces,
+        string memory tokenURI,
+        bytes32 dataHash,
+        uint8 dataHashAlgorithm,
+        string memory fungibleTokenId,
+        string memory contractId,
+        uint8 initialVersionMajor,
+        uint8 initialVersionMinor,
+        uint8 initialVersionPatch,
+        bytes32[] memory traitHashes,
+        string memory metadataJson,
+        uint64 expiresAt
+    ) external {
+        _registrationStoredParams[msg.sender] = RegistrationStoredParams({
+            didString: didString,
+            interfaces: interfaces,
+            tokenURI: tokenURI,
+            dataHash: dataHash,
+            dataHashAlgorithm: dataHashAlgorithm,
+            fungibleTokenId: fungibleTokenId,
+            contractId: contractId,
+            initialVersionMajor: initialVersionMajor,
+            initialVersionMinor: initialVersionMinor,
+            initialVersionPatch: initialVersionPatch,
+            traitHashes: traitHashes,
+            metadataJson: metadataJson,
+            expiresAt: expiresAt,
+            exists: true
+        });
+        
+        emit RegistrationParamsPrepared(msg.sender, didString, expiresAt);
+    }
+    
+    /**
+     * @notice Load and consume stored registration parameters (registry only)
+     * @dev Returns the params and deletes them atomically. Validates tokenURI matches.
+     * @param who The address that prepared the params
+     * @param expectedTokenURI The tokenURI being used for registration (must match stored params)
+     * @return storedParams The stored registration parameters
+     */
+    function loadAndConsumeRegister(address who, string memory expectedTokenURI) external returns (RegistrationStoredParams memory storedParams) {
+        storedParams = _registrationStoredParams[who];
+        require(storedParams.exists, "NO_STORED_PARAMS");
+        
+        // Check expiry
+        if (storedParams.expiresAt != 0) {
+            require(_now() <= storedParams.expiresAt, "PARAMS_EXPIRED");
+        }
+        
+        // Validate tokenURI matches (security: prevent params hijacking)
+        require(
+            keccak256(bytes(storedParams.tokenURI)) == keccak256(bytes(expectedTokenURI)),
+            "TOKEN_URI_MISMATCH"
+        );
+        
+        // Delete the params (consume once)
+        delete _registrationStoredParams[who];
+        
+        emit RegistrationParamsConsumed(who, storedParams.didString);
+        
+        return storedParams;
     }
 }
