@@ -215,7 +215,7 @@ All deployments are tracked in `contract-addresses.txt` with timestamps and netw
 
 **If you didn't use --update-abis**, run this separately (path is required):
 ```bash
-npx hardhat update-frontend-abis --frontend-path ../app-registry-frontend
+npx hardhat update-frontend-abis --target-path ../app-registry-frontend
 ```
 
 #### **Step 2: Update configuration files**
@@ -285,7 +285,7 @@ npx hardhat get-apps --network omachainTestnet
 
 Use this when you need to fix a bug in one contract without redeploying everything.
 
-**Example: Upgrading the Resolver (like fixing the issuer array bug)**
+### **Example1 : Upgrading the Resolver (like fixing the issuer array bug)**
 
 #### **Step 0: Compile contracts**
 ```bash
@@ -302,15 +302,38 @@ npx hardhat deploy-resolver --network omachainTestnet --confirmations 1
 Resolver: 0xNEW_ADDRESS_HERE
 ```
 
-#### **Step 2: Update configuration files**
+#### **Step 2: Update contract address BEFORE running any tasks**
+
+All tasks and scripts rely on the correct contract addresses in `hardhat.config.ts`. If you run tasks with old addresses, they will interact with the wrong contract.
+
 ```bash
 # Update the Resolver address in these 3 files:
-# 1. contract-addresses.txt
-# 2. hardhat.config.ts → NETWORK_CONTRACTS.omachainTestnet.resolver
-# 3. app-registry-frontend/src/config/chains.ts → omachainTestnet.contracts.resolver
+# 1. contract-addresses.txt (for reference)
+# 2. hardhat.config.ts → NETWORK_CONTRACTS.omachainTestnet.resolver (REQUIRED for tasks)
+# 3. app-registry-frontend/src/config/chains.ts → omachainTestnet.contracts.resolver (for frontend)
 ```
 
-#### **Step 3: Link the new Resolver to Registry**
+**Example for hardhat.config.ts:**
+```typescript
+export const NETWORK_CONTRACTS = {
+  omachainTestnet: {
+    registry: "0x...",  // Keep existing
+    metadata: "0x...",  // Keep existing
+    resolver: "0xNEW_ADDRESS_HERE",  // ← UPDATE THIS
+  }
+}
+```
+
+#### **Step 3: Update frontend ABIs**
+```bash
+npx hardhat update-frontend-abis --target-path ../app-registry-frontend
+```
+
+#### **Step 4: Update configuration files (continued)**
+
+At this point, all 3 files should have the new Resolver address. Verify before proceeding!
+
+#### **Step 5: Link the new Resolver to Registry**
 ```bash
 # Point Registry to new Resolver (3 transactions)
 npx hardhat registry-set-ownership-resolver \
@@ -326,7 +349,7 @@ npx hardhat registry-set-registration-resolver \
   --resolver 0xNEW_RESOLVER_ADDRESS
 ```
 
-#### **Step 4: Add authorized issuers to new Resolver**
+#### **Step 6: Add authorized issuers to new Resolver**
 ```bash
 # The new Resolver starts with NO issuers - you must re-add them
 npx hardhat resolver-add-issuer \
@@ -334,7 +357,7 @@ npx hardhat resolver-add-issuer \
   --issuer 0x7D5beD223Bc343F114Aa28961Cc447dbbc9c2330
 ```
 
-#### **Step 5: Test the upgrade**
+#### **Step 7: Test the upgrade**
 ```bash
 # Verify existing apps are still there
 npx hardhat get-apps --network omachainTestnet
@@ -343,41 +366,60 @@ npx hardhat get-apps --network omachainTestnet
 # If it works, your upgrade is successful!
 ```
 
-**✅ Resolver upgrade complete! Your existing apps and metadata are preserved.**
-
 ---
 
-### **Other Individual Contract Upgrades**
+### **Example 2: Upgrading Registry**
 
-#### **Upgrading Registry:**
 ```bash
 # 1. Deploy
 npx hardhat deploy-registry --network omachainTestnet --confirmations 1
 
-# 2. Update configs (3 files)
+# 2. Update contract addresses
+# Update these 3 files with the new Registry address BEFORE running any tasks:
+# - contract-addresses.txt
+# - hardhat.config.ts → NETWORK_CONTRACTS.omachainTestnet.registry
+# - app-registry-frontend/src/config/chains.ts
 
-# 3. Link to existing Metadata and Resolver
+# 3. Update frontend ABIs
+npx hardhat update-frontend-abis --target-path ../app-registry-frontend
+
+# 4. Continue with configuration
+
+# 5. Configure registry to use metadata contract
 npx hardhat registry-set-metadata-contract --network omachainTestnet --metadata <existing-metadata>
+
+# 6. Authorize this registry on the metadata contract
+npx hardhat metadata-authorize-registry --network omachainTestnet --registry <new-registry>
+
+# 7. Configure registry to use resolvers
 npx hardhat registry-set-ownership-resolver --network omachainTestnet --resolver <existing-resolver>
 npx hardhat registry-set-dataurl-resolver --network omachainTestnet --resolver <existing-resolver>
-
-# 4. Update Metadata to trust new Registry
-npx hardhat metadata-authorize-registry --network omachainTestnet --registry <new-registry>
+npx hardhat registry-set-registration-resolver --network omachainTestnet --resolver <existing-resolver>
 
 # ⚠️ WARNING: All registered apps in the OLD Registry are lost!
 ```
 
-#### **Upgrading Metadata:**
+### **Example 3: Upgrading Metadata**
+
 ```bash
 # 1. Deploy
 npx hardhat deploy-metadata --network omachainTestnet --confirmations 1
 
-# 2. Update configs (3 files)
+# 2. Update contract addresses
+# Update these 3 files with the new Metadata address BEFORE running any tasks:
+# - contract-addresses.txt
+# - hardhat.config.ts → NETWORK_CONTRACTS.omachainTestnet.metadata
+# - app-registry-frontend/src/config/chains.ts
 
-# 3. Link to existing Registry
+# 3. Update frontend ABIs
+npx hardhat update-frontend-abis --target-path ../app-registry-frontend
+
+# 4. Continue with configuration
+
+# 5. Link to existing Registry
 npx hardhat metadata-authorize-registry --network omachainTestnet --registry <existing-registry>
 
-# 4. Update Registry to use new Metadata
+# 6. Update Registry to use new Metadata
 npx hardhat registry-set-metadata-contract --network omachainTestnet --metadata <new-metadata>
 
 # ⚠️ WARNING: All metadata in the OLD Metadata contract is lost!

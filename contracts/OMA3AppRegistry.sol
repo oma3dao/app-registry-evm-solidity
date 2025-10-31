@@ -70,7 +70,7 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         uint8 patch;
     }
 
-    // App struct optimized for gas efficiency
+    // App struct optimized for gas efficiency (storage layer)
     // Immutable fields: minter, versionMajor, did, fungibleTokenId, contractId
     // Mutable fields: interfaces, status, dataHashAlgorithm, dataHash, dataUrl, versionHistory, traitHashes
     struct App {
@@ -91,6 +91,32 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         string dataUrl;                // URL to off-chain data
         Version[] versionHistory;      // Array of version structs
         bytes32[] traitHashes;         // Array of trait hashes
+    }
+
+    /**
+     * @dev AppView struct for read-only queries (view layer)
+     * @notice Identical to App struct but includes currentOwner field
+     * @notice currentOwner is derived at call time via ownerOf(tokenId) and reflects
+     *         the current NFT holder, which may differ from minter due to transfers
+     * @notice Field names match App struct exactly for ABI stability and indexer compatibility
+     */
+    struct AppView {
+        // Matches App struct fields exactly
+        address minter;                // Original creator/minter (immutable)
+        uint16 interfaces;             // Interface bitmap (mutable)
+        uint8 versionMajor;            // Major version number (immutable)
+        uint8 status;                  // Status (0=active, 1=deprecated, 2=replaced)
+        uint8 dataHashAlgorithm;       // Hash algorithm (0=keccak256, 1=sha256)
+        bytes32 dataHash;              // Hash of JSON data
+        string did;                    // DID as string (immutable)
+        string fungibleTokenId;        // CAIP-19 token ID (immutable)
+        string contractId;             // CAIP-10 contract address (immutable)
+        string dataUrl;                // URL to off-chain data
+        Version[] versionHistory;      // Array of version structs
+        bytes32[] traitHashes;         // Array of trait hashes
+        
+        // Additional field: current NFT owner (computed at call time)
+        address currentOwner;          // Current NFT holder (may differ from minter after transfers)
     }
 
     // Custom errors for gas efficiency
@@ -181,7 +207,7 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     // Events (indexed by didHash + major + tokenId for both DID-based and NFT ecosystem compatibility)
     // Note: For cross-chain DID resolution, use the canonical OMA3 deduplicator on OMAChain
     event StatusUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 newStatus, uint256 timestamp);
-    event DataUrlUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, string newDataUrl, bytes32 newDataHash, uint8 dataHashAlgorithm);
+    event DataHashUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, string dataUrl, bytes32 newDataHash, uint8 dataHashAlgorithm);
     event VersionAdded(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint8 minor, uint8 patch);
     event TraitsUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, bytes32[] newTraitHashes);
     event InterfacesUpdated(bytes32 indexed didHash, uint8 indexed major, uint256 indexed tokenId, uint16 newInterfaces);
@@ -691,7 +717,6 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @dev Update app data, interfaces, and/or traits with controlled versioning
      * @param didString The DID as string
      * @param major The major version of the app to update
-     * @param newDataUrl New data URL (empty string "" = no change)
      * @param newDataHash New data hash (bytes32(0) = no change, REQUIRED if traits change)
      * @param newDataHashAlgorithm New hash algorithm (current value = no change)
      * @param newInterfaces New interfaces bitmap (0 = no change, >0 = new interfaces)
@@ -699,6 +724,7 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @param newMinor New minor version (must be > current if interfaces change)
      * @param newPatch New patch version (must be > current if data/trait changes, unless minor++)
      * @param metadataJson Optional metadata JSON string (empty string "" = no metadata update)
+     * @notice dataUrl is immutable per NFT - to change it, mint new NFT with new major version
      * @notice Trait changes require new data hash for auditability
      * @notice Interface changes require minor increment, data/trait changes require patch increment
      * @notice Metadata is only stored if provided and different from current
@@ -706,7 +732,6 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     function updateAppControlled(
         string memory didString,
         uint8 major,
-        string memory newDataUrl,
         bytes32 newDataHash,
         uint8 newDataHashAlgorithm,
         uint16 newInterfaces,
@@ -721,9 +746,6 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         
         // Detect what changes are being made
         bool hasDataChanges = (
-            bytes(newDataUrl).length > 0 && 
-            keccak256(bytes(newDataUrl)) != keccak256(bytes(app.dataUrl))
-        ) || (
             newDataHash != bytes32(0) && 
             newDataHash != app.dataHash
         ) || (
@@ -762,13 +784,6 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
             }
         }
         
-        // Validate data constraints if updating
-        if (hasDataChanges) {
-            if (bytes(newDataUrl).length == 0) revert DataUrlCannotBeEmpty();
-            if (bytes(newDataUrl).length > MAX_URL_LENGTH) revert DataUrlTooLong(bytes(newDataUrl).length);
-            // Note: dataHashAlgorithm validation removed to allow future algorithm extensions
-        }
-        
         // Validate trait constraints if updating
         if (hasTraitChanges) {
             _validateTraits(newTraitHashes);
@@ -780,10 +795,9 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         
         // Apply changes
         if (hasDataChanges) {
-            app.dataUrl = newDataUrl;
             app.dataHash = newDataHash;
             app.dataHashAlgorithm = newDataHashAlgorithm;
-            emit DataUrlUpdated(didHash, major, tokenId, newDataUrl, newDataHash, newDataHashAlgorithm);
+            emit DataHashUpdated(didHash, major, tokenId, app.dataUrl, newDataHash, newDataHashAlgorithm);
         }
         
         if (hasInterfaceChanges) {
@@ -812,14 +826,46 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Get an application by DID
-     * @param didString The DID as string
-     * @return app The application data
+     * @dev Internal helper to convert App storage to AppView memory
+     * @param tokenId The token ID to convert
+     * @param owner The current owner address (pass ownerOf(tokenId) if not already known)
+     * @return The AppView struct with currentOwner populated
+     * @notice Pass ownerOf(tokenId) as owner parameter when not already known
+     * @notice When owner is already known (e.g., in loops), pass it directly to save gas
      */
-    function getApp(string memory didString, uint8 major) external view returns (App memory) {
+    function _toAppViewWithOwner(uint256 tokenId, address owner) internal view returns (AppView memory) {
+        App storage app = _apps[tokenId];
+        
+        return AppView({
+            minter: app.minter,
+            interfaces: app.interfaces,
+            versionMajor: app.versionMajor,
+            status: app.status,
+            dataHashAlgorithm: app.dataHashAlgorithm,
+            dataHash: app.dataHash,
+            did: app.did,
+            fungibleTokenId: app.fungibleTokenId,
+            contractId: app.contractId,
+            dataUrl: app.dataUrl,
+            versionHistory: app.versionHistory,
+            traitHashes: app.traitHashes,
+            currentOwner: owner
+        });
+    }
+
+    /**
+     * @dev Get an application by DID with current owner information
+     * @param didString The DID as string
+     * @param major The major version number
+     * @return appView The application data with current owner
+     * @notice Returns AppView which includes currentOwner derived from ownerOf(tokenId)
+     * @notice currentOwner may differ from minter if NFT has been transferred
+     */
+    function getApp(string memory didString, uint8 major) external view returns (AppView memory appView) {
         uint256 tokenId = _resolveToken(didString, major);
         if (tokenId == 0) revert AppNotFound(didString, major);
-        return _apps[tokenId];
+        
+        return _toAppViewWithOwner(tokenId, ownerOf(tokenId));
     }
 
     /**
@@ -945,13 +991,14 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @dev Returns applications with a specific status, using client-side pagination
      * @param status The status to filter by (0=active accessible to all, others restricted to caller's apps)
      * @param startIndex The starting index for pagination (0-based)
-     * @return apps Array of App structs
+     * @return apps Array of AppView structs with current owner information
+     * @return nextStartIndex Next index for pagination (0 if no more pages)
      */
-    function getAppsByStatus(uint8 status, uint256 startIndex) external view returns (App[] memory apps, uint256 nextStartIndex) {
+    function getAppsByStatus(uint8 status, uint256 startIndex) external view returns (AppView[] memory apps, uint256 nextStartIndex) {
         if (status == 0) {
             // Active apps: use efficient array (accessible to all)
             if (startIndex >= _activeTokenIds.length) {
-                return (new App[](0), 0);
+                return (new AppView[](0), 0);
             }
             
             uint256 endIndex = startIndex + MAX_APPS_PER_PAGE;
@@ -959,10 +1006,10 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
                 endIndex = _activeTokenIds.length;
             }
             
-            apps = new App[](endIndex - startIndex);
+            apps = new AppView[](endIndex - startIndex);
             for (uint256 i = startIndex; i < endIndex; i++) {
                 uint256 tokenId = _activeTokenIds[i];
-                apps[i - startIndex] = _apps[tokenId];
+                apps[i - startIndex] = _toAppViewWithOwner(tokenId, ownerOf(tokenId));
             }
             
             // Calculate next start index (0 if no more pages)
@@ -973,24 +1020,26 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
             uint256 totalOwned = balanceOf(msg.sender);
             
             if (startIndex >= totalOwned) {
-                return (new App[](0), 0);
+                return (new AppView[](0), 0);
             }
             
             // Simple: allocate max size, collect what we can, return right size
-            App[] memory tempApps = new App[](MAX_APPS_PER_PAGE);
+            AppView[] memory tempApps = new AppView[](MAX_APPS_PER_PAGE);
             uint256 collected = 0;
             uint256 i;
             
             for (i = startIndex; i < totalOwned && collected < MAX_APPS_PER_PAGE; i++) {
                 uint256 tokenId = tokenOfOwnerByIndex(msg.sender, i);
-                if (_apps[tokenId].status == status) {
-                    tempApps[collected] = _apps[tokenId];
+                App storage app = _apps[tokenId];
+                
+                if (app.status == status) {
+                    tempApps[collected] = _toAppViewWithOwner(tokenId, msg.sender);
                     collected++;
                 }
             }
             
             // Return exactly what we collected
-            apps = new App[](collected);
+            apps = new AppView[](collected);
             for (uint256 j = 0; j < collected; j++) {
                 apps[j] = tempApps[j];
             }
@@ -1005,11 +1054,11 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     /**
      * @dev Returns active applications using client-side pagination
      * @param startIndex The starting index for pagination (0-based)  
-     * @return apps Array of App structs
+     * @return apps Array of AppView structs with current owner information
      * @return nextStartIndex Next index for pagination (0 if no more pages)
      */
-    function getApps(uint256 startIndex) external view returns (App[] memory apps, uint256 nextStartIndex) {
-        (App[] memory result, uint256 next) = this.getAppsByStatus(0, startIndex); // 0 = Active status
+    function getApps(uint256 startIndex) external view returns (AppView[] memory apps, uint256 nextStartIndex) {
+        (AppView[] memory result, uint256 next) = this.getAppsByStatus(0, startIndex); // 0 = Active status
         return (result, next);
     }
 
@@ -1018,7 +1067,7 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @param interfaceMask The interface mask to filter by (1=Human, 2=API, 4=Smart Contract)
      *        Uses OR logic: if (app.interfaces & interfaceMask) != 0, app is included
      * @param startIndex The starting index for pagination (0-based)
-     * @return apps Array of matching apps for this page
+     * @return apps Array of matching AppView structs with current owner information
      * @return nextStartIndex Starting index for next page (0 if last page)
      * 
      * Examples:
@@ -1030,17 +1079,17 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     function getAppsByInterface(uint16 interfaceMask, uint256 startIndex)
         external
         view
-        returns (App[] memory apps, uint256 nextStartIndex)
+        returns (AppView[] memory apps, uint256 nextStartIndex)
     {
         // Only search active apps for public browsing
         uint256 totalActive = _activeTokenIds.length;
         
         if (startIndex >= totalActive) {
-            return (new App[](0), 0);
+            return (new AppView[](0), 0);
         }
         
         // Collect matching apps up to MAX_APPS_PER_PAGE
-        App[] memory tempApps = new App[](MAX_APPS_PER_PAGE);
+        AppView[] memory tempApps = new AppView[](MAX_APPS_PER_PAGE);
         uint256 collected = 0;
         uint256 i;
         
@@ -1050,13 +1099,13 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
             
             // Check if app has any of the requested interfaces (OR logic)
             if ((app.interfaces & interfaceMask) != 0) {
-                tempApps[collected] = app;
+                tempApps[collected] = _toAppViewWithOwner(tokenId, ownerOf(tokenId));
                 collected++;
             }
         }
         
         // Return exactly what we collected
-        apps = new App[](collected);
+        apps = new AppView[](collected);
         for (uint256 j = 0; j < collected; j++) {
             apps[j] = tempApps[j];
         }
@@ -1078,26 +1127,27 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns applications by owner (returns all remaining apps from startIndex)
+     * @dev Returns applications by owner with current owner information
      * Uses ERC721Enumerable's tokenOfOwnerByIndex for accurate ownership tracking after transfers
      * Note: "owner" here means current NFT owner, which may differ from original minter
      * @param owner The owner's address
      * @param startIndex The starting index (0-based)
-     * @return apps Array of App structs
+     * @return apps Array of AppView structs with current owner information
      * @return nextStartIndex Always 0 (no pagination limit)
+     * @notice Returns AppView which includes currentOwner (will match the queried owner parameter)
      */
-    function getAppsByOwner(address owner, uint256 startIndex) external view returns (App[] memory apps, uint256 nextStartIndex) {
+    function getAppsByOwner(address owner, uint256 startIndex) external view returns (AppView[] memory apps, uint256 nextStartIndex) {
         uint256 totalOwned = balanceOf(owner);
         
         if (startIndex >= totalOwned) {
-            return (new App[](0), 0);
+            return (new AppView[](0), 0);
         }
         
         // Return all remaining apps from startIndex onwards
-        apps = new App[](totalOwned - startIndex);
+        apps = new AppView[](totalOwned - startIndex);
         for (uint256 i = startIndex; i < totalOwned; i++) {
             uint256 tokenId = tokenOfOwnerByIndex(owner, i);
-            apps[i - startIndex] = _apps[tokenId];
+            apps[i - startIndex] = _toAppViewWithOwner(tokenId, owner);
         }
         
         return (apps, 0); // Always 0 since we return all remaining apps

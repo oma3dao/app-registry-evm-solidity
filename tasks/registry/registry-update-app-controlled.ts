@@ -6,7 +6,6 @@ import { getUserSigner } from "../shared/signer-utils";
 interface TaskArgs {
   did: string;
   major?: string;
-  dataurl?: string;
   datahash?: string;
   algorithm?: string;
   interfaces?: string;
@@ -15,10 +14,9 @@ interface TaskArgs {
   patch?: string;
 }
 
-task("update-app-controlled", "Update all fields of an app (comprehensive update)")
+task("update-app-controlled", "Update app content hash, interfaces, and traits (dataUrl is immutable)")
   .addParam("did", "The DID identifier for the app")
   .addOptionalParam("major", "The major version number", "1")
-  .addOptionalParam("dataurl", "New data URL", "")
   .addOptionalParam("datahash", "New data hash (hex)", "0x0000000000000000000000000000000000000000000000000000000000000000")
   .addOptionalParam("algorithm", "Hash algorithm: 'keccak256' or 'sha256'", "keccak256")
   .addOptionalParam("interfaces", "New interface bitmap (0=human, 2=api, 4=smart contract)", "0")
@@ -30,7 +28,6 @@ task("update-app-controlled", "Update all fields of an app (comprehensive update
     const { 
       did, 
       major = "1", 
-      dataurl = "", 
       datahash = "0x0000000000000000000000000000000000000000000000000000000000000000",
       algorithm = "keccak256",
       interfaces = "0",
@@ -95,16 +92,17 @@ task("update-app-controlled", "Update all fields of an app (comprehensive update
       }
 
       console.log("Sending update transaction...");
+      console.log("Note: dataUrl is immutable per NFT. To change it, mint a new NFT with new major version.");
       const tx = await registry.updateAppControlled(
         did,
         majorVersion,
-        dataurl,
         datahash,
         dataHashAlgorithm,
         interfacesBitmap,
         traitHashes,
         minorVersion,
-        patchVersion
+        patchVersion,
+        "" // metadataJson (empty for now)
       );
       
       console.log(`Transaction hash: ${tx.hash}`);

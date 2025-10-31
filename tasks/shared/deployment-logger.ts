@@ -19,6 +19,12 @@ interface DeploymentRecord {
  * Appends a deployment record to contract-addresses.txt and updates the active summary
  */
 export async function logDeployment(record: DeploymentRecord): Promise<void> {
+  // Skip logging for local development networks
+  if (record.network === 'hardhat' || record.network === 'localhost') {
+    console.log(`\n⚠️  Skipping contract-addresses.txt update for local network: ${record.network}`);
+    return;
+  }
+
   // Use process.cwd() to get the repository root (where hardhat commands are run from)
   const filePath = path.join(process.cwd(), 'contract-addresses.txt');
   

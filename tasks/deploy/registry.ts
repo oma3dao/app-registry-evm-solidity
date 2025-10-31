@@ -49,16 +49,19 @@ task("deploy-registry", "Deploy only the OMATrust App Registry contract (develop
     });
 
     console.log("\n⚠️  Next steps:");
-    console.log("1. Update contract-addresses.txt active deployment section with this new registry address");
-    console.log("2. Update hardhat.config.ts NETWORK_CONTRACTS with this registry address");
-    console.log("3. Update frontend src/config/chains.ts with this registry address");
-    console.log("\n4. Configure registry to use metadata contract:");
+    console.log("1. Update frontend ABIs (CRITICAL!):");
+    console.log("   npx hardhat update-frontend-abis --target-path ../app-registry-frontend");
+    console.log("\n2. Update contract-addresses.txt active deployment section with this new registry address");
+    console.log("3. Update hardhat.config.ts NETWORK_CONTRACTS with this registry address");
+    console.log("4. Update frontend src/config/chains.ts with this registry address");
+    console.log("\n5. Configure registry to use metadata contract:");
     console.log(`   npx hardhat registry-set-metadata-contract --network ${networkName} --metadata <METADATA_ADDRESS>`);
-    console.log("\n5. Authorize this registry on the metadata contract:");
+    console.log("\n6. Authorize this registry on the metadata contract:");
     console.log(`   npx hardhat metadata-authorize-registry --network ${networkName} --registry ${contractAddress}`);
-    console.log("\n6. Configure registry to use resolver:");
+    console.log("\n7. Configure registry to use resolvers:");
     console.log(`   npx hardhat registry-set-ownership-resolver --network ${networkName} --resolver <RESOLVER_ADDRESS>`);
     console.log(`   npx hardhat registry-set-dataurl-resolver --network ${networkName} --resolver <RESOLVER_ADDRESS>`);
+    console.log(`   npx hardhat registry-set-registration-resolver --network ${networkName} --resolver <RESOLVER_ADDRESS>`);
   });
 
 

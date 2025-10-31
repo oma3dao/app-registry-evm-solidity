@@ -22,12 +22,12 @@ import * as path from "path";
  *   - ERC-8004 register() function won't work without updated ABI
  */
 task("update-frontend-abis", "Update frontend ABI files from compiled artifacts")
-  .addParam("frontendPath", "Relative path to frontend directory (e.g., ../app-registry-frontend)")
+  .addParam("targetPath", "Relative path to frontend directory (e.g., ../app-registry-frontend)")
   .setAction(async (taskArgs, hre) => {
     console.log("\n📦 Updating Frontend ABIs...\n");
 
-    const frontendPath = taskArgs.frontendPath;
-    console.log(`Frontend path: ${frontendPath}\n`);
+    const frontendPath = taskArgs.targetPath;
+    console.log(`Target path: ${frontendPath}\n`);
 
     // Define source and destination paths
     const contracts = [
