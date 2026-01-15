@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 /**
  * @title OMA3MetadataKeys
  * @dev Canonical metadata keys for OMATrust ERC-8004 integration
- * @notice These keys are used in MetadataEntry[] arrays for structured data passing
+ * @notice These key hashes are used for efficient comparison when parsing MetadataEntry[] arrays
  */
 library OMA3MetadataKeys {
     // Canonical key hashes (keccak256 of key strings)
@@ -21,19 +21,4 @@ library OMA3MetadataKeys {
     bytes32 constant VERSION_PATCH = keccak256("omat.versionPatch");
     bytes32 constant TRAIT_HASHES = keccak256("omat.traitHashes");
     bytes32 constant METADATA_JSON = keccak256("omat.metadataJson");
-    
-    // Key strings (for off-chain use and documentation)
-    string constant DID_STR = "omat.did";
-    string constant DID_HASH_STR = "omat.didHash";
-    string constant DATA_HASH_STR = "omat.dataHash";
-    string constant DATA_HASH_ALGORITHM_STR = "omat.dataHashAlgorithm";
-    string constant STATUS_STR = "omat.status";
-    string constant INTERFACES_STR = "omat.interfaces";
-    string constant FUNGIBLE_TOKEN_ID_STR = "omat.fungibleTokenId";
-    string constant CONTRACT_ID_STR = "omat.contractId";
-    string constant VERSION_MAJOR_STR = "omat.versionMajor";
-    string constant VERSION_MINOR_STR = "omat.versionMinor";
-    string constant VERSION_PATCH_STR = "omat.versionPatch";
-    string constant TRAIT_HASHES_STR = "omat.traitHashes";
-    string constant METADATA_JSON_STR = "omat.metadataJson";
 }
