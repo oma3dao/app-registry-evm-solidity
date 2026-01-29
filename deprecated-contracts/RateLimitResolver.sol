@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
 
-pragma solidity 0.8.28;
-
-import { SchemaResolver } from "./SchemaResolver.sol";
-import { IEAS, Attestation } from "../IEAS.sol";
+import { SchemaResolver } from "../SchemaResolver.sol";
+import { IEAS, Attestation } from "../../IEAS.sol";
 
 /// @title RateLimitResolver
 /// @notice A schema resolver that limits the number of attestations per attester within a time window.

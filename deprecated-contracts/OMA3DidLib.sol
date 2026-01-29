@@ -120,21 +120,20 @@ library OMA3DidLib {
     }
 
     /**
-     * @dev Convert DID hash to Index Address for ecosystem compatibility
+     * @dev Convert DID hash to DID Address for ecosystem compatibility
      * @param didHash The keccak256 hash of a normalized DID
-     * @return indexAddress The deterministic address mapped from the DID hash
-     * @notice Uses the generic, versioned DID Index Address mapping: address(uint160(uint256(keccak256("DID:Solidity:Address:v1:" || didHash))))
+     * @return didAddress The deterministic address mapped from the DID hash
+     * @notice Simple truncation per OMATrust spec section 5.3.2: takes last 20 bytes of didHash
      */
     function hashToAddress(bytes32 didHash) internal pure returns (address) {
-        bytes32 prefixedHash = keccak256(abi.encodePacked("DID:Solidity:Address:v1:", didHash));
-        return address(uint160(uint256(prefixedHash)));
+        return address(uint160(uint256(didHash)));
     }
 
     /**
-     * @dev Convert DID string to Index Address (convenience function)
+     * @dev Convert DID string to DID Address (convenience function)
      * @param did The DID string to convert
-     * @return indexAddress The deterministic address mapped from the DID
-     * @notice Combines normalization, hashing, and generic address mapping in one call
+     * @return didAddress The deterministic address mapped from the DID
+     * @notice Combines normalization, hashing, and address truncation in one call
      */
     function toAddress(string memory did) internal pure returns (address) {
         bytes32 didHash = hash(did);

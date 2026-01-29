@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
 
-pragma solidity 0.8.28;
-
-import { SchemaResolver } from "./SchemaResolver.sol";
-import { IEAS, Attestation } from "../IEAS.sol";
+import { SchemaResolver } from "../SchemaResolver.sol";
+import { IEAS, Attestation } from "../../IEAS.sol";
 
 /// @title GaslessSchemaResolver
 /// @notice A comprehensive resolver for gasless attestation schemas with spam prevention.

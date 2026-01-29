@@ -26,6 +26,8 @@ import "./tasks/deploy/registry";
 import "./tasks/deploy/metadata";
 import "./tasks/deploy/resolver";
 import "./tasks/deploy/eas-system";
+import "./tasks/deploy/fee-resolver";
+import "./tasks/deploy/fee-resolver-sanity";
 import "./tasks/deploy/update-frontend-abis";
 import "./tasks/deploy/check-contracts";
 import "./tasks/deploy/eas-sanity";

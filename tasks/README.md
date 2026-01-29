@@ -173,9 +173,22 @@ npx hardhat renounce-ownership  # ⚠️ DANGEROUS!
 
 ## 🚀 Deployment Workflows
 
+Deployment workflows differ based on the target chain:
+
+| Chain Type          | What to Deploy                         | EAS Status                    |
+|---------------------|----------------------------------------|-------------------------------|
+| **OMAchain**        | Full system + EAS contracts + schemas  | Deploy EAS (no existing EAS)  |
+| **External chains** | Fee resolver + schemas only            | Use existing EAS deployment   |
+
+---
+
+## 🔷 OMAchain Deployments
+
+Use these workflows when deploying to OMAchain (testnet or mainnet). OMAchain does not have pre-existing EAS contracts, so you deploy the full EAS system along with OMA3 contracts.
+
 ### **USE CASE 1: Complete System Deployment**
 
-Use this when deploying all contracts to a network.
+Use this when deploying all contracts to OMAchain.
 
 #### **Step 0: Compile contracts**
 ```bash
@@ -531,18 +544,103 @@ npm run update-schemas ../rep-attestation-tools-evm-solidity
 
 See the [rep-attestation-tools-evm-solidity README](../../rep-attestation-tools-evm-solidity/README.md) for complete schema deployment instructions.
 
-#### **Step 5: (Optional) Deploy custom resolvers**
-
-If you need gasless attestations or rate limiting:
-
-```bash
-npx hardhat run scripts/deploy-rate-limit-resolver.js --network omachainTestnet
-npx hardhat run scripts/deploy-gasless-resolver.js --network omachainTestnet
-```
-
-**✅ EAS deployment complete!**
+**✅ EAS deployment on OMAchain complete!**
 
 ---
+
+## 🌐 External Chain Deployments
+
+Use these workflows when deploying to chains that already have EAS deployed (Ethereum, Base, Arbitrum, Optimism, etc.). You do NOT deploy EAS contracts - only the fee resolver and schemas.
+
+**Why a fee resolver?** On OMAchain, gas costs serve as spam prevention. On external chains, we collect a fixed fee per attestation to cover operational costs and prevent spam.
+
+### **Deploy Fee Resolver and Schemas**
+
+Deploy the OMATrustFeeResolver and register OMA3 schemas on external chains.
+
+#### **Prerequisites**
+- EAS contract address on the target chain (see [EAS Deployments](https://docs.attest.org/docs/quick--start/contracts))
+- Treasury address (Gnosis Safe recommended)
+- Deployer wallet with ETH for gas
+
+#### **Step 1: Deploy the fee resolver**
+```bash
+npx hardhat deploy-fee-resolver \
+  --network base \
+  --eas 0x4200000000000000000000000000000000000021 \
+  --fee 0.001 \
+  --treasury 0xYOUR_GNOSIS_SAFE_ADDRESS
+```
+
+**Parameters:**
+| Parameter     | Description                                      | Example                                      |
+|---------------|--------------------------------------------------|----------------------------------------------|
+| `--eas`       | EAS contract address on target chain             | `0x4200000000000000000000000000000000000021`  |
+| `--fee`       | Fee in ETH (not wei)                             | `0.001`                                      |
+| `--treasury`  | Address to receive fees (Gnosis Safe recommended)| `0x123...`                                   |
+| `--confirmations` | Block confirmations to wait (optional)       | `5`                                          |
+
+**Save the deployed address!** You'll see:
+```
+✅ OMATrustFeeResolver deployed to: 0xNEW_RESOLVER_ADDRESS
+```
+
+The address is also saved to `contract-addresses.txt`.
+
+#### **Step 2: Deploy schemas with the resolver**
+```bash
+cd ../rep-attestation-tools-evm-solidity
+
+# Deploy schema with fee resolver
+npx hardhat deploy-eas-schema \
+  --file generated/Endorsement.eas.json \
+  --resolver 0xNEW_RESOLVER_ADDRESS \
+  --network base
+```
+
+The `--resolver` flag overrides any resolver in the JSON file.
+
+#### **Step 3: Run sanity test**
+```bash
+cd ../app-registry-evm-solidity
+
+npx hardhat fee-resolver-sanity \
+  --network base \
+  --resolver 0xNEW_RESOLVER_ADDRESS \
+  --treasury 0xYOUR_GNOSIS_SAFE_ADDRESS
+```
+
+**What the sanity test does:**
+1. Reads and verifies resolver configuration (fee, treasury, isPayable)
+2. Registers a test schema with the resolver
+3. Creates a test attestation with the required fee
+4. Verifies the fee was forwarded to the treasury
+5. Confirms the resolver has zero balance (no custody)
+
+If all steps pass ✅, your fee resolver is working correctly!
+
+#### **Step 4: (Optional) Verify on block explorer**
+```bash
+npx hardhat verify --network base \
+  0xNEW_RESOLVER_ADDRESS \
+  "0x4200000000000000000000000000000000000021" \
+  "1000000000000000" \
+  "0xYOUR_GNOSIS_SAFE_ADDRESS"
+```
+
+Note: Constructor args are: EAS address, fee in wei, treasury address.
+
+**✅ External chain deployment complete!**
+
+#### **Fee Resolver Design Notes**
+- **Immutable**: Fee and treasury are set at deployment and cannot be changed
+- **No custody**: Fees are forwarded immediately, resolver never holds funds
+- **Exact fee required**: Users must send exactly the fee amount (no refunds)
+- **Gnosis Safe compatible**: Uses `.call{}` for ETH transfer (no gas stipend limit)
+
+---
+
+## 📋 Task Reference
 
 ### **EAS/** - Ethereum Attestation Service Tasks
 
@@ -709,15 +807,15 @@ npx hardhat transfer-from \
 
 ## 📊 Task Categories Summary
 
-| Category | Tasks | Purpose |
-|----------|-------|---------|
-| **Deploy** | 4 tasks | Contract deployment (system + individual) |
-| **Admin** | 11 tasks | Contract configuration and permissions |
-| **Registry** | 10 tasks | Core app registry operations |
-| **Metadata** | 3 tasks | On-chain metadata management |
-| **Inherited** | 7 tasks | Standard ERC721/Ownable functions |
-| **Legacy** | 3 tasks | Legacy contract compatibility |
-| **Total** | **38 tasks** | Complete contract lifecycle coverage |
+| Category     | Tasks    | Purpose                                    |
+|--------------|----------|--------------------------------------------|
+| **Deploy**   | 6 tasks  | Contract deployment (system + individual)  |
+| **Admin**    | 11 tasks | Contract configuration and permissions     |
+| **Registry** | 10 tasks | Core app registry operations               |
+| **Metadata** | 3 tasks  | On-chain metadata management               |
+| **Inherited**| 7 tasks  | Standard ERC721/Ownable functions          |
+| **Legacy**   | 3 tasks  | Legacy contract compatibility              |
+| **Total**    | **40 tasks** | Complete contract lifecycle coverage   |
 
 ## 🎯 Common Workflows
 

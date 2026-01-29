@@ -494,14 +494,14 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
 For 99% of developers, use the web applications instead of coding directly:
 
 #### Application Registration
-**🚀 [appregistry.oma3.org](https://appregistry.oma3.org)**
+**🚀 [registry.omatrust.org](https://registry.omatrust.org)**
 - **User-friendly interface** for registering and managing OMA3 applications
 - **Visual workflow** for DID attestation and application minting
 - **Guided process** ensures all OMATrust requirements are met
 - **No coding required** - just fill out forms and connect your wallet
 
 #### Reputation & Attestations 
-**⭐ [reputation.oma3.org](https://reputation.oma3.org)**
+**⭐ [reputation.omatrust.org](https://reputation.omatrust.org)**
 - **Create attestations** for DID ownership and data integrity
 - **Manage reputation** and extended attestations via EAS integration
 - **Issuer interface** for authorized attestation providers
@@ -654,7 +654,7 @@ For attestations beyond core DID ownership and data integrity, the OMA3 ecosyste
 
 #### To interface with OMAChain attestations:
 
-- **Frontend**: Use **[reputation.oma3.org](https://reputation.oma3.org)** for user-friendly attestation management
+- **Frontend**: Use **[reputation.omatrust.org](https://reputation.omatrust.org)** for user-friendly attestation management
 - **Technical Details**: See [rep-attestation-tools-evm-solidity](https://github.com/oma3dao/rep-attestation-tools-evm-solidity) and [rep-attestation-frontend](https://github.com/oma3dao/rep-attestation-frontend) repositories
 
 #### **Index Function: DID → Recipient Mapping**

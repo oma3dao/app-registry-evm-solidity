@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "../contracts/OMA3DidLib.sol";
+import "../deprecated-contracts/OMA3DidLib.sol";
 
 contract TestDidLib {
     using OMA3DidLib for string;
