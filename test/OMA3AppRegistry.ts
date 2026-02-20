@@ -146,19 +146,20 @@ function makeCompatProxy(contract: any) {
 			}
 			if (prop === "updateAppControlled") {
 				return (...args: any[]) => {
-					// Expected: (didString, major, newDataUrl, newDataHash, newDataHashAlgorithm, newInterfaces, newKeywordHashes, newMinor, newPatch)
+					// Contract: (didString, major, newDataHash, newDataHashAlgorithm, newInterfaces, newTraitHashes, newMinor, newPatch, metadataJson)
+					// Tests use: (did, major, newDataUrl, newDataHash, newAlgo, newInterfaces, newKeywordHashes, newMinor, newPatch)
 					if (args.length === 9) {
-						const [did, major, newDataUrl, newDataHash, newAlgo, newInterfaces, newKeywordHashes, newMinor, newPatch] = args;
+						const [did, major, _newDataUrl, newDataHash, newAlgo, newInterfaces, newKeywordHashes, newMinor, newPatch] = args;
 						return target.updateAppControlled(
 							did,
 							major,
-							newDataUrl,
 							newDataHash,
 							toAlgo(newAlgo),
 							toBitmap(newInterfaces),
 							newKeywordHashes,
 							newMinor,
-							newPatch
+							newPatch,
+							"" // metadataJson
 						);
 					}
 					return value.apply(target, args);

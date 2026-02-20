@@ -498,17 +498,17 @@ describe("OMA3AppRegistry - Interface Query Tests", function () {
       const [beforeUpdate2, _2] = await registry.getAppsByInterface(2, 0);
       expect(beforeUpdate2.length).to.equal(0);
 
-      // Update to add API interface (1 | 2 = 3)
+      // Update to add API interface (1 | 2 = 3) - dataUrl is immutable
       await registry.connect(minter1).updateAppControlled(
         "did:oma3:evolving-app",
         1,
-        "https://example.com/v2",
         hre.ethers.keccak256(hre.ethers.toUtf8Bytes("test2")),
         0,
         3, // Human + API
         [],
         1, // Minor increment required for interface change
-        0
+        0,
+        "" // metadataJson
       );
 
       // Now should show in both Human and API queries
