@@ -81,9 +81,14 @@ describe("Hardhat Tasks - Simplified", function () {
 
       const registryContract = await ethers.getContractAt("OMA3AppRegistry", registryAddress, deployer);
       const metadataContract = await ethers.getContractAt("OMA3AppMetadata", metadataAddress, deployer);
+      const resolverContract = await ethers.getContractAt("OMA3ResolverWithStore", resolverAddress, deployer);
       
       await registryContract.setMetadataContract(metadataAddress);
       await metadataContract.setAuthorizedRegistry(registryAddress);
+      await registryContract.setOwnershipResolver(resolverAddress);
+      await registryContract.setDataUrlResolver(resolverAddress);
+      await registryContract.setRegistrationResolver(resolverAddress);
+      await resolverContract.addAuthorizedIssuer(deployer.address);
 
       expect(registryAddress).to.be.properAddress;
       expect(metadataAddress).to.be.properAddress;
@@ -95,6 +100,12 @@ describe("Hardhat Tasks - Simplified", function () {
     it("should mint app", async function () {
       testDID = "did:oma3:test-" + Date.now();
       const registryContract = await ethers.getContractAt("OMA3AppRegistry", registryAddress, deployer);
+      const resolverContract = await ethers.getContractAt("OMA3ResolverWithStore", resolverAddress, deployer);
+      
+      // Attest DID ownership for mint
+      const didHash = ethers.keccak256(ethers.toUtf8Bytes(testDID));
+      const controllerBytes32 = ethers.zeroPadValue(deployer.address, 32);
+      await resolverContract.upsertDirect(didHash, controllerBytes32, 0);
       
       const tx = await registryContract.mint(
         testDID,
@@ -112,14 +123,14 @@ describe("Hardhat Tasks - Simplified", function () {
       const receipt = await tx.wait();
       const event = receipt?.logs?.find((log: any) => {
         try {
-          return registryContract.interface.parseLog(log)?.name === "AppMinted";
+          return registryContract.interface.parseLog(log)?.name === "Registered";
         } catch {
           return false;
         }
       });
       
-      const parsedEvent = registryContract.interface.parseLog(event!);
-      testTokenId = Number(parsedEvent?.args?.tokenId);
+      const parsedEvent = event ? registryContract.interface.parseLog(event) : null;
+      testTokenId = Number(parsedEvent?.args?.tokenId ?? 0);
       
       expect(testTokenId).to.be.greaterThan(0);
     });
@@ -185,9 +196,18 @@ describe("Hardhat Tasks - Simplified", function () {
       const metadataContract = await ethers.getContractAt("OMA3AppMetadata", metadataAddress);
       
       const testMetadata = JSON.stringify({ name: "Test App", version: "1.0.0" });
-      const dataHash = ethers.keccak256(ethers.toUtf8Bytes(testMetadata));
-      
-      await registryContract.setMetadataJson(testDID, 1, 0, 0, testMetadata, dataHash, 0);
+      const metadataHash = ethers.keccak256(ethers.toUtf8Bytes(testMetadata));
+      // setMetadataJson removed - use updateAppControlled with interface change + metadataJson
+      await registryContract.updateAppControlled(
+        testDID,
+        1,
+        metadataHash,
+        0,
+        3, // add API interface (1|2)
+        [],
+        1, 1, // minor, patch (data change requires patch++)
+        testMetadata
+      );
       
       const retrievedMetadata = await metadataContract.getMetadataJson(testDID);
       expect(retrievedMetadata).to.equal(testMetadata);
@@ -215,7 +235,6 @@ describe("Hardhat Tasks - Simplified", function () {
     it("should manage resolver issuers", async function () {
       const resolverContract = await ethers.getContractAt("OMA3ResolverWithStore", resolverAddress, deployer);
       
-      await resolverContract.addAuthorizedIssuer(deployer.address);
       expect(await resolverContract.isIssuer(deployer.address)).to.be.true;
       
       await resolverContract.addAuthorizedIssuer(user.address);
@@ -333,23 +352,23 @@ describe("Hardhat Tasks - Simplified", function () {
     it("should update app with updateAppControlled", async function () {
       const registryContract = await ethers.getContractAt("OMA3AppRegistry", registryAddress, deployer);
       
-      // Update with new interface, traits, and version
+      // Update with new interface, traits, and version (dataUrl is immutable per NFT)
       const newTrait = ethers.keccak256(ethers.toUtf8Bytes("metaverse"));
       
       await registryContract.updateAppControlled(
         advancedDID,
         1,
-        "https://example.com/advanced-v2.json",
         ethers.keccak256(ethers.toUtf8Bytes("advanced-data-v2")),
-        0,
+        0, // newDataHashAlgorithm
         3, // human (1) + api (2) = 3
         [newTrait],
         1, // minor version increment
-        0  // patch
+        0, // patch
+        ""  // metadataJson
       );
       
       const app = await registryContract.getApp(advancedDID, 1);
-      expect(app.dataUrl).to.equal("https://example.com/advanced-v2.json");
+      expect(app.dataUrl).to.equal("https://example.com/advanced.json"); // dataUrl immutable
       expect(app.interfaces).to.equal(3);
       
       // Version is stored in versionHistory array - check the latest version
@@ -364,19 +383,19 @@ describe("Hardhat Tasks - Simplified", function () {
       
       const metaverseTrait = ethers.keccak256(ethers.toUtf8Bytes("metaverse"));
       const nonExistentTrait = ethers.keccak256(ethers.toUtf8Bytes("nonexistent"));
-      
-      // Has the new trait (using hasAnyTraits)
-      expect(await registryContract.hasAnyTraits(advancedDID, 1, [metaverseTrait])).to.be.true;
-      
-      // Doesn't have non-existent trait
-      expect(await registryContract.hasAnyTraits(advancedDID, 1, [nonExistentTrait])).to.be.false;
-      
-      // Check multiple traits - hasAllTraits requires ALL traits to be present
       const gamingTrait = ethers.keccak256(ethers.toUtf8Bytes("gaming"));
-      expect(await registryContract.hasAllTraits(advancedDID, 1, [metaverseTrait, gamingTrait])).to.be.false; // gaming was replaced
       
-      // Check that hasAllTraits works when all traits are present
-      expect(await registryContract.hasAllTraits(advancedDID, 1, [metaverseTrait])).to.be.true;
+      // Get the app and check trait hashes directly
+      const app = await registryContract.getApp(advancedDID, 1);
+      
+      // Should have metaverse trait
+      expect(app.traitHashes).to.include(metaverseTrait);
+      
+      // Should not have non-existent trait
+      expect(app.traitHashes).to.not.include(nonExistentTrait);
+      
+      // Should not have gaming trait (was replaced)
+      expect(app.traitHashes).to.not.include(gamingTrait);
     });
 
     it("should get apps by different statuses", async function () {

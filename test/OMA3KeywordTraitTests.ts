@@ -534,11 +534,17 @@ describe("OMA3 Keyword and Trait Tests", function () {
                 );
             }
 
-            // Validate by trait presence
-            const hasDefi1 = await registry.hasAnyTraits("did:oma3:defi-yield-app", 1, toTraitHashes(["defi"]));
-            const hasDefi2 = await registry.hasAnyTraits("did:oma3:defi-lending-app", 1, toTraitHashes(["defi"]));
-            const hasNft = await registry.hasAnyTraits("did:oma3:nft-marketplace", 1, toTraitHashes(["nft"]));
-            expect(hasDefi1 && hasDefi2 && hasNft).to.equal(true);
+            // Validate by checking trait hashes directly
+            const app1 = await registry.getApp("did:oma3:defi-yield-app", 1);
+            const app2 = await registry.getApp("did:oma3:defi-lending-app", 1);
+            const app3 = await registry.getApp("did:oma3:nft-marketplace", 1);
+            
+            const defiHash = toTraitHashes(["defi"])[0];
+            const nftHash = toTraitHashes(["nft"])[0];
+            
+            expect(app1.traitHashes).to.include(defiHash);
+            expect(app2.traitHashes).to.include(defiHash);
+            expect(app3.traitHashes).to.include(nftHash);
 
             // Traits are stored in metadata JSON, so they would need to be parsed client-side
             // This demonstrates the integration between keywords and traits
@@ -575,13 +581,14 @@ describe("OMA3 Keyword and Trait Tests", function () {
                 );
             }
 
-            // Test trait presence checks across dataset
+            // Test trait retrieval across dataset
             const startTime = Date.now();
             let count = 0;
+            const web3Hash = toTraitHashes(["web3"])[0];
             for (let i = 0; i < 50; i++) {
                 const did = `did:oma3:perf-test-${i}`;
-                const has = await registry.hasAnyTraits(did, 1, toTraitHashes(["web3"]));
-                if (has) count++;
+                const app = await registry.getApp(did, 1);
+                if (app.traitHashes.includes(web3Hash)) count++;
             }
             const endTime = Date.now();
 
@@ -589,9 +596,9 @@ describe("OMA3 Keyword and Trait Tests", function () {
             expect(endTime - startTime).to.be.lessThan(5000);
         });
 
-        it("Should handle empty keyword queries gracefully", async function () {
+        it("Should handle empty trait arrays gracefully", async function () {
             const { registry, user1 } = await loadFixture(deployKeywordTraitFixture);
-            // Mint a known app
+            // Mint a known app with no traits
             const did = "did:oma3:empty-query";
             const metadataJson = JSON.stringify({ name: "Empty Query" });
             const dataHash = ethers.keccak256(ethers.toUtf8Bytes(metadataJson));
@@ -607,8 +614,8 @@ describe("OMA3 Keyword and Trait Tests", function () {
                 [],
                 metadataJson
             );
-            const has = await registry.hasAnyTraits(did, 1, []);
-            expect(has).to.equal(false);
+            const app = await registry.getApp(did, 1);
+            expect(app.traitHashes.length).to.equal(0);
         });
     });
 });
