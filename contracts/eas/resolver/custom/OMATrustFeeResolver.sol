@@ -69,12 +69,20 @@ contract OMATrustFeeResolver is SchemaResolver {
         return true;
     }
 
-    /// @notice Allows revocations without fee
+    /// @notice Allows revocations unconditionally — no fee required.
+    /// @dev Any ETH accidentally attached is recoverable via sweep().
     /// @return Always returns true
     function onRevoke(
         Attestation calldata /* attestation */,
         uint256 /* value */
     ) internal pure override returns (bool) {
         return true;
+    }
+
+    /// @notice Forwards any ETH balance in the resolver to feeRecipient.
+    /// @dev Permissionless — anyone can call. No funds should ever sit in this contract.
+    function sweep() external {
+        (bool success, ) = feeRecipient.call{value: address(this).balance}("");
+        if (!success) revert FeeTransferFailed();
     }
 }
