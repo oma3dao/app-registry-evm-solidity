@@ -29,7 +29,7 @@
     "solidity-coverage": "^0.8.16"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.2.0",
+    "@openzeppelin/contracts": "5.4.0",
     "dotenv": "^16.4.7",
     "thirdweb": "^5.93.8"
   }

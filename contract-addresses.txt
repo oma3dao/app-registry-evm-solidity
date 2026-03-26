@@ -1,5 +1,6 @@
 # OMA3 Contract Deployment History
 # Auto-generated deployment tracking for all networks and environments
+# Authorized wallet addresses (issuers, admin wallets) are in oma3-ops/approved-addresses.json
 # ============================================================================
 
 ## 📍 Active Deployments
@@ -13,10 +14,6 @@ Metadata:  0x9a530e23370C7d820FbaB2E0a884c58be5E4e919
 Resolver:  0xDc120C00E62822329A4d8C7808f5a43C9CbfC1f8
 Deployer:  0xC8cb41dD6F509f28cA4194f8e1574911281354eF
 
-Issuers:
-0x7D5beD223Bc343F114Aa28961Cc447dbbc9c2330
-0x766910dc543034ce7a6525c1307c5b6fe92ebb0b
-
 ### Production (omachainMainnet)
 Network: omachainMainnet (Chain ID: TBD)
 Last Updated: Not yet deployed
@@ -26,6 +23,7 @@ Registry:  Not yet deployed
 Metadata:  Not yet deployed
 Resolver:  Not yet deployed
 Deployer:  Not yet deployed
+
 
 # ============================================================================
 # 📜 DEPLOYMENT HISTORY (newest at bottom)
@@ -327,4 +325,26 @@ Deployed Contracts:
 Deployment Details:
   Block Confirmations: 1
   Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #19 ===
+Timestamp: 2026-03-19 21:13:46 UTC
+Network: omachainTestnet (Chain ID: 66238)
+Type: TimelockController
+Method: Hardhat (SSH Key)
+Deployer: 0xC8cb41dD6F509f28cA4194f8e1574911281354eF
+
+Deployed Contracts:
+  TimelockController: 0x8A4434930ef47bCaDE48e45a9979540FA839D18E
+
+Configuration:
+  Min Delay: 86400s (24h)
+  Proposer:  0x8e6aB187BD083b54156c6cF3a54351Eec4742319
+  Executor:  0x8e6aB187BD083b54156c6cF3a54351Eec4742319
+  Admin:     address(0)
+
+Deployment Details:
+  Block Confirmations: 1
+  OpenZeppelin Contracts: v5.4.0
+  Verification Status: Pending
 ============================================================================

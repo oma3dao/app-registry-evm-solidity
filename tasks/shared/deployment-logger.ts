@@ -16,6 +16,20 @@ interface DeploymentRecord {
 }
 
 /**
+ * Reads the installed @openzeppelin/contracts version from node_modules.
+ * Returns the version string (e.g., "5.4.0") or "unknown" if not found.
+ */
+export function getOpenZeppelinVersion(): string {
+  try {
+    const ozPkgPath = path.join(process.cwd(), 'node_modules', '@openzeppelin', 'contracts', 'package.json');
+    const ozPkg = JSON.parse(fs.readFileSync(ozPkgPath, 'utf-8'));
+    return ozPkg.version || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
  * Appends a deployment record to contract-addresses.txt and updates the active summary
  */
 export async function logDeployment(record: DeploymentRecord): Promise<void> {
@@ -71,6 +85,7 @@ export async function logDeployment(record: DeploymentRecord): Promise<void> {
 
   entry += `\nDeployment Details:\n`;
   entry += `  Block Confirmations: ${record.blockConfirmations}\n`;
+  entry += `  OpenZeppelin Contracts: v${getOpenZeppelinVersion()}\n`;
   if (record.integrationTestsPassed !== undefined) {
     entry += `  Integration Tests: ${record.integrationTestsPassed ? '✅ PASSED' : '❌ FAILED'}\n`;
   }

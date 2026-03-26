@@ -487,6 +487,37 @@ jq .abi artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json > oma3app-r
 # Or manually open the file and copy the "abi" array
 ```
 
+## Dependency Versioning Strategy
+
+OMA3 contracts depend on OpenZeppelin Contracts for standard implementations (Ownable, ERC721, AccessControl, TimelockController, etc.). These are pre-audited by OpenZeppelin and not in scope for OMA3 audits.
+
+### How versioning works
+
+- `package.json` pins the OZ version with `--save-exact` (no caret, no tilde)
+- `package-lock.json` locks the exact resolved version and must be committed
+- All deploy tasks automatically log the installed OZ version to `contract-addresses.txt`
+- `contracts/deps.sol` imports OZ contracts directly from `@openzeppelin/contracts/`
+
+### Upgrading OZ for new deployments
+
+When deploying a new contract that benefits from a newer OZ release:
+
+1. Update `package.json` to the new version: `npm install @openzeppelin/contracts@<VERSION> --save-exact`
+2. Run `npx hardhat compile` — verify all contracts compile
+3. Run tests to verify nothing broke
+4. Deploy — the new OZ version is automatically recorded in `contract-addresses.txt`
+
+Previously deployed contracts are unaffected — their bytecode is immutable on-chain. The version recorded at deployment time is the authoritative reference for what OZ code was compiled into that deployment.
+
+### For auditors
+
+Each deployment entry in `contract-addresses.txt` includes the OZ version used. To verify the source:
+
+- Git tag: `https://github.com/OpenZeppelin/openzeppelin-contracts/tree/v<VERSION>`
+- npm: `https://www.npmjs.com/package/@openzeppelin/contracts/v/<VERSION>`
+
+OMA3 custom contracts live in `contracts/`. Pre-audited OpenZeppelin dependencies are imported via `contracts/deps.sol`. EAS contracts are vendored under `contracts/eas/`. Neither OZ nor EAS are in scope for OMA3 audits.
+
 ## **Usage**
 
 ### 🌐 Frontend Applications (Recommended for Most Developers)

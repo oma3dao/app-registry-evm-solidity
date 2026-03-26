@@ -31,21 +31,24 @@ import "./tasks/deploy/fee-resolver-sanity";
 import "./tasks/deploy/update-frontend-abis";
 import "./tasks/deploy/check-contracts";
 import "./tasks/deploy/eas-sanity";
+import "./tasks/deploy/timelock";
 
-// Import task files - Admin tasks
-import "./tasks/admin/registry-set-metadata-contract";
-import "./tasks/admin/registry-set-ownership-resolver";
-import "./tasks/admin/registry-set-dataurl-resolver";
-import "./tasks/admin/registry-set-registration-resolver";
-import "./tasks/admin/registry-set-require-attestation";
-import "./tasks/admin/registry-transfer-owner";
-import "./tasks/admin/metadata-authorize-registry";
-import "./tasks/admin/metadata-transfer-owner";
-import "./tasks/admin/resolver-set-maturation";
-import "./tasks/admin/resolver-set-max-ttl";
-import "./tasks/admin/resolver-add-issuer";
-import "./tasks/admin/resolver-remove-issuer";
-import "./tasks/admin/resolver-transfer-owner";
+// Import task files - Setup tasks (initial config using deployment key)
+import "./tasks/setup/registry-set-metadata-contract";
+import "./tasks/setup/registry-set-ownership-resolver";
+import "./tasks/setup/registry-set-dataurl-resolver";
+import "./tasks/setup/registry-set-registration-resolver";
+import "./tasks/setup/registry-set-require-attestation";
+import "./tasks/setup/registry-transfer-owner";
+import "./tasks/setup/metadata-authorize-registry";
+import "./tasks/setup/metadata-transfer-owner";
+import "./tasks/setup/resolver-set-maturation";
+import "./tasks/setup/resolver-set-max-ttl";
+import "./tasks/setup/resolver-add-issuer";
+import "./tasks/setup/resolver-remove-issuer";
+import "./tasks/setup/resolver-transfer-owner";
+
+// Import task files - Admin tasks (read-only, no ownership required)
 import "./tasks/admin/resolver-view-attestations";
 
 // Import task files - Inherited functions
@@ -58,12 +61,44 @@ import "./tasks/metadata/metadata-get-json";
 // Import task files - Resolver tasks
 import "./tasks/resolver";
 
-// Load deployment key from configurable SSH file path
-const deploymentKeyPath = process.env.DEPLOYMENT_KEY_PATH || path.join(process.env.HOME || '', '.ssh', 'test-evm-deployment-key');
+// Load deployment key from SSH file path.
+// Resolution order:
+//   1. DEPLOYMENT_KEY_PATH env var (explicit override)
+//   2. Network-specific default:
+//      - ~/.ssh/mainnet-evm-deployment-key  (if --network contains "mainnet")
+//      - ~/.ssh/test-evm-deployment-key     (all other networks)
+//   3. Hard error if the resolved file does not exist (non-local networks only)
+function resolveDeploymentKeyPath(): string {
+  if (process.env.DEPLOYMENT_KEY_PATH) {
+    return process.env.DEPLOYMENT_KEY_PATH;
+  }
+  // Parse --network from process.argv (Hardhat hasn't parsed it yet at config time)
+  const networkIdx = process.argv.indexOf('--network');
+  const networkName = networkIdx !== -1 ? process.argv[networkIdx + 1] : '';
+
+  // Exact match — no substring inference
+  const MAINNET_NETWORKS = ['omachainMainnet'];
+  const isMainnet = MAINNET_NETWORKS.includes(networkName || '');
+  const keyFile = isMainnet ? 'mainnet-evm-deployment-key' : 'test-evm-deployment-key';
+  return path.join(process.env.HOME || '', '.ssh', keyFile);
+}
+
+const deploymentKeyPath = resolveDeploymentKeyPath();
 
 function loadPrivateKeyFromSshFile(filePath: string): string | undefined {
   try {
-    if (!fs.existsSync(filePath)) return undefined;
+    if (!fs.existsSync(filePath)) {
+      // For non-local networks, a missing key file is a hard error
+      const networkIdx = process.argv.indexOf('--network');
+      const networkName = networkIdx !== -1 ? process.argv[networkIdx + 1] : '';
+      const isLocal = !networkName || networkName === 'hardhat' || networkName === 'localhost';
+      if (!isLocal) {
+        console.error(`\n❌ Deployment key not found: ${filePath}`);
+        console.error(`Set DEPLOYMENT_KEY_PATH or create the key file.`);
+        process.exit(1);
+      }
+      return undefined;
+    }
     const raw = fs.readFileSync(filePath, 'utf8').trim();
     if (!raw) return undefined;
 
@@ -76,14 +111,15 @@ function loadPrivateKeyFromSshFile(filePath: string): string | undefined {
 
     // Must be 64 hex characters
     if (!/^[0-9a-fA-F]{64}$/.test(key)) {
-      console.warn("Invalid key format in ~/.ssh/test-evm-deployment-key. Expected 64 hex chars.");
-      return undefined;
+      console.error(`\n❌ Invalid key format in ${filePath}. Expected 64 hex chars.`);
+      process.exit(1);
     }
 
+    console.log(`Deployment key: ${filePath}`);
     return `0x${key}`;
   } catch (err) {
-    console.warn("Failed to read ~/.ssh/test-evm-deployment-key:", (err as Error).message);
-    return undefined;
+    console.error(`\n❌ Failed to read deployment key: ${(err as Error).message}`);
+    process.exit(1);
   }
 }
 
