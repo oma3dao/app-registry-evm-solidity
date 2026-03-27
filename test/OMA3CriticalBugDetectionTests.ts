@@ -9,7 +9,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 /**
  * Critical Bug Detection Tests
  * 
- * These tests are designed to catch the critical bug where currentOwner() and isDataHashValid()
+ * These tests are designed to catch the critical bug where currentOwner() and checkDataHashAttestation()
  * functions use fake "deterministic issuer" discovery instead of properly enumerating
  * authorized issuers.
  * 
@@ -112,7 +112,7 @@ describe("OMA3 Critical Bug Detection Tests", function () {
         });
     });
 
-    describe("🚨 CRITICAL BUG: isDataHashValid() Function", function () {
+    describe("🚨 CRITICAL BUG: checkDataHashAttestation() Function", function () {
         it("Should validate data hashes from REAL authorized issuers", async function () {
             const { resolver, realIssuer1 } = await loadFixture(deployBugDetectionFixture);
 
@@ -123,7 +123,7 @@ describe("OMA3 Critical Bug Detection Tests", function () {
 
             // CRITICAL TEST: This should return true
             // If this fails, the contract has the deterministic issuer bug
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.true;
         });
 
@@ -138,8 +138,8 @@ describe("OMA3 Critical Bug Detection Tests", function () {
             await resolver.connect(realIssuer2).attestDataHash(TEST_DID_HASH, dataHash2, futureTime);
 
             // Both should be valid
-            const isValid1 = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
-            const isValid2 = await resolver.isDataHashValid(TEST_DID_HASH, dataHash2);
+            const isValid1 = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid2 = await resolver.checkDataHashAttestation(TEST_DID_HASH, dataHash2);
 
             expect(isValid1).to.be.true;
             expect(isValid2).to.be.true;
@@ -168,7 +168,7 @@ describe("OMA3 Critical Bug Detection Tests", function () {
                 "🚨 CRITICAL BUG: End-to-end ownership resolution broken!");
 
             // Step 4: Verify data hash validation works
-            const isDataValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isDataValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isDataValid).to.be.true;
         });
     });
@@ -225,7 +225,7 @@ describe("OMA3 Critical Bug Detection Tests", function () {
                 "Deterministic issuer should NOT be authorized by default";
 
             console.log("   🚨 BUG CONFIRMED: Contract looks for unauthorized deterministic issuer");
-            console.log("   📋 IMPACT: currentOwner() and isDataHashValid() will always fail");
+            console.log("   📋 IMPACT: currentOwner() and checkDataHashAttestation() will always fail");
         });
     });
 });

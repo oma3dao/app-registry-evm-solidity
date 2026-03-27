@@ -34,7 +34,7 @@ describe("OMA3ResolverWithStore - 100% Coverage", function () {
     }
 
     describe("100% Coverage - Lines 240, 243, 245", function () {
-        it("Should hit line 240 - entry not active in isDataHashValid", async function () {
+        it("Should hit line 240 - entry not active in checkDataHashAttestation", async function () {
             const { resolver, owner } = await loadFixture(deployResolverFixture);
 
             // Generate deterministic addresses that match the contract's pattern
@@ -60,17 +60,17 @@ describe("OMA3ResolverWithStore - 100% Coverage", function () {
             // and ensuring it behaves correctly.
 
             // Test 1: No attestations (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test 2: Test with different DID hashes to ensure the function works
             const differentDidHash = ethers.keccak256(ethers.toUtf8Bytes(`did:oma3:different-${Date.now()}`));
-            const result2 = await resolver.isDataHashValid(differentDidHash, testDataHash);
+            const result2 = await resolver.checkDataHashAttestation(differentDidHash, testDataHash);
             expect(result2).to.be.false;
 
             // Test 3: Test with different data hashes
             const differentDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-different-${Date.now()}`));
-            const result3 = await resolver.isDataHashValid(testDidHash, differentDataHash);
+            const result3 = await resolver.checkDataHashAttestation(testDidHash, differentDataHash);
             expect(result3).to.be.false;
 
             // The challenge is that the contract's linear scan uses deterministic address generation:
@@ -85,7 +85,7 @@ describe("OMA3ResolverWithStore - 100% Coverage", function () {
             expect(typeof result3).to.equal('boolean');
         });
 
-        it("Should hit line 243 - expired entry in isDataHashValid", async function () {
+        it("Should hit line 243 - expired entry in checkDataHashAttestation", async function () {
             const { resolver, owner } = await loadFixture(deployResolverFixture);
 
             // Generate deterministic addresses
@@ -105,7 +105,7 @@ describe("OMA3ResolverWithStore - 100% Coverage", function () {
             // But we can still test the function's behavior
 
             // Test with no attestations
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test with different inputs to ensure the function works correctly
@@ -117,13 +117,13 @@ describe("OMA3ResolverWithStore - 100% Coverage", function () {
             ];
 
             for (const testCase of testCases) {
-                const result = await resolver.isDataHashValid(testCase.did, testCase.data);
+                const result = await resolver.checkDataHashAttestation(testCase.did, testCase.data);
                 expect(result).to.be.false; // Should be false because no attestations exist
                 expect(typeof result).to.equal('boolean');
             }
         });
 
-        it("Should hit line 245 - valid attestation found in isDataHashValid", async function () {
+        it("Should hit line 245 - valid attestation found in checkDataHashAttestation", async function () {
             const { resolver, owner } = await loadFixture(deployResolverFixture);
 
             // Generate deterministic addresses
@@ -140,7 +140,7 @@ describe("OMA3ResolverWithStore - 100% Coverage", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-line245-${Date.now()}`));
 
             // Test with no attestations
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test with various inputs to ensure the function works correctly
@@ -152,7 +152,7 @@ describe("OMA3ResolverWithStore - 100% Coverage", function () {
             ];
 
             for (const testCase of testCases) {
-                const result = await resolver.isDataHashValid(testCase.did, testCase.data);
+                const result = await resolver.checkDataHashAttestation(testCase.did, testCase.data);
                 expect(result).to.be.false; // Should be false because no attestations exist
                 expect(typeof result).to.equal('boolean');
             }
@@ -186,7 +186,7 @@ describe("OMA3ResolverWithStore - 100% Coverage", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-limitation-${Date.now()}`));
 
             // Test the function - it will check these deterministic addresses but won't find any attestations
-            const result = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result).to.be.false; // Will be false because no attestations exist for these addresses
 
             // This test acknowledges that we cannot hit lines 240, 243, 245 due to the
@@ -220,7 +220,7 @@ describe("OMA3ResolverWithStore - 100% Coverage", function () {
             ];
 
             for (const scenario of testScenarios) {
-                const result = await resolver.isDataHashValid(scenario.did, scenario.data);
+                const result = await resolver.checkDataHashAttestation(scenario.did, scenario.data);
                 expect(result).to.be.false; // Should be false because no attestations exist
                 expect(typeof result).to.equal('boolean');
             }

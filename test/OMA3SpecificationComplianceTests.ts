@@ -235,7 +235,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
 
             // Validate data hash
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.true;
         });
 
@@ -249,7 +249,7 @@ describe("OMA3 Specification Compliance Tests", function () {
                 .to.be.revertedWith("NOT_AUTHORIZED_ISSUER");
 
             // Validate should return false
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.false;
         });
 
@@ -262,7 +262,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, pastTime);
 
             // Should not be valid
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.false;
         });
 
@@ -275,7 +275,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
 
             // Verify valid
-            let isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            let isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.true;
 
             // Revoke attestation
@@ -284,7 +284,7 @@ describe("OMA3 Specification Compliance Tests", function () {
                 .withArgs(issuer1.address, TEST_DID_HASH, TEST_DATA_HASH, anyValue, anyValue);
 
             // Should no longer be valid
-            isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.false;
         });
     });
@@ -529,7 +529,7 @@ describe("OMA3 Specification Compliance Tests", function () {
             await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
 
             // Step 4: Verify data hash validation
-            const isDataValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isDataValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isDataValid).to.be.true;
 
             // Step 5: Mint app using the verified ownership

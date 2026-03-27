@@ -663,18 +663,18 @@ describe("OMA3 Missing Test Cases", function () {
                 await expect(registry.connect(user1).updateAppControlled(
                     did,
                     1, // major
-                    "https://newdata.example.com",
                     newDataHash,
                     0,
                     3, // interfaces human+api
                     [],
-                    1, 1 // minor, patch
+                    1, 1, // minor, patch
+                    ""
                 )).to.not.be.reverted;
 
-                // Verify update
+                // Verify update (dataUrl is immutable; set at mint)
                 const app = await registry.getApp(did, 1);
                 expect(app.interfaces).to.equal(3);
-                expect(app.dataUrl).to.equal("https://newdata.example.com");
+                expect(app.dataUrl).to.equal("https://data.example.com");
             });
 
             it("Should reject updateAppControlled with interface removal", async function () {
@@ -705,12 +705,12 @@ describe("OMA3 Missing Test Cases", function () {
                 await expect(registry.connect(user1).updateAppControlled(
                     did,
                     1, // major
-                    "https://newdata.example.com",
                     newDataHash,
                     0,
                     1, // only human (removed api)
                     [],
-                    1, 0
+                    1, 0,
+                    ""
                 )).to.be.revertedWithCustomError(registry, "InterfaceRemovalNotAllowed");
             });
 
@@ -907,7 +907,7 @@ describe("OMA3 Missing Test Cases", function () {
                 const did = "did:oma3:unauthorized-test";
                 const metadataJson = JSON.stringify({ name: "Unauthorized Test" });
 
-                await expect(metadata.connect(user1).setMetadataForRegistry(did, metadataJson))
+                await expect(metadata.connect(user1).setMetadataForRegistry(did, 1, 0, 0, metadataJson))
                     .to.be.revertedWith("AppMetadata Contract Error: Only authorized registry");
             });
 
@@ -937,7 +937,7 @@ describe("OMA3 Missing Test Cases", function () {
                 expect(stored).to.equal("");
             });
 
-            it("Should reject updating authorized registry after initial set", async function () {
+            it("Should allow updating authorized registry after initial set", async function () {
                 const { metadata, owner } = await loadFixture(deployMissingTestsFixture);
 
                 // Deploy new registry
@@ -945,8 +945,10 @@ describe("OMA3 Missing Test Cases", function () {
                 const newRegistry = await NewRegistryFactory.deploy();
                 await newRegistry.waitForDeployment();
 
+                // Contract now allows re-setting the authorized registry
                 await expect(metadata.connect(owner).setAuthorizedRegistry(await newRegistry.getAddress()))
-                    .to.be.revertedWith("AppMetadata Contract Error: Registry already set");
+                    .to.emit(metadata, "RegistryAuthorized")
+                    .withArgs(await newRegistry.getAddress());
             });
 
             it("Should reject non-owner calls to setAuthorizedRegistry", async function () {

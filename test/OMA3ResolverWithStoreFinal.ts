@@ -65,7 +65,7 @@ describe("OMA3ResolverWithStore - Final Coverage Test", function () {
                 await resolver.connect(impersonatedSigner).attestDataHash(testDidHash, testDataHash, 0);
                 await resolver.connect(impersonatedSigner).revokeDataHash(testDidHash, testDataHash);
                 
-                const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 console.log(`Result 1 (inactive): ${result1}`);
                 expect(typeof result1).to.equal('boolean');
 
@@ -74,7 +74,7 @@ describe("OMA3ResolverWithStore - Final Coverage Test", function () {
                 const pastTime = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
                 await resolver.connect(impersonatedSigner).attestDataHash(testDidHash, testDataHash, pastTime);
                 
-                const result2 = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const result2 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 console.log(`Result 2 (expired): ${result2}`);
                 expect(typeof result2).to.equal('boolean');
 
@@ -83,7 +83,7 @@ describe("OMA3ResolverWithStore - Final Coverage Test", function () {
                 const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
                 await resolver.connect(impersonatedSigner).attestDataHash(testDidHash, testDataHash, futureTime);
                 
-                const result3 = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const result3 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 console.log(`Result 3 (valid): ${result3}`);
                 expect(result3).to.be.true; // Should return true
 
@@ -92,14 +92,14 @@ describe("OMA3ResolverWithStore - Final Coverage Test", function () {
                 const differentDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-different-${Date.now()}`));
                 
                 await resolver.connect(impersonatedSigner).attestDataHash(differentDidHash, differentDataHash, futureTime);
-                const result4 = await resolver.isDataHashValid(differentDidHash, differentDataHash);
+                const result4 = await resolver.checkDataHashAttestation(differentDidHash, differentDataHash);
                 console.log(`Result 4 (different DID): ${result4}`);
                 expect(result4).to.be.true;
 
             } catch (error) {
                 console.log(`Error during test: ${error}`);
                 // Even if there's an error, we've tested the function behavior
-                const fallbackResult = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const fallbackResult = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 expect(typeof fallbackResult).to.equal('boolean');
             } finally {
                 // Stop impersonating
@@ -140,7 +140,7 @@ describe("OMA3ResolverWithStore - Final Coverage Test", function () {
                     const futureTime = Math.floor(Date.now() / 1000) + 3600;
                     await resolver.connect(impersonatedSigner).attestDataHash(testDidHash, testDataHash, futureTime);
                     
-                    const result = await resolver.isDataHashValid(testDidHash, testDataHash);
+                    const result = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                     console.log(`Result for address ${i}: ${result}`);
                     expect(typeof result).to.equal('boolean');
 
@@ -170,7 +170,7 @@ describe("OMA3ResolverWithStore - Final Coverage Test", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-edge-${Date.now()}`));
 
             // Test with no attestations first
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             console.log(`Result with no attestations: ${result1}`);
             expect(result1).to.be.false;
 
@@ -184,7 +184,7 @@ describe("OMA3ResolverWithStore - Final Coverage Test", function () {
                 const futureTime = Math.floor(Date.now() / 1000) + 3600;
                 await resolver.connect(impersonatedSigner).attestDataHash(testDidHash, testDataHash, futureTime);
                 
-                const result2 = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const result2 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 console.log(`Result with valid attestation: ${result2}`);
                 expect(result2).to.be.true;
 

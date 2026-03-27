@@ -4,7 +4,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import "@nomicfoundation/hardhat-chai-matchers";
 import { ethers } from "hardhat";
-import { OMA3AppRegistry, OMA3AppMetadata, OMA3ResolverWithStore, OMA3SystemFactory } from "../typechain-types";
+import { OMA3AppRegistry, OMA3AppMetadata, OMA3ResolverWithStore } from "../typechain-types";
 
 describe("OMA3 System - Stress Tests and Performance", function () {
     // Test fixture for stress testing
@@ -89,20 +89,16 @@ describe("OMA3 System - Stress Tests and Performance", function () {
 
             const users = [user1, user2, user3];
             const numAppsPerUser = 20;
-            const promises = [];
-
 
             for (let userIndex = 0; userIndex < users.length; userIndex++) {
                 const user = users[userIndex];
                 
                 for (let i = 0; i < numAppsPerUser; i++) {
                     const did = `did:web:user${userIndex}app${i}.com`;
-                    const didHash = ethers.keccak256(ethers.toUtf8Bytes(did));
                     const metadataJson = JSON.stringify({ name: `User ${userIndex} App ${i}`, version: "1.0.0" });
                     const dataHash = ethers.keccak256(ethers.toUtf8Bytes(metadataJson));
 
-                    // Mint app
-                    promises.push(registry.connect(user).mint(
+                    await registry.connect(user).mint(
                         did,
                         1, // interfaces
                         `https://example.com/data${userIndex}${i}`,
@@ -113,12 +109,9 @@ describe("OMA3 System - Stress Tests and Performance", function () {
                         1, 0, 0, // version
                         [],
                         metadataJson
-                    ));
+                    );
                 }
             }
-
-            // All mints should succeed
-            await expect(Promise.all(promises)).to.not.be.reverted;
 
             // Verify total supply
             expect(await registry.totalSupply()).to.equal(users.length * numAppsPerUser);
@@ -176,13 +169,13 @@ describe("OMA3 System - Stress Tests and Performance", function () {
                 updatePromises.push(registry.connect(user1).updateAppControlled(
                     did,
                     1, // major version
-                    `https://example.com/updatedData${i}`, // new data URL
                     newDataHash, // new data hash
                     0, // keccak256
                     0, // no interface changes
                     [], // no trait changes
                     0, // no minor change
-                    1  // patch increment
+                    1, // patch increment
+                    ""
                 ));
             }
 
@@ -398,85 +391,6 @@ describe("OMA3 System - Stress Tests and Performance", function () {
         });
     });
 
-    describe("System Factory Performance", function () {
-        it("Should deploy multiple systems efficiently", async function () {
-            const [owner, deployer1, deployer2, deployer3] = await ethers.getSigners();
-
-            const Factory = await ethers.getContractFactory("OMA3SystemFactory");
-            const promises = [];
-
-            // Deploy multiple systems concurrently
-            for (let i = 0; i < 5; i++) {
-                const factory = await Factory.deploy();
-                await factory.waitForDeployment();
-                
-                const salt = ethers.keccak256(ethers.toUtf8Bytes(`salt${i}`));
-                promises.push(factory.connect(owner).deploySystem(salt));
-            }
-
-            // All deployments should succeed
-            const txResults = await Promise.all(promises);
-            expect(txResults).to.have.length(5);
-            
-            // Wait for transactions to be mined and get the return values from events
-            const results = [];
-            for (let i = 0; i < txResults.length; i++) {
-                const tx = txResults[i];
-                const receipt = await tx.wait();
-                const targetAddress = tx.to;
-                
-                if (!receipt || !targetAddress) {
-                    throw new Error("Transaction receipt or target address not found");
-                }
-                
-                // Get the factory contract for this transaction
-                const factory = await ethers.getContractAt("OMA3SystemFactory", targetAddress);
-                
-                // Get the addresses from the SystemDeployed event
-                const event = receipt.logs.find(log => {
-                    try {
-                        const parsed = factory.interface.parseLog(log);
-                        return parsed && parsed.name === "SystemDeployed";
-                    } catch {
-                        return false;
-                    }
-                });
-                
-                if (!event) {
-                    throw new Error("SystemDeployed event not found");
-                }
-                
-                const parsed = factory.interface.parseLog(event);
-                if (!parsed) {
-                    throw new Error("Failed to parse SystemDeployed event");
-                }
-                
-                const registryAddress = parsed.args.registry;
-                const metadataAddress = parsed.args.metadata;
-                results.push([registryAddress, metadataAddress]);
-            }
-
-            // Verify all systems are properly linked
-            for (let i = 0; i < results.length; i++) {
-                const result = results[i];
-                const registryAddress = result[0];
-                const metadataAddress = result[1];
-                
-                // Check that addresses are valid
-                expect(registryAddress).to.not.be.null;
-                expect(metadataAddress).to.not.be.null;
-                expect(registryAddress).to.not.equal(ethers.ZeroAddress);
-                expect(metadataAddress).to.not.equal(ethers.ZeroAddress);
-                
-                const registry = await ethers.getContractAt("OMA3AppRegistry", registryAddress);
-                const metadata = await ethers.getContractAt("OMA3AppMetadata", metadataAddress);
-                
-                expect(await registry.metadataContract()).to.equal(metadataAddress);
-                expect(await metadata.authorizedRegistry()).to.equal(registryAddress);
-            }
-        });
-    });
-
     describe("Memory and Gas Optimization", function () {
         it("Should handle maximum trait arrays efficiently", async function () {
             const { registry, resolver, issuer, user1 } = await loadFixture(deploySystemFixture);
@@ -538,11 +452,8 @@ describe("OMA3 System - Stress Tests and Performance", function () {
                 [],
                 largeMetadata
             );
-            
-            // Now set metadata using setMetadataJson
-            await registry.connect(owner).setMetadataJson(did, 1, largeMetadata, dataHash, 0);
 
-            // Verify it was stored
+            // Verify it was stored (mint already passed largeMetadata)
             const stored = await metadata.getMetadataJson("did:web:large.com");
             expect(stored).to.equal(largeMetadata);
         });

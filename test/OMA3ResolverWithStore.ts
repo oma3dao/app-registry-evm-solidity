@@ -256,7 +256,7 @@ describe("OMA3ResolverWithStore", function () {
         it("Should return false when no valid data hash attestations exist", async function () {
             const { resolver } = await loadFixture(deployWithIssuersFixture);
 
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.false;
         });
 
@@ -271,7 +271,7 @@ describe("OMA3ResolverWithStore", function () {
             expect(dataEntry.active).to.be.true;
             expect(dataEntry.expiresAt).to.equal(0);
             
-            // Note: isDataHashValid uses linear scan - will be false with test addresses
+            // Note: checkDataHashAttestation uses linear scan - will be false with test addresses
             // In production, addresses would be deterministic based on the pattern
         });
 
@@ -283,7 +283,7 @@ describe("OMA3ResolverWithStore", function () {
             // Attest with past expiry
             await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, pastTime);
 
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.false;
         });
     });
@@ -591,7 +591,7 @@ describe("OMA3ResolverWithStore", function () {
         it("Should return false when no valid data hash attestations exist", async function () {
             const { resolver } = await loadFixture(deployWithIssuersFixture);
 
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.false;
         });
 
@@ -599,7 +599,7 @@ describe("OMA3ResolverWithStore", function () {
             const { resolver } = await loadFixture(deployWithIssuersFixture);
 
             // Test the linear scan logic by ensuring no issuers are found
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.false;
         });
 
@@ -611,7 +611,7 @@ describe("OMA3ResolverWithStore", function () {
             // Attest with past expiry
             await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, pastTime);
 
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.false;
         });
 
@@ -624,7 +624,7 @@ describe("OMA3ResolverWithStore", function () {
             // Then revoke
             await resolver.connect(issuer1).revokeDataHash(TEST_DID_HASH, TEST_DATA_HASH);
 
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             expect(isValid).to.be.false;
         });
     });
@@ -866,7 +866,7 @@ describe("OMA3ResolverWithStore", function () {
             
             // Test all the resolver functions
             const resolvedOwner = await resolver.currentOwner(TEST_DID_HASH);
-            const isValid = await resolver.isDataHashValid(TEST_DID_HASH, TEST_DATA_HASH);
+            const isValid = await resolver.checkDataHashAttestation(TEST_DID_HASH, TEST_DATA_HASH);
             const [hasActive, controller, expiresAt] = await resolver.hasActive(issuer1.address, TEST_DID_HASH);
             const entry = await resolver.get(issuer1.address, TEST_DID_HASH);
             const dataEntry = await resolver.getDataEntry(issuer1.address, TEST_DID_HASH, TEST_DATA_HASH);
@@ -906,7 +906,7 @@ describe("OMA3ResolverWithStore", function () {
             const uniqueDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-limitation-${Date.now()}`));
             
             // Test 1: No attestations (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
+            const result1 = await resolver.checkDataHashAttestation(uniqueDidHash, uniqueDataHash);
             expect(result1).to.be.false;
             
             // Test 2: Create attestation with our test signers
@@ -914,7 +914,7 @@ describe("OMA3ResolverWithStore", function () {
             await resolver.connect(issuer1).attestDataHash(uniqueDidHash, uniqueDataHash, 0);
             
             // The linear scan now finds real authorized issuers correctly
-            const result2 = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
+            const result2 = await resolver.checkDataHashAttestation(uniqueDidHash, uniqueDataHash);
             expect(result2).to.be.true; // Now returns true with the fix!
             
             // Test 3: Test the basic functionality we can verify
@@ -949,7 +949,7 @@ describe("OMA3ResolverWithStore", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-deterministic-coverage-${Date.now()}`));
 
             // Test 1: No attestations (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test 2: Create attestation using the first deterministic address
@@ -978,7 +978,7 @@ describe("OMA3ResolverWithStore", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-custom-signer-${Date.now()}`));
 
             // Test 1: No attestations (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test 2: Try to create a signer with the deterministic address
@@ -1001,7 +1001,7 @@ describe("OMA3ResolverWithStore", function () {
             }
 
             // Test with no attestations - this should hit the loop but not find anything
-            const result2 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result2 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result2).to.be.false;
 
             // The key insight is that the contract's linear scan will check these addresses
@@ -1028,7 +1028,7 @@ describe("OMA3ResolverWithStore", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-test-contract-${Date.now()}`));
 
             // Test 1: No attestations (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test 2: The linear scan will check these deterministic addresses
@@ -1072,7 +1072,7 @@ describe("OMA3ResolverWithStore", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-limitation-test-${Date.now()}`));
 
             // Test 1: No attestations (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // The problem is that we can't create attestations for these deterministic addresses
@@ -1214,8 +1214,8 @@ describe("OMA3ResolverWithStore", function () {
             const resolvedOwner1 = await resolver.currentOwner(uniqueDidHash);
             expect(typeof resolvedOwner1).to.equal('string');
             
-            // Test isDataHashValid - this should trigger the linear scan logic  
-            const isValid = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
+            // Test checkDataHashAttestation - this should trigger the linear scan logic  
+            const isValid = await resolver.checkDataHashAttestation(uniqueDidHash, uniqueDataHash);
             expect(typeof isValid).to.equal('boolean');
             
             // Test with expired attestation to trigger different branches
@@ -1225,7 +1225,7 @@ describe("OMA3ResolverWithStore", function () {
             
             // Test again with expired entries
             const expiredOwner = await resolver.currentOwner(uniqueDidHash);
-            const expiredValid = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
+            const expiredValid = await resolver.checkDataHashAttestation(uniqueDidHash, uniqueDataHash);
             expect(typeof expiredOwner).to.equal('string');
             expect(typeof expiredValid).to.equal('boolean');
         });
@@ -1252,8 +1252,8 @@ describe("OMA3ResolverWithStore", function () {
             const resolvedOwner2 = await resolver.currentOwner(uniqueDidHash);
             expect(typeof resolvedOwner2).to.equal('string');
             
-            // Test isDataHashValid with multiple issuers - should trigger linear scan
-            const isValid = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
+            // Test checkDataHashAttestation with multiple issuers - should trigger linear scan
+            const isValid = await resolver.checkDataHashAttestation(uniqueDidHash, uniqueDataHash);
             expect(typeof isValid).to.equal('boolean');
             
             // Test with some expired entries to hit different branches
@@ -1263,12 +1263,12 @@ describe("OMA3ResolverWithStore", function () {
             
             // Test again with mixed active/expired entries
             const mixedOwner = await resolver.currentOwner(uniqueDidHash);
-            const mixedValid = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
+            const mixedValid = await resolver.checkDataHashAttestation(uniqueDidHash, uniqueDataHash);
             expect(typeof mixedOwner).to.equal('string');
             expect(typeof mixedValid).to.equal('boolean');
         });
 
-        it("Should specifically target lines 240, 243, 245 in isDataHashValid", async function () {
+        it("Should specifically target lines 240, 243, 245 in checkDataHashAttestation", async function () {
             const { resolver, issuer1 } = await loadFixture(deployWithIssuersFixture);
 
             const uniqueDidHash = ethers.keccak256(ethers.toUtf8Bytes(`did:oma3:target-lines-${Date.now()}`));
@@ -1279,7 +1279,7 @@ describe("OMA3ResolverWithStore", function () {
             await resolver.connect(issuer1).attestDataHash(uniqueDidHash, uniqueDataHash, futureTime);
             
             // This should hit line 245 (return true) when it finds the valid attestation
-            const isValid = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
+            const isValid = await resolver.checkDataHashAttestation(uniqueDidHash, uniqueDataHash);
             expect(typeof isValid).to.equal('boolean');
             
             // Create an inactive attestation to hit line 240 (!entry.active)
@@ -1290,11 +1290,11 @@ describe("OMA3ResolverWithStore", function () {
             await resolver.connect(issuer1).attestDataHash(uniqueDidHash, uniqueDataHash, pastTime);
             
             // Test with expired entry - should hit line 243
-            const expiredValid = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
+            const expiredValid = await resolver.checkDataHashAttestation(uniqueDidHash, uniqueDataHash);
             expect(typeof expiredValid).to.equal('boolean');
             
             // Test with inactive entry - should hit line 240
-            const inactiveValid = await resolver.isDataHashValid(uniqueDidHash, uniqueDataHash);
+            const inactiveValid = await resolver.checkDataHashAttestation(uniqueDidHash, uniqueDataHash);
             expect(typeof inactiveValid).to.equal('boolean');
         });
 
@@ -1308,7 +1308,7 @@ describe("OMA3ResolverWithStore", function () {
             // Create active attestation (should hit line 245)
             const futureTime = Math.floor(Date.now() / 1000) + 3600;
             await resolver.connect(issuer1).attestDataHash(scenario1DidHash, scenario1DataHash, futureTime);
-            const scenario1Result = await resolver.isDataHashValid(scenario1DidHash, scenario1DataHash);
+            const scenario1Result = await resolver.checkDataHashAttestation(scenario1DidHash, scenario1DataHash);
             expect(typeof scenario1Result).to.equal('boolean');
 
             const scenario2DidHash = ethers.keccak256(ethers.toUtf8Bytes(`did:oma3:scenario2-${Date.now()}`));
@@ -1317,7 +1317,7 @@ describe("OMA3ResolverWithStore", function () {
             // Create inactive attestation (should hit line 240)
             await resolver.connect(issuer2).attestDataHash(scenario2DidHash, scenario2DataHash, futureTime);
             await resolver.connect(issuer2).revokeDataHash(scenario2DidHash, scenario2DataHash);
-            const scenario2Result = await resolver.isDataHashValid(scenario2DidHash, scenario2DataHash);
+            const scenario2Result = await resolver.checkDataHashAttestation(scenario2DidHash, scenario2DataHash);
             expect(typeof scenario2Result).to.equal('boolean');
 
             const scenario3DidHash = ethers.keccak256(ethers.toUtf8Bytes(`did:oma3:scenario3-${Date.now()}`));
@@ -1326,17 +1326,17 @@ describe("OMA3ResolverWithStore", function () {
             // Create expired attestation (should hit line 243)
             const pastTime = Math.floor(Date.now() / 1000) - 3600;
             await resolver.connect(issuer2).attestDataHash(scenario3DidHash, scenario3DataHash, pastTime);
-            const scenario3Result = await resolver.isDataHashValid(scenario3DidHash, scenario3DataHash);
+            const scenario3Result = await resolver.checkDataHashAttestation(scenario3DidHash, scenario3DataHash);
             expect(typeof scenario3Result).to.equal('boolean');
 
             // Test with no attestations (should hit the loop but not find anything)
             const noAttestationDidHash = ethers.keccak256(ethers.toUtf8Bytes(`did:oma3:no-attestation-${Date.now()}`));
             const noAttestationDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-no-attestation-${Date.now()}`));
-            const noAttestationResult = await resolver.isDataHashValid(noAttestationDidHash, noAttestationDataHash);
+            const noAttestationResult = await resolver.checkDataHashAttestation(noAttestationDidHash, noAttestationDataHash);
             expect(typeof noAttestationResult).to.equal('boolean');
         });
 
-        it("Should comprehensively test isDataHashValid with available functionality", async function () {
+        it("Should comprehensively test checkDataHashAttestation with available functionality", async function () {
             const { resolver, owner } = await loadFixture(deployResolverFixture);
 
             // Use regular test approach since we can't match deterministic addresses
@@ -1346,23 +1346,23 @@ describe("OMA3ResolverWithStore", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-comprehensive-${Date.now()}`));
 
             // Test 1: No attestations at all (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test 2: Create active attestation with our test signers
             // With the fix, this now works with real authorized issuers
             await resolver.connect(issuer1).attestDataHash(testDidHash, testDataHash, 0);
-            const result2 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result2 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result2).to.be.true; // Now returns true with the fix!
 
             // Test 3: Test with different DID hash
             const differentDidHash = ethers.keccak256(ethers.toUtf8Bytes(`did:oma3:different-test-${Date.now()}`));
-            const result3 = await resolver.isDataHashValid(differentDidHash, testDataHash);
+            const result3 = await resolver.checkDataHashAttestation(differentDidHash, testDataHash);
             expect(result3).to.be.false; // No attestations for this DID
 
             // Test 4: Test with different data hash
             const differentDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-different-${Date.now()}`));
-            const result4 = await resolver.isDataHashValid(testDidHash, differentDataHash);
+            const result4 = await resolver.checkDataHashAttestation(testDidHash, differentDataHash);
             expect(result4).to.be.false; // No attestations for this data hash
 
             // Test 5: Verify function behavior
@@ -1395,7 +1395,7 @@ describe("OMA3ResolverWithStore", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-actual-hit-${Date.now()}`));
 
             // Test 1: No attestations (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test 2: The challenge is that we need to create attestations for the deterministic addresses
@@ -1415,7 +1415,7 @@ describe("OMA3ResolverWithStore", function () {
             ];
 
             for (const testCase of testCases) {
-                const result = await resolver.isDataHashValid(testCase.did, testCase.data);
+                const result = await resolver.checkDataHashAttestation(testCase.did, testCase.data);
                 expect(result).to.be.false; // Should be false because no attestations exist
                 expect(typeof result).to.equal('boolean');
             }
@@ -1448,7 +1448,7 @@ describe("OMA3ResolverWithStore", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-deterministic-hit-${Date.now()}`));
 
             // Test 1: No attestations (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test 2: The challenge is that we need to create attestations for the deterministic addresses
@@ -1468,7 +1468,7 @@ describe("OMA3ResolverWithStore", function () {
             ];
 
             for (const testCase of testCases) {
-                const result = await resolver.isDataHashValid(testCase.did, testCase.data);
+                const result = await resolver.checkDataHashAttestation(testCase.did, testCase.data);
                 expect(result).to.be.false; // Should be false because no attestations exist
                 expect(typeof result).to.equal('boolean');
             }
@@ -1501,7 +1501,7 @@ describe("OMA3ResolverWithStore", function () {
             const testDataHash = ethers.keccak256(ethers.toUtf8Bytes(`data-different-approach-${Date.now()}`));
 
             // Test 1: No attestations (should hit the loop but not find anything)
-            const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+            const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
             expect(result1).to.be.false;
 
             // Test 2: The challenge is that we need to create attestations for the deterministic addresses
@@ -1521,7 +1521,7 @@ describe("OMA3ResolverWithStore", function () {
             ];
 
             for (const testCase of testCases) {
-                const result = await resolver.isDataHashValid(testCase.did, testCase.data);
+                const result = await resolver.checkDataHashAttestation(testCase.did, testCase.data);
                 expect(result).to.be.false; // Should be false because no attestations exist
                 expect(typeof result).to.equal('boolean');
             }

@@ -67,10 +67,13 @@ describe("OMA3AppMetadata", function () {
       await metadata.setAuthorizedRegistry(registry.address);
       
       // Set metadata from registry
-      await expect(metadata.connect(registry).setMetadataForRegistry(sampleData.did, sampleData.metadataJson))
+      await expect(metadata.connect(registry).setMetadataForRegistry(sampleData.did, 1, 0, 0, sampleData.metadataJson))
         .to.emit(metadata, "MetadataSet")
         .withArgs(
           sampleData.did,
+          1,
+          0,
+          0,
           sampleData.metadataJson,
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes(sampleData.metadataJson)),
           anyValue // block.timestamp
@@ -83,7 +86,7 @@ describe("OMA3AppMetadata", function () {
     it("Should reject unauthorized calls to set metadata", async function () {
       const { metadata, user1 } = await loadFixture(deployFixture);
       
-      await expect(metadata.connect(user1).setMetadataForRegistry(sampleData.did, sampleData.metadataJson))
+      await expect(metadata.connect(user1).setMetadataForRegistry(sampleData.did, 1, 0, 0, sampleData.metadataJson))
         .to.be.revertedWith("AppMetadata Contract Error: Only authorized registry");
     });
 
@@ -93,10 +96,10 @@ describe("OMA3AppMetadata", function () {
       await metadata.setAuthorizedRegistry(registry.address);
       
       // Test invalid DIDs
-      await expect(metadata.connect(registry).setMetadataForRegistry("", sampleData.metadataJson))
+      await expect(metadata.connect(registry).setMetadataForRegistry("", 1, 0, 0, sampleData.metadataJson))
         .to.be.revertedWith("AppMetadata Contract Error: DID cannot be empty");
       
-      await expect(metadata.connect(registry).setMetadataForRegistry("UPPERCASE", sampleData.metadataJson))
+      await expect(metadata.connect(registry).setMetadataForRegistry("UPPERCASE", 1, 0, 0, sampleData.metadataJson))
         .to.be.revertedWith("AppMetadata Contract Error: DID must be lowercase");
     });
 
@@ -106,12 +109,12 @@ describe("OMA3AppMetadata", function () {
       await metadata.setAuthorizedRegistry(registry.address);
       
       // Test empty JSON
-      await expect(metadata.connect(registry).setMetadataForRegistry(sampleData.did, ""))
+      await expect(metadata.connect(registry).setMetadataForRegistry(sampleData.did, 1, 0, 0, ""))
         .to.be.revertedWith("AppMetadata Contract Error: Metadata JSON cannot be empty");
       
       // Test JSON too long (over 10KB)
       const longJson = "x".repeat(10001);
-      await expect(metadata.connect(registry).setMetadataForRegistry(sampleData.did, longJson))
+      await expect(metadata.connect(registry).setMetadataForRegistry(sampleData.did, 1, 0, 0, longJson))
         .to.be.revertedWith("AppMetadata Contract Error: Metadata JSON too large");
     });
   });
@@ -127,7 +130,7 @@ describe("OMA3AppMetadata", function () {
       const { metadata, registry } = await loadFixture(deployFixture);
       
       await metadata.setAuthorizedRegistry(registry.address);
-      await metadata.connect(registry).setMetadataForRegistry(sampleData.did, sampleData.metadataJson);
+      await metadata.connect(registry).setMetadataForRegistry(sampleData.did, 1, 0, 0, sampleData.metadataJson);
       
       expect(await metadata.getMetadataJson(sampleData.did)).to.equal(sampleData.metadataJson);
     });
@@ -146,7 +149,7 @@ describe("OMA3AppMetadata", function () {
         // This should not cause any issues and should work correctly
         // since there are no uppercase letters to reject
         await expect(
-          metadata.connect(registry).setMetadataForRegistry("did:oma3:test", JSON.stringify({
+          metadata.connect(registry).setMetadataForRegistry("did:oma3:test", 1, 0, 0, JSON.stringify({
             name: "Test App",
             description: "Test description",
             data: nonLetterString

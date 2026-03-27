@@ -31,7 +31,7 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
     describe("Data Hash Validation Edge Cases", function () {
         it("Should handle data hash validation with data URL resolver", async function () {
             // Skip this test due to resolver implementation bug
-            // The resolver's isDataHashValid function uses deterministic address generation
+            // The resolver's checkDataHashAttestation function uses deterministic address generation
             // which makes it impossible to properly test data hash validation
             this.skip();
         });
@@ -66,8 +66,9 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
             const resolver = await MockResolver.deploy();
             await resolver.waitForDeployment();
 
-            // Set the resolver
+            // Set the resolver and enable attestation requirement
             await registry.connect(owner).setDataUrlResolver(await resolver.getAddress());
+            await registry.connect(owner).setRequireDataUrlAttestation(true);
 
             const did = "did:web:test.com";
             const metadataJson = JSON.stringify({ name: "Test App" });
@@ -142,13 +143,13 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
             await registry.connect(user1).updateAppControlled(
                 did,
                 1, // major version
-                "https://example.com/data2",
                 dataHash,
                 0, // keccak256
                 3, // new interfaces (1 + 2)
                 [], // no trait changes
                 1, // minor increment required for interface changes
-                0  // patch reset to 0 for minor increment
+                0, // patch reset to 0 for minor increment
+                ""
             );
 
             // Verify the update
@@ -188,18 +189,18 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
             await registry.connect(user1).updateAppControlled(
                 did,
                 1, // major version
-                "https://example.com/data2",
                 newDataHash,
                 0, // keccak256
                 1, // no interface changes
                 [], // no trait changes
                 0, // no minor change
-                1  // patch increment
+                1, // patch increment
+                ""
             );
 
-            // Verify the update
+            // Verify the update (dataUrl is immutable; set at mint)
             const app = await registry.getApp(did, 1);
-            expect(app.dataUrl).to.equal("https://example.com/data2");
+            expect(app.dataUrl).to.equal("https://example.com/data");
             // Check version history instead of direct fields
             expect(app.versionHistory.length).to.be.greaterThan(0);
             const latestVersion = app.versionHistory[app.versionHistory.length - 1];
@@ -236,13 +237,13 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
             await registry.connect(user1).updateAppControlled(
                 did,
                 1, // major version
-                "https://example.com/data",
                 newDataHash,
                 0, // keccak256
                 1, // no interface changes
                 newTraits, // trait changes
                 0, // no minor change
-                1  // patch increment
+                1, // patch increment
+                ""
             );
 
             // Verify the update
@@ -282,13 +283,13 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
             await expect(registry.connect(user1).updateAppControlled(
                 did,
                 1, // major version
-                "https://example.com/data",
                 ethers.ZeroHash, // zero data hash (should trigger error)
                 0, // keccak256
                 1, // no interface changes
                 newTraits, // trait changes
                 0, // no minor change
-                1  // patch increment
+                1, // patch increment
+                ""
             )).to.be.revertedWithCustomError(registry, "DataHashRequiredForTraitChange");
         });
     });
@@ -458,12 +459,11 @@ describe("OMA3AppRegistry - Edge Cases and Coverage", function () {
         it("Should handle non-existent token operations", async function () {
             const { registry, user1 } = await loadFixture(deployRegistryFixture);
 
-            // Test operations on non-existent token
             await expect(registry.getDIDByTokenId(999))
-                .to.be.revertedWith("Nonexistent token");
+                .to.be.revertedWithCustomError(registry, "InvalidAgent");
 
             await expect(registry.tokenURI(999))
-                .to.be.revertedWith("Nonexistent token");
+                .to.be.revertedWithCustomError(registry, "InvalidAgent");
         });
     });
 });

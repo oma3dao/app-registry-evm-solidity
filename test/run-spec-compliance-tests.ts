@@ -174,7 +174,7 @@ async function main() {
         
         log(`\n${colors.bright}What these tests do:${colors.reset}`);
         log(`  ${colors.yellow}•${colors.reset} Verify that currentOwner() works with real authorized issuers`);
-        log(`  ${colors.yellow}•${colors.reset} Check that isDataHashValid() functions correctly`);
+        log(`  ${colors.yellow}•${colors.reset} Check that checkDataHashAttestation() functions correctly`);
         log(`  ${colors.yellow}•${colors.reset} Test end-to-end attestation-to-mint flows`);
         log(`  ${colors.yellow}•${colors.reset} Catch the deterministic issuer discovery bug`);
         log(`  ${colors.yellow}•${colors.reset} Ensure tests validate specification requirements, not broken implementation`);

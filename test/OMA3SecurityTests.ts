@@ -4,7 +4,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import "@nomicfoundation/hardhat-chai-matchers";
 import { ethers } from "hardhat";
-import { OMA3AppRegistry, OMA3AppMetadata, OMA3ResolverWithStore, OMA3SystemFactory } from "../typechain-types";
+import { OMA3AppRegistry, OMA3AppMetadata, OMA3ResolverWithStore } from "../typechain-types";
 
 describe("OMA3 System - Security Tests", function () {
     // Test fixture for security testing
@@ -111,13 +111,13 @@ describe("OMA3 System - Security Tests", function () {
             await expect(registry.connect(attacker).updateAppControlled(
                 did,
                 1, // major version
-                "https://example.com/newdata", // new data URL
                 dataHash, // same data hash
                 0, // keccak256
                 0, // no interface changes
                 [], // no trait changes
                 0, // no minor change
-                1  // patch increment
+                1, // patch increment
+                ""
             )).to.be.revertedWithCustomError(registry, "NotAppOwner");
         });
 
@@ -127,6 +127,9 @@ describe("OMA3 System - Security Tests", function () {
             // Attacker should not be able to set metadata (registry is already set in fixture)
             await expect(metadata.connect(attacker).setMetadataForRegistry(
                 "did:web:test.com",
+                1,
+                0,
+                0,
                 JSON.stringify({ name: "Test" })
             )).to.be.revertedWith("AppMetadata Contract Error: Only authorized registry");
         });
@@ -207,16 +210,17 @@ describe("OMA3 System - Security Tests", function () {
             await expect(registry.connect(user1).updateStatus(did, 1, 1))
                 .to.not.be.reverted;
 
+            const newDataHash = ethers.keccak256(ethers.toUtf8Bytes("post-status-update content"));
             await expect(registry.connect(user1).updateAppControlled(
                 did,
                 1, // major version
-                "https://example.com/newdata", // new data URL
-                dataHash, // same data hash
+                newDataHash,
                 0, // keccak256
                 0, // no interface changes
                 [], // no trait changes
                 0, // no minor change
-                1  // patch increment
+                1, // patch increment
+                ""
             )).to.not.be.reverted;
         });
     });
@@ -281,6 +285,9 @@ describe("OMA3 System - Security Tests", function () {
             for (const maliciousMeta of maliciousMetadata) {
                 await expect(metadata.connect(attacker).setMetadataForRegistry(
                     "did:web:test.com",
+                    1,
+                    0,
+                    0,
                     maliciousMeta
                 )).to.be.reverted;
             }

@@ -27,12 +27,12 @@ describe("OMA3ResolverWithStore Coverage", function () {
   });
 
   describe("Data Hash Validation Edge Cases", function () {
-    it("Should cover lines 212, 216, 219, 222, 224 in isDataHashValid", async function () {
+    it("Should cover lines 212, 216, 219, 222, 224 in checkDataHashAttestation", async function () {
       const didHash = ethers.keccak256(ethers.toUtf8Bytes("did:oma3:test"));
       const dataHash = ethers.keccak256(ethers.toUtf8Bytes("test-data"));
       
       // Test case 1: No attestations exist (line 212)
-      let isValid = await resolver.isDataHashValid(didHash, dataHash);
+      let isValid = await resolver.checkDataHashAttestation(didHash, dataHash);
       expect(isValid).to.be.false;
 
       // Test case 2: Attestation exists but is not active (line 216)
@@ -48,21 +48,21 @@ describe("OMA3ResolverWithStore Coverage", function () {
       await resolver.connect(deterministicSigner).attestDataHash(didHash, dataHash, 0); // 0 = no expiry
       await resolver.connect(deterministicSigner).revokeDataHash(didHash, dataHash);
       
-      isValid = await resolver.isDataHashValid(didHash, dataHash);
+      isValid = await resolver.checkDataHashAttestation(didHash, dataHash);
       expect(isValid).to.be.false;
 
       // Test case 3: Attestation exists but is expired (line 219)
       const pastTime = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
       await resolver.connect(deterministicSigner).attestDataHash(didHash, dataHash, pastTime);
       
-      isValid = await resolver.isDataHashValid(didHash, dataHash);
+      isValid = await resolver.checkDataHashAttestation(didHash, dataHash);
       expect(isValid).to.be.false;
 
       // Test case 4: Valid attestation exists (line 222)
       const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
       await resolver.connect(deterministicSigner).attestDataHash(didHash, dataHash, futureTime);
       
-      isValid = await resolver.isDataHashValid(didHash, dataHash);
+      isValid = await resolver.checkDataHashAttestation(didHash, dataHash);
       expect(typeof isValid).to.equal("boolean");
 
       // Test case 5: Multiple attestations with different expiry times (line 224)
@@ -70,11 +70,11 @@ describe("OMA3ResolverWithStore Coverage", function () {
       const dataHash2 = ethers.keccak256(ethers.toUtf8Bytes("test-data-2"));
       await resolver.connect(deterministicSigner).attestDataHash(didHash, dataHash2, futureTime);
       
-      isValid = await resolver.isDataHashValid(didHash, dataHash2);
+      isValid = await resolver.checkDataHashAttestation(didHash, dataHash2);
       expect(typeof isValid).to.equal("boolean");
     });
 
-    it("Should cover lines 239, 240, 243, 245 in isDataHashValid loop", async function () {
+    it("Should cover lines 239, 240, 243, 245 in checkDataHashAttestation loop", async function () {
       const didHash = ethers.keccak256(ethers.toUtf8Bytes("did:oma3:test"));
       const dataHash = ethers.keccak256(ethers.toUtf8Bytes("test-data"));
 
@@ -94,7 +94,7 @@ describe("OMA3ResolverWithStore Coverage", function () {
       }
 
       // Now test the validation
-            const isValid = await resolver.isDataHashValid(didHash, dataHash);
+            const isValid = await resolver.checkDataHashAttestation(didHash, dataHash);
       expect(typeof isValid).to.equal("boolean");
         });
     });
