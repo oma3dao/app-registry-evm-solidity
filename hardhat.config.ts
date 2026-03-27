@@ -1,9 +1,18 @@
-import { HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig, subtask } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import { config as dotenvConfig } from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 import "solidity-coverage";
+import { TASK_TEST_GET_TEST_FILES } from "hardhat/builtin-tasks/task-names";
+
+// Exclude test/deprecated/ from the default test run
+subtask(TASK_TEST_GET_TEST_FILES).setAction(async (args, _hre, runSuper) => {
+  const files: string[] = await runSuper(args);
+  return files.filter(
+    (f) => !f.includes(`${path.sep}deprecated${path.sep}`) && !f.includes("/deprecated/")
+  );
+});
 
 // Load environment variables from .env file
 dotenvConfig();

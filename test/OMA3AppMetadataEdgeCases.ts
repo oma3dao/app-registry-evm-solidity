@@ -28,7 +28,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             const maxLengthDID = "did:web:" + "a".repeat(100); // ~107 bytes total, well under 128 byte limit
             const metadataJson = JSON.stringify({ name: "Test" });
             
-            await expect(metadata.connect(registry).setMetadataForRegistry(maxLengthDID, metadataJson))
+            await expect(metadata.connect(registry).setMetadataForRegistry(maxLengthDID, 1, 0, 0, metadataJson))
                 .to.not.be.reverted;
         });
 
@@ -41,7 +41,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             const tooLongDID = "did:web:" + "a".repeat(122); // 129 total
             const metadataJson = JSON.stringify({ name: "Test" });
             
-            await expect(metadata.connect(registry).setMetadataForRegistry(tooLongDID, metadataJson))
+            await expect(metadata.connect(registry).setMetadataForRegistry(tooLongDID, 1, 0, 0, metadataJson))
                 .to.be.revertedWith("AppMetadata Contract Error: DID too long");
         });
 
@@ -61,7 +61,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             
             for (const did of specialDIDs) {
                 const metadataJson = JSON.stringify({ name: "Test", did: did });
-                await expect(metadata.connect(registry).setMetadataForRegistry(did, metadataJson))
+                await expect(metadata.connect(registry).setMetadataForRegistry(did, 1, 0, 0, metadataJson))
                     .to.not.be.reverted;
             }
         });
@@ -80,7 +80,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             
             for (const did of uppercaseDIDs) {
                 const metadataJson = JSON.stringify({ name: "Test" });
-                await expect(metadata.connect(registry).setMetadataForRegistry(did, metadataJson))
+                await expect(metadata.connect(registry).setMetadataForRegistry(did, 1, 0, 0, metadataJson))
                     .to.be.revertedWith("AppMetadata Contract Error: DID must be lowercase");
             }
         });
@@ -100,7 +100,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             
             for (const did of numericDIDs) {
                 const metadataJson = JSON.stringify({ name: "Test", did: did });
-                await expect(metadata.connect(registry).setMetadataForRegistry(did, metadataJson))
+                await expect(metadata.connect(registry).setMetadataForRegistry(did, 1, 0, 0, metadataJson))
                     .to.not.be.reverted;
             }
         });
@@ -112,7 +112,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             
             const metadataJson = JSON.stringify({ name: "Test" });
             
-            await expect(metadata.connect(registry).setMetadataForRegistry("", metadataJson))
+            await expect(metadata.connect(registry).setMetadataForRegistry("", 1, 0, 0, metadataJson))
                 .to.be.revertedWith("AppMetadata Contract Error: DID cannot be empty");
         });
     });
@@ -128,7 +128,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
                 name: "x".repeat(8000) // ~8KB, well under 10KB limit
             });
             
-            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", maxLengthJSON))
+            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", 1, 0, 0, maxLengthJSON))
                 .to.not.be.reverted;
         });
 
@@ -142,7 +142,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
                 name: "x".repeat(10001)
             });
             
-            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", tooLongJSON))
+            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", 1, 0, 0, tooLongJSON))
                 .to.be.revertedWith("AppMetadata Contract Error: Metadata JSON too large");
         });
 
@@ -164,7 +164,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             
             for (let i = 0; i < jsonStructures.length; i++) {
                 const did = `did:web:test${i}`;
-                await expect(metadata.connect(registry).setMetadataForRegistry(did, jsonStructures[i]))
+                await expect(metadata.connect(registry).setMetadataForRegistry(did, 1, 0, 0, jsonStructures[i]))
                     .to.not.be.reverted;
             }
         });
@@ -174,7 +174,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             
             await metadata.setAuthorizedRegistry(registry.address);
             
-            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", ""))
+            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", 1, 0, 0, ""))
                 .to.be.revertedWith("AppMetadata Contract Error: Metadata JSON cannot be empty");
         });
 
@@ -190,7 +190,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
                 url: "https://example.com/path?query=value&other=test"
             });
             
-            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", escapedJSON))
+            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", 1, 0, 0, escapedJSON))
                 .to.not.be.reverted;
         });
     });
@@ -204,19 +204,19 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             
             // registry should be able to set metadata
             const metadataJson = JSON.stringify({ name: "Test" });
-            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test1", metadataJson))
+            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test1", 1, 0, 0, metadataJson))
                 .to.not.be.reverted;
             
             // user1 should not be able to set metadata (not authorized)
-            await expect(metadata.connect(user1).setMetadataForRegistry("did:web:test2", metadataJson))
+            await expect(metadata.connect(user1).setMetadataForRegistry("did:web:test2", 1, 0, 0, metadataJson))
                 .to.be.revertedWith("AppMetadata Contract Error: Only authorized registry");
             
             // user2 should not be able to set metadata (not authorized)
-            await expect(metadata.connect(user2).setMetadataForRegistry("did:web:test3", metadataJson))
+            await expect(metadata.connect(user2).setMetadataForRegistry("did:web:test3", 1, 0, 0, metadataJson))
                 .to.be.revertedWith("AppMetadata Contract Error: Only authorized registry");
         });
 
-        it("Should prevent multiple registry authorizations", async function () {
+        it("Should allow updating registry authorization", async function () {
             const { metadata, owner, registry, user1 } = await loadFixture(deployFixture);
             
             // First authorization should work
@@ -224,9 +224,10 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
                 .to.emit(metadata, "RegistryAuthorized")
                 .withArgs(registry.address);
             
-            // Second authorization should fail
+            // Second authorization should also work (contract allows re-setting)
             await expect(metadata.connect(owner).setAuthorizedRegistry(user1.address))
-                .to.be.revertedWith("AppMetadata Contract Error: Registry already set");
+                .to.emit(metadata, "RegistryAuthorized")
+                .withArgs(user1.address);
         });
 
         it("Should handle ownership transfer correctly", async function () {
@@ -257,11 +258,11 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             const metadata2 = JSON.stringify({ name: "Test App", version: "2.0.0" });
             
             // Set initial metadata
-            await metadata.connect(registry).setMetadataForRegistry(did, metadata1);
+            await metadata.connect(registry).setMetadataForRegistry(did, 1, 0, 0, metadata1);
             expect(await metadata.getMetadataJson(did)).to.equal(metadata1);
             
             // Update metadata
-            await metadata.connect(registry).setMetadataForRegistry(did, metadata2);
+            await metadata.connect(registry).setMetadataForRegistry(did, 1, 0, 0, metadata2);
             expect(await metadata.getMetadataJson(did)).to.equal(metadata2);
         });
 
@@ -278,7 +279,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             
             // Set metadata for all DIDs
             for (const testCase of testCases) {
-                await metadata.connect(registry).setMetadataForRegistry(testCase.did, testCase.metadata);
+                await metadata.connect(registry).setMetadataForRegistry(testCase.did, 1, 0, 0, testCase.metadata);
             }
             
             // Verify all metadata is stored correctly
@@ -305,9 +306,9 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             const metadataJson = JSON.stringify({ name: "Test App" });
             const expectedHash = ethers.keccak256(ethers.toUtf8Bytes(metadataJson));
             
-            await expect(metadata.connect(registry).setMetadataForRegistry(did, metadataJson))
+            await expect(metadata.connect(registry).setMetadataForRegistry(did, 1, 0, 0, metadataJson))
                 .to.emit(metadata, "MetadataSet")
-                .withArgs(did, metadataJson, expectedHash, anyValue);
+                .withArgs(did, 1, 0, 0, metadataJson, expectedHash, anyValue);
         });
 
         it("Should emit correct events for registry authorization", async function () {
@@ -332,7 +333,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             for (let i = 0; i < numEntries; i++) {
                 const did = `did:web:app${i}`;
                 const metadataJson = JSON.stringify({ name: `App ${i}`, id: i });
-                promises.push(metadata.connect(registry).setMetadataForRegistry(did, metadataJson));
+                promises.push(metadata.connect(registry).setMetadataForRegistry(did, 1, 0, 0, metadataJson));
             }
             
             // All should succeed
@@ -357,7 +358,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             const metadataJson = JSON.stringify({ name: "Test" });
             
             // This should work with normal gas
-            await expect(metadata.connect(registry).setMetadataForRegistry(did, metadataJson))
+            await expect(metadata.connect(registry).setMetadataForRegistry(did, 1, 0, 0, metadataJson))
                 .to.not.be.reverted;
         });
 
@@ -370,7 +371,7 @@ describe("OMA3AppMetadata - Edge Cases and Comprehensive Testing", function () {
             const malformedJSON = '{"name": "Test", "version": }'; // missing value
             
             // This should still work since the contract just stores the string
-            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", malformedJSON))
+            await expect(metadata.connect(registry).setMetadataForRegistry("did:web:test", 1, 0, 0, malformedJSON))
                 .to.not.be.reverted;
         });
     });

@@ -72,7 +72,7 @@ describe("OMA3ResolverWithStore - Alternative Testing Approaches", function () {
                 await resolver.connect(impersonatedSigner).attestDataHash(testDidHash, testDataHash, 0);
                 await resolver.connect(impersonatedSigner).revokeDataHash(testDidHash, testDataHash);
                 
-                const result1 = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const result1 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 console.log(`Result 1 (inactive): ${result1}`);
                 expect(typeof result1).to.equal('boolean');
 
@@ -81,7 +81,7 @@ describe("OMA3ResolverWithStore - Alternative Testing Approaches", function () {
                 const pastTime = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
                 await resolver.connect(impersonatedSigner).attestDataHash(testDidHash, testDataHash, pastTime);
                 
-                const result2 = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const result2 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 console.log(`Result 2 (expired): ${result2}`);
                 expect(typeof result2).to.equal('boolean');
 
@@ -90,14 +90,14 @@ describe("OMA3ResolverWithStore - Alternative Testing Approaches", function () {
                 const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
                 await resolver.connect(impersonatedSigner).attestDataHash(testDidHash, testDataHash, futureTime);
                 
-                const result3 = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const result3 = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 console.log(`Result 3 (valid): ${result3}`);
                 expect(result3).to.be.true; // Should return true
 
             } catch (error) {
                 console.log(`Error during impersonation test: ${error}`);
                 // Even if impersonation fails, we've tested the function behavior
-                const fallbackResult = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const fallbackResult = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 expect(typeof fallbackResult).to.equal('boolean');
             } finally {
                 // Stop impersonating
@@ -153,7 +153,7 @@ describe("OMA3ResolverWithStore - Alternative Testing Approaches", function () {
                 ];
 
                 for (const testCase of testCases) {
-                    const result = await resolver.isDataHashValid(testCase.did, testCase.data);
+                    const result = await resolver.checkDataHashAttestation(testCase.did, testCase.data);
                     console.log(`${testCase.name}: ${result}`);
                     expect(typeof result).to.equal('boolean');
                 }
@@ -161,7 +161,7 @@ describe("OMA3ResolverWithStore - Alternative Testing Approaches", function () {
             } catch (error) {
                 console.log(`Error in storage manipulation test: ${error}`);
                 // Fallback to basic testing
-                const result = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const result = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 expect(typeof result).to.equal('boolean');
             }
         });
@@ -200,20 +200,20 @@ describe("OMA3ResolverWithStore - Alternative Testing Approaches", function () {
                     await testContract.waitForDeployment();
                     
                     // If deployment succeeds, try to use it
-                    const result = await resolver.isDataHashValid(testDidHash, testDataHash);
+                    const result = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                     expect(typeof result).to.equal('boolean');
                     
                 } catch (deployError) {
                     console.log(`Deployment failed: ${deployError}`);
                     // Fallback to basic testing
-                    const result = await resolver.isDataHashValid(testDidHash, testDataHash);
+                    const result = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                     expect(typeof result).to.equal('boolean');
                 }
 
             } catch (error) {
                 console.log(`Error in contract deployment test: ${error}`);
                 // Fallback to basic testing
-                const result = await resolver.isDataHashValid(testDidHash, testDataHash);
+                const result = await resolver.checkDataHashAttestation(testDidHash, testDataHash);
                 expect(typeof result).to.equal('boolean');
             }
         });
@@ -246,7 +246,7 @@ describe("OMA3ResolverWithStore - Alternative Testing Approaches", function () {
             ];
 
             for (const scenario of testScenarios) {
-                const result = await resolver.isDataHashValid(scenario.did, scenario.data);
+                const result = await resolver.checkDataHashAttestation(scenario.did, scenario.data);
                 expect(result).to.be.false; // Should be false because no attestations exist
                 expect(typeof result).to.equal('boolean');
             }
@@ -282,7 +282,7 @@ describe("OMA3ResolverWithStore - Alternative Testing Approaches", function () {
             ];
 
             for (const edgeCase of edgeCases) {
-                const result = await resolver.isDataHashValid(edgeCase.did, edgeCase.data);
+                const result = await resolver.checkDataHashAttestation(edgeCase.did, edgeCase.data);
                 expect(typeof result).to.equal('boolean');
             }
 
@@ -295,7 +295,7 @@ describe("OMA3ResolverWithStore - Alternative Testing Approaches", function () {
             }
 
             // Test again with more issuers
-            const result = await resolver.isDataHashValid(
+            const result = await resolver.checkDataHashAttestation(
                 ethers.keccak256(ethers.toUtf8Bytes("final-test")),
                 ethers.keccak256(ethers.toUtf8Bytes("final-data"))
             );

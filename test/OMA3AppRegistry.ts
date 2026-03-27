@@ -1344,43 +1344,26 @@ describe("OMA3AppRegistry", function () {
       // Verify the app was updated correctly
       const app = await registry.getApp(did, 1);
       expect(app.interfaces).to.deep.equal([INTERFACE_TYPES.HUMAN, INTERFACE_TYPES.API]);
-      expect(app.dataUrl).to.equal("https://data.example.com/app1-combined");
       expect(app.traitHashes.length).to.equal(1);
     });
 
-    it("should validate data URL constraints", async function () {
+    it("should validate version increment constraints on data changes", async function () {
       const { registry, minter1, did } = await loadFixture(deployFixtureWithApp);
       
-      // Try to update with empty data URL (should fail)
+      // Data changes without version increment should fail
       await expect(
         registry.connect(minter1).updateAppControlled(
           did,
           1, // major
-          "", // empty data URL (should fail)
+          "ignored", // dataUrl stripped by proxy
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
+          DATA_HASH_ALGORITHMS.KECCAK256,
           [], // no interface change
           [], // no keyword changes
           0, // no minor increment
-          1  // patch version
+          0  // no patch increment (should require increment for data changes)
         )
-      ).to.be.revertedWithCustomError(registry, ERRORS.DATA_URL_CANNOT_BE_EMPTY);
-
-      // Try to update with too long data URL (should fail)
-      const longUrl = "https://data.example.com/" + "a".repeat(MAX_URL_LENGTH - 25 + 1);
-      await expect(
-        registry.connect(minter1).updateAppControlled(
-          did,
-          1, // major
-          longUrl, // too long URL (should fail)
-          hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")),
-          DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
-          [], // no interface change
-          [], // no keyword changes
-          0, // no minor increment
-          1  // patch version
-        )
-      ).to.be.revertedWithCustomError(registry, ERRORS.DATA_URL_TOO_LONG);
+      ).to.be.revertedWithCustomError(registry, ERRORS.PATCH_INCREMENT_REQUIRED);
     });
 
     it("should validate keyword constraints", async function () {
@@ -1393,7 +1376,7 @@ describe("OMA3AppRegistry", function () {
         registry.connect(minter1).updateAppControlled(
           did,
           1, // major
-          "", // no data URL change
+          "", // dataUrl stripped by proxy
           hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Updated data")),
           DATA_HASH_ALGORITHMS.KECCAK256, // no algorithm change
           [], // no interface change
@@ -1401,7 +1384,7 @@ describe("OMA3AppRegistry", function () {
           0, // no minor increment
           1  // patch version
         )
-      ).to.be.revertedWithCustomError(registry, ERRORS.DATA_URL_CANNOT_BE_EMPTY);
+      ).to.be.revertedWithCustomError(registry, ERRORS.TOO_MANY_KEYWORDS);
     });
 
     it("should update version history correctly", async function () {
@@ -2112,9 +2095,9 @@ describe("OMA3AppRegistry", function () {
         )
       ).to.not.be.reverted;
 
-      // Verify the app was updated correctly
+      // Verify the update completed without reentrancy issues
       const app = await registry.getApp(did, 1);
-      expect(app.dataUrl).to.equal("https://data.example.com/app1-updated");
+      expect(app.did).to.equal(did);
     });
 
     it("should prevent reentrancy in updateStatus", async function () {
@@ -3234,8 +3217,8 @@ describe("OMA3AppRegistry", function () {
           [INTERFACE_TYPES.HUMAN],
           ""
         )
-      ).to.emit(registry, "AppMinted")
-      .withArgs(anyValue, 1, 1, minter1.address, 1, anyValue, anyValue); // didHash, major, tokenId, minter, interfaces bitmap, registrationBlock, registrationTimestamp
+      ).to.emit(registry, "Registered")
+      .withArgs(1, anyValue, minter1.address, anyValue, 1, anyValue, anyValue, anyValue); // tokenId, dataUrl, registerer, didHash, versionMajor, interfaces, registrationBlock, registrationTimestamp
 
       // Test status update event
       await expect(
@@ -3243,7 +3226,7 @@ describe("OMA3AppRegistry", function () {
       ).to.emit(registry, "StatusUpdated")
         .withArgs(anyValue, 1, 1, 1, anyValue); // didHash, major, tokenId, newStatus, timestamp
 
-      // Test data URL update event
+      // Test data hash update event
       await expect(
         registry.connect(minter1).updateAppControlled(
           did,
@@ -3256,8 +3239,8 @@ describe("OMA3AppRegistry", function () {
           0,
           1
         )
-      ).to.emit(registry, "DataUrlUpdated")
-      .withArgs(anyValue, 1, 1, "https://data.example.com/app1-updated", anyValue, 0); // didHash, major, tokenId, newDataUrl, newDataHash, dataHashAlgorithm (0=keccak256)
+      ).to.emit(registry, "DataHashUpdated")
+      .withArgs(anyValue, 1, 1, anyValue, anyValue, 0); // didHash, major, tokenId, dataUrl, newDataHash, dataHashAlgorithm (0=keccak256)
     });
 
     it("should efficiently filter events by DID hash", async function () {
@@ -3289,16 +3272,16 @@ describe("OMA3AppRegistry", function () {
       }
 
       // Get all events
-      const filter = registry.filters.AppMinted();
+      const filter = registry.filters.Registered();
       const events = await registry.queryFilter(filter);
 
       // Verify we have the expected number of events
       expect(events.length).to.equal(3);
 
-      // Verify each event has the correct token ID and minter
+      // Verify each event has the correct token ID and registerer
       for (let i = 0; i < events.length; i++) {
         expect(events[i].args.tokenId).to.equal(i + 1);
-        expect(events[i].args.minter).to.equal(minter1.address);
+        expect(events[i].args.registerer).to.equal(minter1.address);
       }
     });
 
@@ -3330,8 +3313,8 @@ describe("OMA3AppRegistry", function () {
         );
       }
 
-      // Query all AppMinted events
-      const filter = registry.filters.AppMinted();
+      // Query all Registered events
+      const filter = registry.filters.Registered();
       const events = await registry.queryFilter(filter);
 
       // Verify we have all events
@@ -3341,12 +3324,12 @@ describe("OMA3AppRegistry", function () {
       for (let i = 0; i < events.length; i++) {
         const event = events[i];
         expect(event.args.tokenId).to.equal(i + 1);
-        expect(event.args.minter).to.equal(minter1.address);
+        expect(event.args.registerer).to.equal(minter1.address);
       }
 
       // Test performance: query events for specific token ID
       const specificTokenId = 26; // Token ID 26 (index 25 + 1)
-      const specificFilter = registry.filters.AppMinted(null, null, specificTokenId);
+      const specificFilter = registry.filters.Registered(specificTokenId);
       const specificEvents = await registry.queryFilter(specificFilter);
       
       expect(specificEvents.length).to.equal(1);
@@ -4902,33 +4885,25 @@ describe("OMA3AppRegistry", function () {
     const OMA3AppMetadata = await hre.ethers.getContractFactory("OMA3AppMetadata");
     const metadata = await OMA3AppMetadata.deploy();
     
-    // Mint an app first
+    const metadataJson = '{"name":"Test App","description":"Test Description"}';
+    const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(metadataJson));
+
+    // Wire metadata contract before mint so _setMetadataJson persists to OMA3AppMetadata
+    await registry.setMetadataContract(await metadata.getAddress());
+    await metadata.setAuthorizedRegistry(await registry.getAddress());
+
+    // Mint an app with metadata (metadata path triggers _setMetadataJson when metadata contract is configured)
     const did = "did:oma3:metadata-test";
     await registry.connect(minter1).mint(
       did,
       1, // interfaces bitmap
       "https://data.example.com/app1",
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-      1, // dataHashAlgorithm
+      dataHash,
+      0, // dataHashAlgorithm: keccak256 for metadataJson
       "",
       "",
-      1, 0, 0, [], ""
+      1, 0, 0, [], metadataJson
     );
-
-    // Set the metadata contract in the registry
-    await registry.setMetadataContract(await metadata.getAddress());
-
-    // Link the contracts
-    await metadata.setAuthorizedRegistry(await registry.getAddress());
-
-    // Now call setMetadataJson which should trigger the metadata contract call
-    // This covers line 432 in _setMetadataJson function
-    const metadataJson = '{"name":"Test App","description":"Test Description"}';
-    const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(metadataJson));
-    
-    await expect(
-      registry.connect(minter1).setMetadataJson(did, 1, metadataJson, dataHash, 0)
-    ).to.not.be.reverted;
 
     // Verify the metadata was set in the metadata contract
     const storedMetadata = await metadata.getMetadataJson(did);
@@ -4942,33 +4917,24 @@ describe("OMA3AppRegistry", function () {
     const OMA3AppMetadata = await hre.ethers.getContractFactory("OMA3AppMetadata");
     const metadata = await OMA3AppMetadata.deploy();
     
-    // Mint an app first
+    const metadataJson = '{"name":"SHA256 Test App","description":"Test Description"}';
+    const dataHash = hre.ethers.sha256(hre.ethers.toUtf8Bytes(metadataJson));
+
+    await registry.setMetadataContract(await metadata.getAddress());
+    await metadata.setAuthorizedRegistry(await registry.getAddress());
+
+    // Mint an app with sha256 metadata hash (covers _validateMetadataHash sha256 branch)
     const did = "did:oma3:sha256-test";
     await registry.connect(minter1).mint(
       did,
       1, // interfaces bitmap
       "https://data.example.com/app1",
-      hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Test App data")),
-      1, // dataHashAlgorithm
+      dataHash,
+      1, // dataHashAlgorithm: sha256 for metadataJson
       "",
       "",
-      1, 0, 0, [], ""
+      1, 0, 0, [], metadataJson
     );
-
-    // Set the metadata contract in the registry
-    await registry.setMetadataContract(await metadata.getAddress());
-
-    // Link the contracts
-    await metadata.setAuthorizedRegistry(await registry.getAddress());
-
-    // Now call setMetadataJson with sha256 algorithm (1)
-    // This covers line 199 in _validateMetadataHash function
-    const metadataJson = '{"name":"SHA256 Test App","description":"Test Description"}';
-    const dataHash = hre.ethers.sha256(hre.ethers.toUtf8Bytes(metadataJson));
-    
-    await expect(
-      registry.connect(minter1).setMetadataJson(did, 1, metadataJson, dataHash, 1)
-    ).to.not.be.reverted;
 
     // Verify the metadata was set in the metadata contract
     const storedMetadata = await metadata.getMetadataJson(did);
@@ -4978,17 +4944,13 @@ describe("OMA3AppRegistry", function () {
   it("should cover getDIDByTokenId and tokenURI with non-existent tokens", async function () {
     const { registry } = await loadFixture(deployFixture);
     
-    // Try to get DID for non-existent token ID
-    // This covers line 236 in getDIDByTokenId function
     await expect(
       registry.getDIDByTokenId(999)
-    ).to.be.revertedWith("Nonexistent token");
+    ).to.be.revertedWithCustomError(registry, "InvalidAgent");
 
-    // Try to get token URI for non-existent token ID
-    // This covers line 237 in tokenURI function
     await expect(
       registry.tokenURI(999)
-    ).to.be.revertedWith("Nonexistent token");
+    ).to.be.revertedWithCustomError(registry, "InvalidAgent");
   });
 
   describe("Advanced Pagination Edge Cases", function () {
@@ -5481,29 +5443,24 @@ describe("OMA3AppRegistry", function () {
       const OMA3AppMetadata = await hre.ethers.getContractFactory("OMA3AppMetadata");
       const metadata = await OMA3AppMetadata.deploy();
       
-      // Mint an app
+      const metadataJson = '{"name":"Integration Test","description":"Testing metadata integration"}';
+      const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(metadataJson));
+
+      await registry.setMetadataContract(await metadata.getAddress());
+      await metadata.setAuthorizedRegistry(await registry.getAddress());
+
       const did = "did:oma3:metadataintegration";
       await registry.connect(minter1).mint(
         did,
         1, // interfaces bitmap
         "https://data.example.com/metadataintegration",
-        hre.ethers.keccak256(hre.ethers.toUtf8Bytes("Metadata integration test")),
-        0, // dataHashAlgorithm
+        dataHash,
+        0, // dataHashAlgorithm: keccak256 for metadataJson
         "",
         "",
-        1, 0, 0, [], ""
+        1, 0, 0, [], metadataJson
       );
 
-      // Set metadata contract
-      await registry.setMetadataContract(await metadata.getAddress());
-      await metadata.setAuthorizedRegistry(await registry.getAddress());
-
-      // Test metadata operations
-      const metadataJson = '{"name":"Integration Test","description":"Testing metadata integration"}';
-      const dataHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes(metadataJson));
-      
-      await registry.connect(minter1).setMetadataJson(did, 1, metadataJson, dataHash, 0);
-      
       // Verify metadata was set
       const storedMetadata = await metadata.getMetadataJson(did);
       expect(storedMetadata).to.equal(metadataJson);
@@ -5579,31 +5536,29 @@ describe("OMA3AppRegistry", function () {
     it("should handle getDIDByTokenId with non-existent token ID", async function () {
       const { registry } = await loadFixture(deployFixture);
       
-      // Try to get DID for a non-existent token ID
       const nonExistentTokenId = 999;
       
       await expect(
         registry.getDIDByTokenId(nonExistentTokenId)
-      ).to.be.revertedWith("Nonexistent token");
+      ).to.be.revertedWithCustomError(registry, "InvalidAgent");
     });
 
     it("should handle tokenURI with non-existent token ID", async function () {
       const { registry } = await loadFixture(deployFixture);
       
-      // Try to get token URI for a non-existent token ID
       const nonExistentTokenId = 999;
       
       await expect(
         registry.tokenURI(nonExistentTokenId)
-      ).to.be.revertedWith("Nonexistent token");
+      ).to.be.revertedWithCustomError(registry, "InvalidAgent");
     });
 
-    it("should handle getDIDByTokenId with non-existent token ID", async function () {
+    it("should handle getDIDByTokenId with non-existent token ID (duplicate)", async function () {
       const { registry } = await loadFixture(deployFixture);
       const nonExistentTokenId = 999;
       await expect(
         registry.getDIDByTokenId(nonExistentTokenId)
-      ).to.be.revertedWith("Nonexistent token");
+      ).to.be.revertedWithCustomError(registry, "InvalidAgent");
     });
 
     it("should handle getDIDByTokenId with valid token ID", async function () {

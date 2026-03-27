@@ -152,8 +152,8 @@ describe("OMA3ResolverWithStore - Integration Tests", function () {
             const dataHash2 = ethers.keccak256(ethers.toUtf8Bytes("data2"));
 
             // Test that data hash validation functions are callable
-            expect(await resolver.isDataHashValid(TEST_DID_HASH, dataHash1)).to.be.false; // No attestation
-            expect(await resolver.isDataHashValid(TEST_DID_HASH, dataHash2)).to.be.false; // No attestation
+            expect(await resolver.checkDataHashAttestation(TEST_DID_HASH, dataHash1)).to.be.false; // No attestation
+            expect(await resolver.checkDataHashAttestation(TEST_DID_HASH, dataHash2)).to.be.false; // No attestation
 
             // Issuer1 revokes their attestation
             await resolver.connect(issuer1).revokeDataHash(TEST_DID_HASH, dataHash1);

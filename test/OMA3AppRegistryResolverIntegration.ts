@@ -214,11 +214,14 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
         it("Should reject minting when data hash is not attested", async function () {
             const { registry, resolver, issuer, user1 } = await loadFixture(deployWithResolverFixture);
 
-            // Set up data URL resolver
-            await registry.connect(await ethers.getSigner(await registry.owner())).setDataUrlResolver(await resolver.getAddress());
+            const owner = await ethers.getSigner(await registry.owner());
+
+            // Set up data URL resolver and enable attestation requirement
+            await registry.connect(owner).setDataUrlResolver(await resolver.getAddress());
+            await registry.connect(owner).setRequireDataUrlAttestation(true);
 
             // Set maturation to 0 for immediate effect
-            await resolver.connect(await ethers.getSigner(await registry.owner())).setMaturation(0);
+            await resolver.connect(owner).setMaturation(0);
 
             // Create ownership attestation
             const controllerBytes32 = ethers.zeroPadValue(user1.address, 32);
@@ -302,12 +305,15 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
         it("Should handle resolver address changes", async function () {
             const { registry, resolver, issuer, user1 } = await loadFixture(deployWithResolverFixture);
 
+            const owner = await ethers.getSigner(await registry.owner());
+
             // Create ownership attestation
             const controllerBytes32 = ethers.zeroPadValue(user1.address, 32);
             await resolver.connect(issuer).upsertDirect(TEST_DID_HASH, controllerBytes32, 0);
 
-            // Set maturation to 0 for immediate effect
-            await resolver.connect(await ethers.getSigner(await registry.owner())).setMaturation(0);
+            // Set maturation to 0 for immediate effect and enable data hash attestation
+            await resolver.connect(owner).setMaturation(0);
+            await registry.connect(owner).setRequireDataUrlAttestation(true);
 
             // Should revert due to data hash not attested
             await expect(registry.connect(user1).mint(
