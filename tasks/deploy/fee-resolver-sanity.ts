@@ -42,7 +42,7 @@ task("fee-resolver-sanity", "Run fee resolver sanity test on deployed contract")
     // Step 1: Read resolver configuration
     console.log("Step 1: Reading resolver configuration...");
     const feeResolver = await hre.ethers.getContractAt(
-      "contracts/eas/resolver/custom/OMATrustFeeResolver.sol:OMATrustFeeResolver",
+      "contracts/reputation/OMATrustFeeResolver.sol:OMATrustFeeResolver",
       resolverAddress,
       signer
     );
@@ -88,7 +88,7 @@ task("fee-resolver-sanity", "Run fee resolver sanity test on deployed contract")
     // Step 3: Register a test schema with the resolver
     console.log("Step 3: Registering test schema with fee resolver...");
     const schemaRegistry = await hre.ethers.getContractAt(
-      "contracts/eas/SchemaRegistry.sol:SchemaRegistry",
+      "deps/eas/SchemaRegistry.sol:SchemaRegistry",
       schemaRegistryAddress,
       signer
     );
@@ -122,7 +122,7 @@ task("fee-resolver-sanity", "Run fee resolver sanity test on deployed contract")
     // Step 5: Create attestation with fee
     console.log("Step 5: Creating attestation with fee...");
     const eas = await hre.ethers.getContractAt(
-      "contracts/eas/EAS.sol:EAS",
+      "deps/eas/EAS.sol:EAS",
       easAddress,
       signer
     );

@@ -34,7 +34,7 @@ task("eas-sanity", "Run EAS deployment sanity test")
     // Step 1: Register a test schema
     console.log("Step 1: Registering test schema...");
     const schemaRegistry = await hre.ethers.getContractAt(
-      "contracts/eas/SchemaRegistry.sol:SchemaRegistry",
+      "deps/eas/SchemaRegistry.sol:SchemaRegistry",
       schemaRegistryAddress,
       signer
     );
@@ -70,7 +70,7 @@ task("eas-sanity", "Run EAS deployment sanity test")
     // Step 3: Create an attestation
     console.log("Step 3: Creating test attestation...");
     const eas = await hre.ethers.getContractAt(
-      "contracts/eas/EAS.sol:EAS",
+      "deps/eas/EAS.sol:EAS",
       easAddress,
       signer
     );

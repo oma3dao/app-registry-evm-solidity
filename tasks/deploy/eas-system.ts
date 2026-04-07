@@ -19,7 +19,7 @@ task("deploy-eas-system", "Deploy EAS SchemaRegistry and EAS contracts")
 
     // Deploy SchemaRegistry
     console.log("\n📋 Step 1: Deploying SchemaRegistry...");
-    const SchemaRegistry = await hre.ethers.getContractFactory("contracts/eas/SchemaRegistry.sol:SchemaRegistry", signer);
+    const SchemaRegistry = await hre.ethers.getContractFactory("deps/eas/SchemaRegistry.sol:SchemaRegistry", signer);
     await logTransactionForVerification(hre, SchemaRegistry, "SchemaRegistry");
     const schemaRegistry = await SchemaRegistry.deploy();
     await schemaRegistry.waitForDeployment();
@@ -34,7 +34,7 @@ task("deploy-eas-system", "Deploy EAS SchemaRegistry and EAS contracts")
 
     // Deploy EAS
     console.log("\n📋 Step 2: Deploying EAS...");
-    const EAS = await hre.ethers.getContractFactory("contracts/eas/EAS.sol:EAS", signer);
+    const EAS = await hre.ethers.getContractFactory("deps/eas/EAS.sol:EAS", signer);
     console.log(`Constructor args: schemaRegistry=${schemaRegistryAddress}`);
     await logTransactionForVerification(hre, EAS, "EAS");
     const eas = await EAS.deploy(schemaRegistryAddress);

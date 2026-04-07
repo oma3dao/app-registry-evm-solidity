@@ -15,21 +15,21 @@ describe("OMATrustFeeResolver", function () {
 
     // Deploy SchemaRegistry
     const SchemaRegistry = await ethers.getContractFactory(
-      "contracts/eas/SchemaRegistry.sol:SchemaRegistry"
+      "deps/eas/SchemaRegistry.sol:SchemaRegistry"
     );
     const schemaRegistry: any = await SchemaRegistry.deploy();
     await schemaRegistry.waitForDeployment();
     const schemaRegistryAddress = await schemaRegistry.getAddress();
 
     // Deploy EAS
-    const EAS = await ethers.getContractFactory("contracts/eas/EAS.sol:EAS");
+    const EAS = await ethers.getContractFactory("deps/eas/EAS.sol:EAS");
     const eas: any = await EAS.deploy(schemaRegistryAddress);
     await eas.waitForDeployment();
     const easAddress = await eas.getAddress();
 
     // Deploy FeeResolver
     const FeeResolver = await ethers.getContractFactory(
-      "contracts/eas/resolver/custom/OMATrustFeeResolver.sol:OMATrustFeeResolver"
+      "contracts/reputation/OMATrustFeeResolver.sol:OMATrustFeeResolver"
     );
     const feeResolver: any = await FeeResolver.deploy(easAddress, FEE, treasury.address);
     await feeResolver.waitForDeployment();
@@ -96,7 +96,7 @@ describe("OMATrustFeeResolver", function () {
       const easAddress = await eas.getAddress();
 
       const FeeResolver = await ethers.getContractFactory(
-        "contracts/eas/resolver/custom/OMATrustFeeResolver.sol:OMATrustFeeResolver"
+        "contracts/reputation/OMATrustFeeResolver.sol:OMATrustFeeResolver"
       );
 
       await expect(
@@ -109,7 +109,7 @@ describe("OMATrustFeeResolver", function () {
       const easAddress = await eas.getAddress();
 
       const FeeResolver = await ethers.getContractFactory(
-        "contracts/eas/resolver/custom/OMATrustFeeResolver.sol:OMATrustFeeResolver"
+        "contracts/reputation/OMATrustFeeResolver.sol:OMATrustFeeResolver"
       );
 
       await expect(

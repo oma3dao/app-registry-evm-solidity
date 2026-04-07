@@ -33,17 +33,17 @@ task("update-frontend-abis", "Update frontend ABI files from compiled artifacts"
     const contracts = [
       {
         name: "OMA3AppRegistry",
-        source: "artifacts/contracts/OMA3AppRegistry.sol/OMA3AppRegistry.json",
+        source: "artifacts/contracts/identity/OMA3AppRegistry.sol/OMA3AppRegistry.json",
         dest: `${frontendPath}/src/abi/appRegistry.json`,
       },
       {
         name: "OMA3AppMetadata",
-        source: "artifacts/contracts/OMA3AppMetadata.sol/OMA3AppMetadata.json",
+        source: "artifacts/contracts/identity/OMA3AppMetadata.sol/OMA3AppMetadata.json",
         dest: `${frontendPath}/src/abi/appMetadata.json`,
       },
       {
         name: "OMA3ResolverWithStore",
-        source: "artifacts/contracts/OMA3ResolverWithStore.sol/OMA3ResolverWithStore.json",
+        source: "artifacts/contracts/identity/OMA3ResolverWithStore.sol/OMA3ResolverWithStore.json",
         dest: `${frontendPath}/src/abi/resolver.json`,
       },
     ];

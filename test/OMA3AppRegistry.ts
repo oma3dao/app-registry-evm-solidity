@@ -221,7 +221,7 @@ describe("OMA3AppRegistry", function () {
     // Contracts are deployed using the first signer/account by default
     const [deployer, minter1, minter2] = await hre.ethers.getSigners();
 
-    const OMA3AppRegistry = await hre.ethers.getContractFactory("contracts/OMA3AppRegistry.sol:OMA3AppRegistry");
+    const OMA3AppRegistry = await hre.ethers.getContractFactory("contracts/identity/OMA3AppRegistry.sol:OMA3AppRegistry");
 		const rawRegistry = await OMA3AppRegistry.deploy();
 		const registry = makeCompatProxy(rawRegistry);
 

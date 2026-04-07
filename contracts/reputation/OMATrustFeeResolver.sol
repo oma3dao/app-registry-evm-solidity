@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { SchemaResolver } from "../SchemaResolver.sol";
-import { IEAS, Attestation } from "../../IEAS.sol";
+import { SchemaResolver } from "../../deps/eas/resolver/SchemaResolver.sol";
+import { IEAS, Attestation } from "../../deps/eas/IEAS.sol";
 
 /// @title OMATrustFeeResolver
 /// @notice Minimal fixed-fee resolver for EAS attestations.

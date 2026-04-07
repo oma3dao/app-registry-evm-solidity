@@ -42,7 +42,7 @@ task("deploy-fee-resolver", "Deploy OMATrustFeeResolver for external chains with
     // Deploy OMATrustFeeResolver
     console.log("\n📋 Deploying OMATrustFeeResolver...");
     const FeeResolver = await hre.ethers.getContractFactory(
-      "contracts/eas/resolver/custom/OMATrustFeeResolver.sol:OMATrustFeeResolver",
+      "contracts/reputation/OMATrustFeeResolver.sol:OMATrustFeeResolver",
       signer
     );
     

@@ -11,7 +11,7 @@ describe("EAS Deployment", function () {
   });
 
   it("Should deploy SchemaRegistry", async function () {
-    const SchemaRegistry = await ethers.getContractFactory("contracts/eas/SchemaRegistry.sol:SchemaRegistry");
+    const SchemaRegistry = await ethers.getContractFactory("deps/eas/SchemaRegistry.sol:SchemaRegistry");
     schemaRegistry = await SchemaRegistry.deploy();
     await schemaRegistry.waitForDeployment();
 
@@ -25,13 +25,13 @@ describe("EAS Deployment", function () {
 
   it("Should deploy EAS with SchemaRegistry", async function () {
     // Deploy SchemaRegistry first
-    const SchemaRegistry = await ethers.getContractFactory("contracts/eas/SchemaRegistry.sol:SchemaRegistry");
+    const SchemaRegistry = await ethers.getContractFactory("deps/eas/SchemaRegistry.sol:SchemaRegistry");
     schemaRegistry = await SchemaRegistry.deploy();
     await schemaRegistry.waitForDeployment();
     const registryAddress = await schemaRegistry.getAddress();
 
     // Deploy EAS
-    const EAS = await ethers.getContractFactory("contracts/eas/EAS.sol:EAS");
+    const EAS = await ethers.getContractFactory("deps/eas/EAS.sol:EAS");
     eas = await EAS.deploy(registryAddress);
     await eas.waitForDeployment();
 
@@ -49,12 +49,12 @@ describe("EAS Deployment", function () {
 
   it("Should register a schema and create an attestation", async function () {
     // Deploy both contracts
-    const SchemaRegistry = await ethers.getContractFactory("contracts/eas/SchemaRegistry.sol:SchemaRegistry");
+    const SchemaRegistry = await ethers.getContractFactory("deps/eas/SchemaRegistry.sol:SchemaRegistry");
     schemaRegistry = await SchemaRegistry.deploy();
     await schemaRegistry.waitForDeployment();
     const registryAddress = await schemaRegistry.getAddress();
 
-    const EAS = await ethers.getContractFactory("contracts/eas/EAS.sol:EAS");
+    const EAS = await ethers.getContractFactory("deps/eas/EAS.sol:EAS");
     eas = await EAS.deploy(registryAddress);
     await eas.waitForDeployment();
 
