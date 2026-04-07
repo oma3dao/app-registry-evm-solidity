@@ -1731,11 +1731,12 @@ describe("OMA3AppRegistry", function () {
         ""
       );
 
-      // Verify registration data was recorded
+      // Verify registration data was recorded against the actual block
       const recordedBlock = await registry.registrationBlock(didHash);
       const recordedTimestamp = await registry.registrationTimestamp(didHash);
-      expect(recordedBlock).to.not.equal(0);
-      expect(recordedTimestamp).to.not.equal(0);
+      expect(recordedBlock).to.be.greaterThan(initialBlock);
+      const actualBlock = await hre.ethers.provider.getBlock(Number(recordedBlock));
+      expect(recordedTimestamp).to.equal(actualBlock!.timestamp);
 
       // Wait a few blocks
       await time.increase(10);
@@ -1790,9 +1791,12 @@ describe("OMA3AppRegistry", function () {
         ""
       );
 
-      // Verify first registration
-      expect(await registry.registrationBlock(didHash1)).to.not.equal(0);
-      expect(await registry.registrationTimestamp(didHash1)).to.not.equal(0);
+      // Verify first registration against actual block data
+      const block1 = await registry.registrationBlock(didHash1);
+      const ts1 = await registry.registrationTimestamp(didHash1);
+      const actualBlock1 = await hre.ethers.provider.getBlock(Number(block1));
+      expect(block1).to.be.greaterThan(0);
+      expect(ts1).to.equal(actualBlock1!.timestamp);
 
       // Mint second app with different DID
       await registry.connect(minter1).mint(
@@ -1811,12 +1815,15 @@ describe("OMA3AppRegistry", function () {
         ""
       );
 
-      // Verify second registration
-      expect(await registry.registrationBlock(didHash2)).to.not.equal(0);
-      expect(await registry.registrationTimestamp(didHash2)).to.not.equal(0);
+      // Verify second registration against actual block data
+      const block2 = await registry.registrationBlock(didHash2);
+      const ts2 = await registry.registrationTimestamp(didHash2);
+      const actualBlock2 = await hre.ethers.provider.getBlock(Number(block2));
+      expect(block2).to.be.greaterThan(0);
+      expect(ts2).to.equal(actualBlock2!.timestamp);
 
       // Verify they have different registration data (since they're different DIDs)
-      expect(await registry.registrationBlock(didHash1)).to.not.equal(await registry.registrationBlock(didHash2));
+      expect(block1).to.not.equal(block2);
     });
 
     it("should handle hash collisions gracefully", async function () {
@@ -1901,11 +1908,12 @@ describe("OMA3AppRegistry", function () {
         ""
       );
 
-      // Verify registration data was recorded
+      // Verify registration data was recorded against the actual block
       const recordedBlock = await registry.registrationBlock(didHash);
       const recordedTimestamp = await registry.registrationTimestamp(didHash);
-      expect(recordedBlock).to.not.equal(0);
-      expect(recordedTimestamp).to.not.equal(0);
+      expect(recordedBlock).to.be.greaterThan(initialBlock);
+      const actualBlock = await hre.ethers.provider.getBlock(Number(recordedBlock));
+      expect(recordedTimestamp).to.equal(actualBlock!.timestamp);
 
       // Wait a few blocks
       await time.increase(10);
@@ -1959,11 +1967,12 @@ describe("OMA3AppRegistry", function () {
         ""
       );
 
-      // Verify registration data was recorded
+      // Verify registration data was recorded against the actual block
       const recordedBlock = await registry.registrationBlock(didHash);
       const recordedTimestamp = await registry.registrationTimestamp(didHash);
-      expect(recordedBlock).to.not.equal(0);
-      expect(recordedTimestamp).to.not.equal(0);
+      expect(recordedBlock).to.be.greaterThan(initialBlock);
+      const actualBlock = await hre.ethers.provider.getBlock(Number(recordedBlock));
+      expect(recordedTimestamp).to.equal(actualBlock!.timestamp);
 
       // Wait a few blocks
       await time.increase(10);

@@ -146,15 +146,16 @@ describe("OMA3 Missing Test Cases", function () {
                 const controllerAddress = ethers.zeroPadValue(user1.address, 32);
                 const futureTime = (await time.latest()) + 3600;
 
-                await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
+                const txResponse = await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
+                const txReceipt = await txResponse.wait();
 
                 const entry = await resolver.get(issuer1.address, TEST_DID_HASH);
                 
                 expect(entry.active).to.be.true;
                 expect(entry.controllerAddress).to.equal(controllerAddress);
                 expect(entry.expiresAt).to.equal(futureTime);
-                expect(entry.recordedAt).to.be.greaterThan(0);
-                expect(entry.recordedBlock).to.be.greaterThan(0);
+                expect(entry.recordedAt).to.equal(txReceipt!.blockNumber > 0 ? (await ethers.provider.getBlock(txReceipt!.blockNumber))!.timestamp : 0);
+                expect(entry.recordedBlock).to.equal(txReceipt!.blockNumber);
             });
 
             it("Should return updated entry after revocation", async function () {
@@ -166,13 +167,14 @@ describe("OMA3 Missing Test Cases", function () {
                 await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, futureTime);
                 const originalRecordedAt = (await resolver.get(issuer1.address, TEST_DID_HASH)).recordedAt;
 
-                await resolver.connect(issuer1).revokeDirect(TEST_DID_HASH);
+                const revokeTx = await resolver.connect(issuer1).revokeDirect(TEST_DID_HASH);
+                const revokeReceipt = await revokeTx.wait();
 
                 const entry = await resolver.get(issuer1.address, TEST_DID_HASH);
                 
                 expect(entry.active).to.be.false;
                 expect(entry.recordedAt).to.be.greaterThan(originalRecordedAt);
-                expect(entry.recordedBlock).to.be.greaterThan(0);
+                expect(entry.recordedBlock).to.equal(revokeReceipt!.blockNumber);
             });
         });
 
@@ -194,15 +196,16 @@ describe("OMA3 Missing Test Cases", function () {
 
                 const futureTime = (await time.latest()) + 3600;
 
-                await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
+                const txResponse = await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
+                const txReceipt = await txResponse.wait();
 
                 const dataEntry = await resolver.getDataEntry(issuer1.address, TEST_DID_HASH, TEST_DATA_HASH);
                 
                 expect(dataEntry.active).to.be.true;
                 expect(dataEntry.expiresAt).to.equal(futureTime);
                 expect(dataEntry.attester).to.equal(ethers.zeroPadValue(issuer1.address, 32));
-                expect(dataEntry.recordedAt).to.be.greaterThan(0);
-                expect(dataEntry.recordedBlock).to.be.greaterThan(0);
+                expect(dataEntry.recordedAt).to.equal((await ethers.provider.getBlock(txReceipt!.blockNumber))!.timestamp);
+                expect(dataEntry.recordedBlock).to.equal(txReceipt!.blockNumber);
             });
 
             it("Should return updated entry after data hash revocation", async function () {
@@ -213,13 +216,14 @@ describe("OMA3 Missing Test Cases", function () {
                 await resolver.connect(issuer1).attestDataHash(TEST_DID_HASH, TEST_DATA_HASH, futureTime);
                 const originalRecordedAt = (await resolver.getDataEntry(issuer1.address, TEST_DID_HASH, TEST_DATA_HASH)).recordedAt;
 
-                await resolver.connect(issuer1).revokeDataHash(TEST_DID_HASH, TEST_DATA_HASH);
+                const revokeTx = await resolver.connect(issuer1).revokeDataHash(TEST_DID_HASH, TEST_DATA_HASH);
+                const revokeReceipt = await revokeTx.wait();
 
                 const dataEntry = await resolver.getDataEntry(issuer1.address, TEST_DID_HASH, TEST_DATA_HASH);
                 
                 expect(dataEntry.active).to.be.false;
                 expect(dataEntry.recordedAt).to.be.greaterThan(originalRecordedAt);
-                expect(dataEntry.recordedBlock).to.be.greaterThan(0);
+                expect(dataEntry.recordedBlock).to.equal(revokeReceipt!.blockNumber);
             });
         });
 

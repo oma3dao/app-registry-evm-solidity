@@ -313,10 +313,11 @@ describe("OMA3 Security and Edge Cases", function () {
             const controllerAddress = ethers.zeroPadValue(user1.address, 32);
 
             // Create attestation and verify block number is recorded
-            await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, 0);
+            const tx = await resolver.connect(issuer1).upsertDirect(TEST_DID_HASH, controllerAddress, 0);
+            const receipt = await tx.wait();
 
             const entry = await resolver.get(issuer1.address, TEST_DID_HASH);
-            expect(entry.recordedBlock).to.be.greaterThan(0);
+            expect(entry.recordedBlock).to.equal(receipt!.blockNumber);
         });
     });
 

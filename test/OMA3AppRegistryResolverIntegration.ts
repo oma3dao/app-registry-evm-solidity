@@ -65,9 +65,9 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
         it("Should allow minting when caller is DID owner", async function () {
             const { registry, resolver, issuer, user1 } = await loadFixture(deployWithResolverFixture);
 
-            // Test that the resolver is properly linked
+            // Test that the resolver is properly linked to the deployed resolver address
             const ownershipResolver = await registry.ownershipResolver();
-            expect(ownershipResolver).to.not.equal(ethers.ZeroAddress);
+            expect(ownershipResolver).to.equal(await resolver.getAddress());
 
             // Test that the resolver functions are callable
             const currentOwner = await resolver.currentOwner(TEST_DID_HASH);
@@ -96,9 +96,9 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
         it("Should reject minting when caller is not DID owner", async function () {
             const { registry, resolver, issuer, user1, user2 } = await loadFixture(deployWithResolverFixture);
 
-            // Test that the resolver is properly linked
+            // Test that the resolver is properly linked to the deployed resolver address
             const ownershipResolver = await registry.ownershipResolver();
-            expect(ownershipResolver).to.not.equal(ethers.ZeroAddress);
+            expect(ownershipResolver).to.equal(await resolver.getAddress());
 
             // Test that minting fails when caller is not DID owner
             // The resolver integration is complex and would require more setup
@@ -155,9 +155,9 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
         it("Should handle ownership changes during maturation period", async function () {
             const { registry, resolver, issuer, user1, user2 } = await loadFixture(deployWithResolverFixture);
 
-            // Test that the resolver is properly linked
+            // Test that the resolver is properly linked to the deployed resolver address
             const ownershipResolver = await registry.ownershipResolver();
-            expect(ownershipResolver).to.not.equal(ethers.ZeroAddress);
+            expect(ownershipResolver).to.equal(await resolver.getAddress());
 
             // Test that the resolver functions are callable
             const currentOwner = await resolver.currentOwner(TEST_DID_HASH);
@@ -329,9 +329,9 @@ describe("OMA3AppRegistry - Resolver Integration", function () {
                 TEST_METADATA_JSON
             )).to.be.revertedWith("DATA_HASH_NOT_ATTESTED");
 
-            // Test that resolver is properly set
+            // Test that resolver is properly set to the deployed resolver address
             const ownershipResolver = await registry.ownershipResolver();
-            expect(ownershipResolver).to.not.equal(ethers.ZeroAddress);
+            expect(ownershipResolver).to.equal(await resolver.getAddress());
 
             // Should still be able to mint (no validation)
             await expect(registry.connect(user1).mint(
