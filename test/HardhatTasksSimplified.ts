@@ -130,9 +130,20 @@ describe("Hardhat Tasks - Simplified", function () {
       });
       
       const parsedEvent = event ? registryContract.interface.parseLog(event) : null;
+      expect(parsedEvent).to.not.be.null;
       testTokenId = Number(parsedEvent?.args?.tokenId ?? 0);
       
       expect(testTokenId).to.be.greaterThan(0);
+
+      // Verify event args match what we submitted
+      expect(parsedEvent?.args?.didHash).to.equal(didHash);
+      expect(parsedEvent?.args?.registerer).to.equal(deployer.address);
+      expect(parsedEvent?.args?.dataUrl).to.equal("https://example.com/metadata.json");
+      expect(parsedEvent?.args?.versionMajor).to.equal(1);
+      expect(parsedEvent?.args?.interfaces).to.equal(1);
+
+      // Cross-reference: tokenId from event should own the token on-chain
+      expect(await registryContract.ownerOf(testTokenId)).to.equal(deployer.address);
     });
   });
 
@@ -149,7 +160,7 @@ describe("Hardhat Tasks - Simplified", function () {
       const registryContract = await ethers.getContractAt("OMA3AppRegistry", registryAddress);
       const totalSupply = await registryContract.totalSupply();
       
-      expect(totalSupply).to.be.greaterThan(0);
+      expect(totalSupply).to.equal(1, "Exactly one app minted so far");
     });
 
     it("should get apps", async function () {
@@ -158,6 +169,9 @@ describe("Hardhat Tasks - Simplified", function () {
       const apps = result.apps || result[0];
       
       expect(apps.length).to.be.greaterThan(0);
+      const mintedApp = apps.find((a: any) => a.did === testDID);
+      expect(mintedApp, "getApps should include the minted app").to.not.be.undefined;
+      expect(mintedApp.did).to.equal(testDID);
     });
 
     it("should get apps by owner", async function () {
@@ -166,6 +180,8 @@ describe("Hardhat Tasks - Simplified", function () {
       const apps = result.apps || result[0];
       
       expect(apps.length).to.be.greaterThan(0);
+      const mintedApp = apps.find((a: any) => a.did === testDID);
+      expect(mintedApp, "getAppsByOwner should include the minted app").to.not.be.undefined;
     });
 
     it("should get DID hash", async function () {
@@ -282,7 +298,7 @@ describe("Hardhat Tasks - Simplified", function () {
       const registryContract = await ethers.getContractAt("OMA3AppRegistry", registryAddress);
       const balance = await registryContract.balanceOf(deployer.address);
       
-      expect(balance).to.be.greaterThan(0);
+      expect(balance).to.equal(1, "Deployer should own exactly 1 token at this point");
     });
 
     it("should approve and transfer", async function () {
@@ -371,9 +387,9 @@ describe("Hardhat Tasks - Simplified", function () {
       expect(app.dataUrl).to.equal("https://example.com/advanced.json"); // dataUrl immutable
       expect(app.interfaces).to.equal(3);
       
-      // Version is stored in versionHistory array - check the latest version
+      // Version is stored in versionHistory array — initial mint + one update = 2 entries
       const versionHistory = app.versionHistory;
-      expect(versionHistory.length).to.be.greaterThan(0);
+      expect(versionHistory.length).to.equal(2, "Should have initial + 1 update version entry");
       const latestVersion = versionHistory[versionHistory.length - 1];
       expect(latestVersion.minor).to.equal(1);
     });
@@ -411,16 +427,18 @@ describe("Hardhat Tasks - Simplified", function () {
       await registryContract.mint(deprecatedDID, 1, "https://example.com/deprecated.json", ethers.keccak256(ethers.toUtf8Bytes("deprecated")), 0, "", "", 1, 0, 0, [], "");
       await registryContract.updateStatus(deprecatedDID, 1, 1); // Set to deprecated
       
-      // Get active apps
+      // Get active apps — should include the advancedDID app
       const activeResult = await registryContract.getAppsByStatus(0, 0);
       const activeApps = activeResult.apps || activeResult[0];
       expect(activeApps.length).to.be.greaterThan(0);
+      expect(activeApps.some((app: any) => app.did === advancedDID)).to.be.true;
       
-      // Get deprecated apps
+      // Get deprecated apps — should include the deprecatedDID
       const deprecatedResult = await registryContract.getAppsByStatus(1, 0);
       const deprecatedApps = deprecatedResult.apps || deprecatedResult[0];
       expect(deprecatedApps.length).to.be.greaterThan(0);
       expect(deprecatedApps.some((app: any) => app.did === deprecatedDID)).to.be.true;
+      expect(deprecatedApps.every((app: any) => Number(app.status) === 1), "All apps from status query should have deprecated status").to.be.true;
     });
   });
 

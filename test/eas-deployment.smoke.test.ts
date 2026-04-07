@@ -81,6 +81,13 @@ describe("EAS Deployment", function () {
     const schemaUID = parsedEvent?.args.uid;
     expect(schemaUID).to.not.equal(ethers.ZeroHash);
 
+    // Cross-reference: verify event UID matches on-chain schema record
+    const registeredSchema = await schemaRegistry.getSchema(schemaUID);
+    expect(registeredSchema.uid).to.equal(schemaUID);
+    expect(registeredSchema.schema).to.equal(schema);
+    expect(registeredSchema.revocable).to.be.true;
+    expect(registeredSchema.resolver).to.equal(ethers.ZeroAddress);
+
     // Create an attestation
     const attestationData = ethers.AbiCoder.defaultAbiCoder().encode(
       ["string", "uint8"],
@@ -114,8 +121,13 @@ describe("EAS Deployment", function () {
     expect(attestEvent).to.not.be.undefined;
     const parsedAttestEvent = eas.interface.parseLog(attestEvent!);
     const attestationUID = parsedAttestEvent?.args.uid;
+    expect(attestationUID).to.not.equal(ethers.ZeroHash);
 
-    // Verify attestation exists
+    // Verify event args match what we submitted
+    expect(parsedAttestEvent?.args.recipient).to.equal(deployer.address);
+    expect(parsedAttestEvent?.args.schemaUID).to.equal(schemaUID);
+
+    // Verify attestation exists on-chain and cross-reference against event data
     const attestation = await eas.getAttestation(attestationUID);
     expect(attestation.uid).to.equal(attestationUID);
     expect(attestation.recipient).to.equal(deployer.address);

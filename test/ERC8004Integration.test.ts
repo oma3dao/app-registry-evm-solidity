@@ -83,8 +83,17 @@ describe("ERC-8004 Integration", function () {
       );
       expect(event).to.not.be.undefined;
 
+      // Verify event args match what we submitted
+      const parsedEvent = registry.interface.parseLog(event!);
+      expect(parsedEvent?.args.registerer).to.equal(user.address);
+      expect(parsedEvent?.args.didHash).to.equal(didHash);
+      expect(parsedEvent?.args.dataUrl).to.equal(dataUrl);
+      expect(parsedEvent?.args.versionMajor).to.equal(1);
+      expect(parsedEvent?.args.interfaces).to.equal(1);
+
       // Verify token was minted
-      const tokenId = 1n;
+      const tokenId = parsedEvent?.args.tokenId;
+      expect(tokenId).to.equal(1n);
       expect(await registry.ownerOf(tokenId)).to.equal(user.address);
       expect(await registry.tokenURI(tokenId)).to.equal(dataUrl);
 
@@ -193,8 +202,15 @@ describe("ERC-8004 Integration", function () {
       );
       expect(event).to.not.be.undefined;
 
-      // Verify token was minted
-      const tokenId = 1n;
+      // Verify event args match what we submitted
+      const parsedEvent = registry.interface.parseLog(event!);
+      expect(parsedEvent?.args.registerer).to.equal(user.address);
+      expect(parsedEvent?.args.didHash).to.equal(didHash);
+      expect(parsedEvent?.args.dataUrl).to.equal(dataUrl);
+
+      // Verify token was minted using tokenId from event
+      const tokenId = parsedEvent?.args.tokenId;
+      expect(tokenId).to.equal(1n);
       expect(await registry.ownerOf(tokenId)).to.equal(user.address);
 
       // Verify app data
