@@ -2,11 +2,12 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces-archive/IOMA3DidOwnershipAttestationStore.sol";
-import "../interfaces-archive/IOMA3DataUrlAttestationStore.sol";
-import "../interfaces-archive/IOMA3Resolver.sol";
+import "./interfaces/IOMA3DidOwnershipAttestationStore.sol";
+import "./interfaces/IOMA3DataUrlAttestationStore.sol";
+import "./interfaces/IOMA3OwnershipResolver.sol";
+import "./interfaces/IOMA3DataUrlResolver.sol";
 
-contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUrlAttestationStore, IOMA3Resolver, Ownable {
+contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUrlAttestationStore, IOMA3OwnershipResolver, IOMA3DataUrlResolver, Ownable {
     // ---------- Storage ----------
 
     mapping(address => mapping(bytes32 => IOMA3DidOwnershipAttestationStore.Entry)) private _own;      // issuer => didHash => Entry
@@ -291,7 +292,7 @@ contract OMA3ResolverWithStore is IOMA3DidOwnershipAttestationStore, IOMA3DataUr
         return address(0);
     }
 
-    function checkDataHashAttestation(bytes32 didHash, bytes32 dataHash) external view override(IOMA3DataUrlAttestationStore, IOMA3Resolver) returns (bool) {
+    function checkDataHashAttestation(bytes32 didHash, bytes32 dataHash) external view override(IOMA3DataUrlAttestationStore, IOMA3DataUrlResolver) returns (bool) {
         // Check if any allowlisted issuer has attested to this data hash for this DID
         for (uint256 i = 0; i < authorizedIssuers.length; i++) {
             address issuer = authorizedIssuers[i];

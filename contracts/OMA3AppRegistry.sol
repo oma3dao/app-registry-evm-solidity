@@ -5,19 +5,8 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./OMA3MetadataKeys.sol";
-
-// Interface for ownership resolver
-interface IOMA3OwnershipResolver {
-    function currentOwner(bytes32 didHash) external view returns (address);
-}
-
-// Interface for data URL attestation resolver
-interface IOMA3DataUrlResolver {
-    function checkDataHashAttestation(
-        bytes32 didHash,
-        bytes32 dataHash
-    ) external view returns (bool);
-}
+import "./interfaces/IOMA3OwnershipResolver.sol";
+import "./interfaces/IOMA3DataUrlResolver.sol";
 
 // Interface for registration resolver
 interface IOMA3RegistrationResolver {
