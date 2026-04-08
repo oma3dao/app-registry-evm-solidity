@@ -1,6 +1,6 @@
 import { task } from "hardhat/config";
 import { getDeployerSigner, verifyBytecode, logTransactionForVerification } from "../shared/signer-utils";
-import { getTimestamp, getOpenZeppelinVersion } from "../shared/deployment-logger";
+import { logDeployment, getTimestamp } from "../shared/deployment-logger";
 
 task("deploy-timelock", "Deploy OpenZeppelin TimelockController")
   .addParam("proposer", "Address with proposer and executor roles (admin server wallet)")
@@ -62,49 +62,24 @@ task("deploy-timelock", "Deploy OpenZeppelin TimelockController")
     console.log(`Proposer: ${proposer}`);
     console.log(`Executor: ${proposer}`);
 
-    // Log deployment to file
-    // TODO: Refactor to use shared logDeployment() from tasks/shared/deployment-logger.ts
-    // See ISSUE-auto-update-active-deployments.md
-    const chainId = (await hre.ethers.provider.getNetwork()).chainId;
-    const filePath = require('path').join(process.cwd(), 'contract-addresses.txt');
-    const fs = require('fs');
-    let existingContent = '';
-    try { existingContent = fs.readFileSync(filePath, 'utf-8'); } catch {}
-    const deploymentMatches = existingContent.match(/=== Deployment #(\d+) ===/g) || [];
-    const deploymentNumber = deploymentMatches.length + 1;
-
-    let entry = `\n=== Deployment #${deploymentNumber} ===\n`;
-    entry += `Timestamp: ${getTimestamp()}\n`;
-    entry += `Network: ${networkName} (Chain ID: ${chainId})\n`;
-    entry += `Type: TimelockController\n`;
-    entry += `Method: Hardhat (SSH Key)\n`;
-    entry += `Deployer: ${deployerAddress}\n\n`;
-    entry += `Deployed Contracts:\n`;
-    entry += `  TimelockController: ${contractAddress}\n\n`;
-    entry += `Configuration:\n`;
-    entry += `  Min Delay: ${minDelay}s (${minDelay / 3600}h)\n`;
-    entry += `  Proposer:  ${proposer}\n`;
-    entry += `  Executor:  ${proposer}\n`;
-    entry += `  Admin:     address(0)\n`;
-    entry += `\nDeployment Details:\n`;
-    entry += `  Block Confirmations: ${confirmations}\n`;
-    entry += `  OpenZeppelin Contracts: v${getOpenZeppelinVersion()}\n`;
-    entry += `  Verification Status: Pending\n`;
-    entry += `============================================================================\n`;
-
-    try {
-      fs.appendFileSync(filePath, entry, 'utf-8');
-      console.log(`\n✅ Deployment logged to contract-addresses.txt (Deployment #${deploymentNumber})`);
-    } catch (error) {
-      console.error(`❌ Failed to log deployment:`, error);
-    }
+    // Log deployment using shared logger
+    const chainId = Number((await hre.ethers.provider.getNetwork()).chainId);
+    await logDeployment({
+      network: networkName,
+      chainId,
+      deployer: deployerAddress,
+      timelock: contractAddress,
+      timestamp: getTimestamp(),
+      blockConfirmations: confirmations,
+      isSystemDeployment: false,
+      method: 'Hardhat (SSH Key)',
+    });
 
     console.log("\n⚠️  Next steps:");
-    console.log("1. Update contract-addresses.txt active deployment section with the timelock address");
-    console.log("2. Update oma3-ops/src/admin-wallet/config.ts with the timelock address");
-    console.log("3. Transfer contract ownership to the timelock:");
+    console.log("1. Update oma3-ops/src/admin-wallet/config.ts with the timelock address");
+    console.log("2. Transfer contract ownership to the timelock:");
     console.log(`   npx hardhat registry-transfer-owner --network ${networkName} --new-owner ${contractAddress}`);
     console.log(`   npx hardhat metadata-transfer-owner --network ${networkName} --new-owner ${contractAddress}`);
     console.log(`   npx hardhat resolver-transfer-owner --network ${networkName} --new-owner ${contractAddress}`);
-    console.log("4. Add attestation wallet as issuer via timelock (see OMA3-Ops admin scripts)");
+    console.log("3. Add attestation wallet as issuer via timelock (see OMA3-Ops admin scripts)");
   });

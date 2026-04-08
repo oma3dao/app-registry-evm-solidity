@@ -8,6 +8,7 @@ interface DeploymentRecord {
   registry?: string;
   metadata?: string;
   resolver?: string;
+  timelock?: string;
   timestamp: string;
   blockConfirmations: number;
   isSystemDeployment: boolean;
@@ -59,7 +60,9 @@ export async function logDeployment(record: DeploymentRecord): Promise<void> {
     ? 'Full System Deployment' 
     : record.registry ? 'Individual Contract (Registry)'
     : record.metadata ? 'Individual Contract (Metadata)'
-    : 'Individual Contract (Resolver)';
+    : record.resolver ? 'Individual Contract (Resolver)'
+    : record.timelock ? 'Individual Contract (Timelock)'
+    : 'Individual Contract';
 
   const method = record.method || 'Hardhat (SSH Key)';
 
@@ -81,6 +84,9 @@ export async function logDeployment(record: DeploymentRecord): Promise<void> {
   }
   if (record.resolver) {
     entry += `  Resolver:  ${record.resolver}\n`;
+  }
+  if (record.timelock) {
+    entry += `  Timelock:  ${record.timelock}\n`;
   }
 
   entry += `\nDeployment Details:\n`;
@@ -161,6 +167,7 @@ function updateActiveSummary(filePath: string, record: DeploymentRecord): void {
   const existingRegistry = getExisting('Registry');
   const existingMetadata = getExisting('Metadata');
   const existingResolver = getExisting('Resolver');
+  const existingTimelock = getExisting('Timelock');
 
   // Extract and preserve Issuers from this specific section
   const issuersMatch = targetSection.match(/Issuers:\n((?:0x[a-fA-F0-9]{40}\n?)*)/);
@@ -178,6 +185,10 @@ function updateActiveSummary(filePath: string, record: DeploymentRecord): void {
     ? record.resolver
     : (existingResolver !== undefined ? existingResolver : 'Not deployed');
 
+  const mergedTimelock = (record.timelock !== undefined && record.timelock !== '')
+    ? record.timelock
+    : (existingTimelock !== undefined ? existingTimelock : 'Not deployed');
+
   // Build new section content (only the updated lines change)
   let newSection = `${sectionHeader}${record.network})\n`;
   newSection += `Network: ${record.network} (Chain ID: ${record.chainId})\n`;
@@ -186,6 +197,7 @@ function updateActiveSummary(filePath: string, record: DeploymentRecord): void {
   newSection += `Registry:  ${mergedRegistry}\n`;
   newSection += `Metadata:  ${mergedMetadata}\n`;
   newSection += `Resolver:  ${mergedResolver}\n`;
+  newSection += `Timelock:  ${mergedTimelock}\n`;
   newSection += `Deployer:  ${record.deployer}\n`;
   
   // Add back the Issuers section if it existed
