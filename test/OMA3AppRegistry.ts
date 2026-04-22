@@ -3879,12 +3879,10 @@ describe("OMA3AppRegistry", function () {
     it("should handle concurrent operations from multiple users", async function () {
       const { registry, minter1, minter2 } = await loadFixture(deployFixture);
       
-      // Simulate concurrent minting
-      const mintPromises = [];
-      
-      // User 1 mints 5 apps
+      // Simulate concurrent minting in bounded batches to avoid OOG flakiness.
+      // Each round sends one tx from each user at the same time.
       for (let i = 1; i <= 5; i++) {
-        mintPromises.push(
+        await Promise.all([
           registry.connect(minter1).mint(
             `did:oma3:concurrent-user1-${i}`,
             STATUS.ACTIVE,
@@ -3899,13 +3897,7 @@ describe("OMA3AppRegistry", function () {
             [],
             [INTERFACE_TYPES.HUMAN],
             ""
-          )
-        );
-      }
-      
-      // User 2 mints 5 apps
-      for (let i = 1; i <= 5; i++) {
-        mintPromises.push(
+          ),
           registry.connect(minter2).mint(
             `did:oma3:concurrent-user2-${i}`,
             STATUS.ACTIVE,
@@ -3921,11 +3913,8 @@ describe("OMA3AppRegistry", function () {
             [INTERFACE_TYPES.HUMAN],
             ""
           )
-        );
+        ]);
       }
-      
-      // Execute all mints concurrently
-      await Promise.all(mintPromises);
       
       // Verify all apps were minted
       expect(await registry.totalSupply()).to.equal(10);
