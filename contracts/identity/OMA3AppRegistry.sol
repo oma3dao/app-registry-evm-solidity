@@ -84,9 +84,10 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     /**
      * @dev AppView struct for read-only queries (view layer)
-     * @notice Identical to App struct but includes currentOwner field
+     * @notice Identical to App struct but includes currentOwner and tokenId fields
      * @notice currentOwner is derived at call time via ownerOf(tokenId) and reflects
      *         the current NFT holder, which may differ from minter due to transfers
+     * @notice tokenId is the ERC-721 token ID for the registration (ERC-8004 agentId)
      * @notice Field names match App struct exactly for ABI stability and indexer compatibility
      */
     struct AppView {
@@ -104,8 +105,9 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
         Version[] versionHistory;      // Array of version structs
         bytes32[] traitHashes;         // Array of trait hashes
         
-        // Additional field: current NFT owner (computed at call time)
+        // Additional fields (not in App storage struct)
         address currentOwner;          // Current NFT holder (may differ from minter after transfers)
+        uint256 tokenId;               // ERC-721 token ID (ERC-8004 registrations.agentId)
     }
 
     // Custom errors for gas efficiency
@@ -818,7 +820,7 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @dev Internal helper to convert App storage to AppView memory
      * @param tokenId The token ID to convert
      * @param owner The current owner address (pass ownerOf(tokenId) if not already known)
-     * @return The AppView struct with currentOwner populated
+     * @return The AppView struct with currentOwner and tokenId populated
      * @notice Pass ownerOf(tokenId) as owner parameter when not already known
      * @notice When owner is already known (e.g., in loops), pass it directly to save gas
      */
@@ -838,7 +840,8 @@ contract OMA3AppRegistry is ERC721Enumerable, Ownable, ReentrancyGuard {
             dataUrl: app.dataUrl,
             versionHistory: app.versionHistory,
             traitHashes: app.traitHashes,
-            currentOwner: owner
+            currentOwner: owner,
+            tokenId: tokenId
         });
     }
 

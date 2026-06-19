@@ -9,7 +9,7 @@ import "@nomicfoundation/hardhat-chai-matchers";
  * Purpose: Ensure that the AppView struct stays in sync with the App struct.
  * This test validates that:
  * 1. All fields from App exist in AppView with the same names and types
- * 2. AppView has exactly one additional field: currentOwner (address)
+ * 2. AppView has exactly two additional fields: currentOwner (address) and tokenId (uint256)
  * 3. Field order and naming remain consistent for ABI stability
  * 
  * Why this matters:
@@ -26,7 +26,7 @@ describe("AppView Parity Test", function () {
     await registry.waitForDeployment();
   });
 
-  it("should have AppView struct with all App fields plus currentOwner", async function () {
+  it("should have AppView struct with all App fields plus currentOwner and tokenId", async function () {
     // Get the contract's ABI
     const abi = registry.interface.fragments;
     
@@ -41,7 +41,7 @@ describe("AppView Parity Test", function () {
     // Get the AppView fields from the return type
     const appViewFields = returnType.components;
     
-    // Expected fields in AppView (matching App + currentOwner)
+    // Expected fields in AppView (matching App + currentOwner + tokenId)
     const expectedFields = [
       { name: "minter", type: "address" },
       { name: "interfaces", type: "uint16" },
@@ -55,13 +55,14 @@ describe("AppView Parity Test", function () {
       { name: "dataUrl", type: "string" },
       { name: "versionHistory", type: "tuple[]" },
       { name: "traitHashes", type: "bytes32[]" },
-      { name: "currentOwner", type: "address" }  // Additional field
+      { name: "currentOwner", type: "address" },
+      { name: "tokenId", type: "uint256" }
     ];
     
     // Verify field count
     expect(appViewFields.length).to.equal(
       expectedFields.length,
-      `AppView should have exactly ${expectedFields.length} fields (App fields + currentOwner)`
+      `AppView should have exactly ${expectedFields.length} fields (App fields + currentOwner + tokenId)`
     );
     
     // Verify each field name and type
@@ -81,15 +82,15 @@ describe("AppView Parity Test", function () {
     }
   });
 
-  it("should verify currentOwner is the last field in AppView", async function () {
+  it("should verify tokenId is the last field in AppView", async function () {
     const getAppFunction = registry.interface.getFunction("getApp");
     const returnType = getAppFunction.outputs[0];
     const appViewFields = returnType.components;
     
     const lastField = appViewFields[appViewFields.length - 1];
     
-    expect(lastField.name).to.equal("currentOwner");
-    expect(lastField.type).to.equal("address");
+    expect(lastField.name).to.equal("tokenId");
+    expect(lastField.type).to.equal("uint256");
   });
 
   it("should verify getAppsByOwner also returns AppView structs", async function () {
@@ -110,8 +111,8 @@ describe("AppView Parity Test", function () {
     expect(tupleType).to.not.be.undefined;
     
     if (tupleType && tupleType.components) {
-      expect(tupleType.components.length).to.equal(13, "AppView should have 13 fields");
-      expect(tupleType.components[tupleType.components.length - 1].name).to.equal("currentOwner");
+      expect(tupleType.components.length).to.equal(14, "AppView should have 14 fields");
+      expect(tupleType.components[tupleType.components.length - 1].name).to.equal("tokenId");
     }
   });
 
@@ -133,11 +134,13 @@ describe("AppView Parity Test", function () {
       const baseType = returnType.type.replace("[]", "");
       expect(baseType).to.equal("tuple", `${funcName} should return AppView struct(s)`);
       
-      // Verify it has currentOwner field
+      // Verify it has currentOwner and tokenId fields
       const fields = returnType.components;
       if (fields) {
         const hasCurrentOwner = fields.some((f: any) => f.name === "currentOwner");
+        const hasTokenId = fields.some((f: any) => f.name === "tokenId");
         expect(hasCurrentOwner).to.equal(true, `${funcName} should return AppView with currentOwner field`);
+        expect(hasTokenId).to.equal(true, `${funcName} should return AppView with tokenId field`);
       }
     }
   });

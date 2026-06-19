@@ -52,6 +52,7 @@ describe("AppView currentOwner Integration", function () {
       expect(app.minter).to.equal(minter.address);
       expect(app.currentOwner).to.equal(minter.address);
       expect(app.minter).to.equal(app.currentOwner, "Initially, minter and currentOwner should match");
+      expect(app.tokenId).to.equal(1n);
     });
 
     it("should update currentOwner after transfer but keep minter unchanged", async function () {
