@@ -41,6 +41,7 @@ import "./tasks/deploy/update-frontend-abis";
 import "./tasks/deploy/check-contracts";
 import "./tasks/deploy/eas-sanity";
 import "./tasks/deploy/timelock";
+import "./tasks/deploy/generate-deployment-key";
 
 // Import task files - Setup tasks (initial config using deployment key)
 import "./tasks/setup/registry-set-metadata-contract";

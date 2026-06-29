@@ -607,6 +607,36 @@ Note: Constructor args are: EAS address, fee in wei, treasury address.
 
 Deployment uses a one-time SSH key file. After deploying, ownership transfers to the TimelockController, and the deployment key has zero on-chain authority. It can be deleted after deployment.
 
+### Creating a deployment key
+
+Use the `generate-deployment-key` task to create a new secp256k1 keypair. This generates three files in `~/.ssh/`:
+
+```bash
+# Testnet / Devnet
+npx hardhat generate-deployment-key --filename test-evm-deployment-key
+
+# Mainnet (use a separate key — never reuse the testnet key)
+npx hardhat generate-deployment-key --filename mainnet-evm-deployment-key
+```
+
+Output:
+```
+✅ Private key: ~/.ssh/test-evm-deployment-key
+✅ Public key:  ~/.ssh/test-evm-deployment-key.pub
+✅ Address:     ~/.ssh/test-evm-deployment-key.address
+```
+
+The task creates:
+| File                           | Contents                                  | Permissions |
+|--------------------------------|-------------------------------------------|-------------|
+| `~/.ssh/<filename>`            | Raw 64-char hex private key               | 600         |
+| `~/.ssh/<filename>.pub`        | Uncompressed secp256k1 public key (0x)    | 644         |
+| `~/.ssh/<filename>.address`    | Checksummed Ethereum address (0x)         | 644         |
+
+The private key format matches what `hardhat.config.ts` expects — no conversion needed.
+
+After generating, fund the address printed in the output with native tokens on the target chain before running any deploy tasks. Use `--force` to overwrite existing key files if regenerating.
+
 ### Key selection
 
 `hardhat.config.ts` auto-selects the key file based on the `--network` flag:
