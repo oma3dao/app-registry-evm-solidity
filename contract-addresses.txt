@@ -1,6 +1,6 @@
 # OMA3 Contract Deployment History
 # Auto-generated deployment tracking for all networks and environments
-# Authorized wallet addresses (issuers, admin wallets) are in oma3-ops/approved-addresses.json
+# Authorized wallet addresses (issuers, admin wallets) are in oma3-ops/oma3-internal-addresses.json
 # ============================================================================
 
 ## 📍 Active Deployments

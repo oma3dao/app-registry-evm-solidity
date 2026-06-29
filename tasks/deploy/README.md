@@ -6,22 +6,22 @@ Step-by-step checklists for deploying OMATrust contracts to a new chain. There a
 
 | Chain Type                                | What to Deploy                         | EAS                          |
 |-------------------------------------------|----------------------------------------|------------------------------|
-| **OMAchain** (devnet/testnet/mainnet)     | Full system + EAS + TimelockController | Deploy EAS (no existing EAS) |
+| **OMAChain** (devnet/testnet/mainnet)     | Full system + EAS + TimelockController | Deploy EAS (no existing EAS) |
 | **External chain** (Base, Arbitrum, etc.) | Fee resolver + schemas only            | Use existing EAS             |
 
 Once contracts are deployed and ownership is transferred to the timelock, ongoing admin operations (add/remove issuers, update resolver settings, etc.) are handled through the `oma3-ops` repository. See `oma3-ops/README.md` Part 2.
 
 ---
 
-## OMAchain Deployment Checklist
+## OMAChain Deployment Checklist
 
-Use this when deploying to OMAchain devnet, testnet, or mainnet. Covers the full system: EAS, reputation schemas, timelock, server wallets, and identity contracts.
+Use this when deploying to OMAChain devnet, testnet, or mainnet. Covers the full system: EAS, reputation schemas, timelock, server wallets, and identity contracts.
 
 Reputation launches first (Phase A). Identity launches after audit (Phase B).
 
 ### Prerequisites
-
-- Deployment SSH key funded with native OMA tokens (see [Deployment Key Strategy](#deployment-key-strategy))
+- Private key created (separate mainnet and testnet deployment keys): `ssh-keygen -t ed25519 -C "my@email.address"`
+- Deployment key funded with native tokens on the deployment chain (see [Deployment Key Strategy](#deployment-key-strategy))
 - `hardhat.config.ts` has the target network settings configured
 
 ---
@@ -48,7 +48,7 @@ OMAChain Mainnet Faucet:  https://faucet.omachain.org (not yet deployed)
 1. Create a server wallet. Record the wallet address.
 2. Fund with OMA for gas payments.
 
-Record both wallet addresses in `oma3-ops/approved-addresses.json` immediately. This is the source of truth for all authorized wallet addresses across networks.
+Record both wallet addresses in `oma3-ops/oma3-internal-addresses.json` immediately. This is the source of truth for all authorized wallet addresses across networks.
 
 **Configure server wallets and secret keys in Vercel:**
 Set in both `app-registry-frontend` and `rep-attestation-frontend` environments:
@@ -60,13 +60,15 @@ Thirdweb project secret keys should be rotated regularly. Thirdweb project secre
 **Configure attestation wallet in downstream repos:**
 Add the attestation wallet address for this chain in `app-registry-frontend/src/config/controller-witness-config.ts` → `APPROVED_CONTROLLER_WITNESS_ATTESTERS[<chainId>]`.
 
+**Funding wallets:** See [oma3-ops/docs/funding-omachain-wallets.md](../../../oma3-ops/docs/funding-omachain-wallets.md) for detailed guidance on bridging OMA, using hardware wallets with OMAChain, wallet separation, and ongoing server wallet funding.
+
 #### Step 2: Compile
 
 ```bash
 npx hardhat compile
 ```
 
-This compiles all Solidity contracts and generates artifacts needed for deployment.
+Compiles all Solidity contracts and generates artifacts needed for deployment. If source hasn't changed since the last compile, this is a no-op — Hardhat skips unchanged contracts. Safe to run regardless.
 
 #### Step 3: Deploy TimelockController
 
@@ -133,14 +135,16 @@ EAS: 0x5678...
 
 #### Step 6: Update EAS Configuration Files
 
-Update EAS contract addresses in all four repositories that reference them. Use the SchemaRegistry and EAS addresses from the Step 5 deployment output.
+Update EAS contract addresses in all five repositories that reference them. Use the SchemaRegistry and EAS addresses from the Step 5 deployment output.
 
-| #   | File                                                    | Fields to update                                                                    |
-|-----|---------------------------------------------------------|-------------------------------------------------------------------------------------|
-| 1   | `app-registry-evm-solidity/hardhat.config.ts`           | `NETWORK_CONTRACTS.<network>.easSchemaRegistry`, `.easContract`                     |
-| 2   | `rep-attestation-tools-evm-solidity/hardhat.config.ts`  | `EAS_SCHEMA_REGISTRY_ADDRESSES.<network>`, `EAS_CONTRACT_ADDRESSES.<network>`       |
-| 3   | `rep-attestation-frontend/src/config/chains.ts`         | `<network>.contracts.easSchemaRegistry`, `.easContract`                             |
-| 4   | `app-registry-frontend/src/config/chains.ts`            | `<network>.contracts.easContract`                                                   |
+| #   | File                                                      | Fields to update                                                               |
+|-----|-----------------------------------------------------------|--------------------------------------------------------------------------------|
+| 1   | `app-registry-evm-solidity/hardhat.config.ts`             | `NETWORK_CONTRACTS.<network>.easSchemaRegistry`, `.easContract`                 |
+| 2   | `rep-attestation-tools-evm-solidity/hardhat.config.ts`    | `EAS_SCHEMA_REGISTRY_ADDRESSES.<network>`, `EAS_CONTRACT_ADDRESSES.<network>`  |
+| 3   | `rep-attestation-frontend/src/config/chains.ts`           | `<network>.contracts.easSchemaRegistry`, `.easContract`                         |
+| 4   | `app-registry-frontend/src/config/chains.ts`              | `<network>.contracts.easContract`                                              |
+| 5   | `omatrust-backend/src/lib/config/chains.ts`               | `<network>.contracts.easContract`                                              |
+| 6   | `omatrust-backend/src/lib/routes/public/trust-anchors.ts` | `CHAIN_TRUST_ANCHORS[<chainId>].easContract`                                   |
 
 #### Step 7: Verify EAS Deployment
 
@@ -165,13 +169,17 @@ npx hardhat generate-eas-object --schema schemas-json/endorsement.schema.json --
 npx hardhat deploy-eas-schema --file generated/Endorsement.eastest.json --network <NETWORK>
 ```
 
-Once all schemas are deployed, update the frontend repositories.
+Once all schemas are deployed, update the frontend repositories and the backend trust anchors.
 
 ```bash
 # From rep-attestation-frontend/
 npm run update-schemas ../rep-attestation-tools-evm-solidity
 cp ./src/config/schemas.ts ../app-registry-frontend/src/config/schemas.ts
 ```
+
+Also update `omatrust-backend/src/lib/routes/public/trust-anchors.ts`:
+- Add a new entry in `CHAIN_TRUST_ANCHORS` for the new chain ID (e.g., `"eip155:6623"` for mainnet)
+- Include the EAS contract address and all deployed schema UIDs
 
 See the [rep-attestation-tools-evm-solidity README](../../../rep-attestation-tools-evm-solidity/README.md) for complete schema deployment instructions.
 
@@ -216,16 +224,18 @@ What the script does:
 
 If this fails, debug before proceeding to Phase B. The timelock must work before you transfer contract ownership to it.
 
-**Chain clock drift on fresh chains:** The timelock checks `block.timestamp`, not wall clock time. On a newly deployed OMAchain with few transactions, block timestamps can fall behind real time because blocks only advance when transactions are submitted. If the script says "not ready" but your wall clock says the delay has passed, submit a few transactions to bump the chain forward (e.g., `npm run admin:test-wallet -- --network <NETWORK>`), then retry. This is expected on any fresh chain — the remaining deployment steps will naturally advance the clock.
+**Chain clock drift on fresh chains:** The timelock checks `block.timestamp`, not wall clock time. On a newly deployed OMAChain with few transactions, block timestamps can fall behind real time because blocks only advance when transactions are submitted. If the script says "not ready" but your wall clock says the delay has passed, submit a few transactions to bump the chain forward (e.g., `npm run admin:test-wallet -- --network <NETWORK>`), then retry. This is expected on any fresh chain — the remaining deployment steps will naturally advance the clock.
 
 Phase A complete. The reputation system is operational. Proceed to Phase B when identity contracts are ready.
 
 #### Phase A Checklist
 
-- [ ] Server wallet addresses recorded in `oma3-ops/approved-addresses.json`
+- [ ] Server wallet addresses recorded in `oma3-ops/oma3-internal-addresses.json`
+- [ ] Server wallets funded with OMA on OMAChain (see [funding guide](../../../oma3-ops/docs/funding-omachain-wallets.md))
 - [ ] Timelock address updated in `oma3-ops/src/admin-wallet/config.ts`
 - [ ] Timelock smoke test round-trip succeeded (propose → wait → execute)
-- [ ] EAS addresses updated in all four repos (see Step 6 table)
+- [ ] EAS addresses updated in all repos (see Step 6 table)
+- [ ] `omatrust-backend` trust anchors updated with new chain entry and schema UIDs
 - [ ] Schemas deployed and `schemas.ts` updated in both `rep-attestation-frontend` and `app-registry-frontend` (via `update-schemas`)
 - [ ] Vercel env vars set (`THIRDWEB_SECRET_KEY`, `THIRDWEB_SERVER_WALLET_ADDRESS`) in both frontends
 - [ ] Attestation wallet added to `APPROVED_CONTROLLER_WITNESS_ATTESTERS`
@@ -496,7 +506,7 @@ npx hardhat metadata-transfer-owner --network <NETWORK> --new-owner <TIMELOCK_AD
 
 Use this when deploying to chains that already have EAS (Base, Arbitrum, Optimism, etc.). Only the fee resolver and schemas are needed.
 
-Why a fee resolver? On OMAchain, gas costs serve as spam prevention. On external chains, we collect a fixed fee per attestation to cover operational costs and prevent spam.
+Why a fee resolver? On OMAChain, gas costs serve as spam prevention. On external chains, we collect a fixed fee per attestation to cover operational costs and prevent spam.
 
 ### Prerequisites
 
@@ -581,12 +591,12 @@ Note: Constructor args are: EAS address, fee in wei, treasury address.
 | `deploy-metadata`      | Metadata contract only                                                           |
 | `deploy-resolver`      | Resolver contract only                                                           |
 | `deploy-timelock`      | OpenZeppelin TimelockController                                                  |
-| `deploy-eas-system`    | EAS SchemaRegistry + EAS contract (OMAchain only)                                |
+| `deploy-eas-system`    | EAS SchemaRegistry + EAS contract (OMAChain only)                                |
 | `deploy-fee-resolver`  | OMATrustFeeResolver for external chains                                          |
 | `eas-sanity`           | Verify EAS deployment works                                                      |
 | `fee-resolver-sanity`  | Verify fee resolver deployment works                                             |
 | `check-contracts`      | Check contract status and configuration                                          |
-| `check-wallet-sync`    | Audit wallet addresses across all repos against approved-addresses.json          |
+| `check-wallet-sync`    | Audit wallet addresses across all repos against oma3-internal-addresses.json          |
 | `update-frontend-abis` | Copy compiled ABIs to frontend project                                           |
 
 ---
@@ -633,14 +643,14 @@ Server wallets are for ongoing operations (attestations, admin via timelock). De
 
 ---
 
-## Approved Addresses and Wallet Sync
+## Internal Addresses and Wallet Sync
 
-Authorized wallet addresses (attestation wallets, admin wallets, on-chain issuers, controller witness attesters) are referenced in multiple repositories. The source of truth is `oma3-ops/approved-addresses.json` — a manually maintained JSON file that includes OMA3 wallets and any third-party attesters added via timelock proposals.
+OMA3-operated wallet addresses (attestation wallets, admin wallets, on-chain issuers, controller witness attesters) are referenced in multiple repositories. The source of truth is `oma3-ops/oma3-internal-addresses.json` — a manually maintained JSON file that includes OMA3 wallets and any third-party attesters added via timelock proposals.
 
-`contract-addresses.txt` tracks what's deployed (auto-generated by deploy tasks — contracts only). `approved-addresses.json` tracks who's authorized (maintained by humans). Both are inputs to the sync check.
+`contract-addresses.txt` tracks what's deployed (auto-generated by deploy tasks — contracts only). `oma3-internal-addresses.json` tracks who's authorized (maintained by humans). Both are inputs to the sync check.
 
 When adding or removing an issuer:
-1. Update `oma3-ops/approved-addresses.json`
+1. Update `oma3-ops/oma3-internal-addresses.json`
 2. Update `app-registry-frontend/src/config/controller-witness-config.ts`
 3. Run `check-wallet-sync` to verify all downstream consumers match (see `oma3-ops/ISSUE-check-wallet-sync.md` for planned tooling)
 
@@ -661,7 +671,7 @@ npx hardhat check-wallet-sync \
 | `--fix`        | Auto-update config files to match approved-addresses  | `false` |
 
 What the task will do:
-1. Reads `oma3-ops/approved-addresses.json` and filters by environment and role
+1. Reads `oma3-ops/oma3-internal-addresses.json` and filters by environment and role
 2. Reads `contract-addresses.txt` for deployed contract addresses
 3. Scans config files across repos for wallet references:
    - `app-registry-frontend/src/config/controller-witness-config.ts` (role: `controller-witness`)
@@ -671,7 +681,7 @@ What the task will do:
    - `oma3-ops/src/admin-wallet/config.ts` (role: `admin`)
 4. Checks on-chain issuer status via `resolver.isIssuer()` (role: `issuer`)
 5. Reports:
-   - Addresses in config files but not in `approved-addresses.json` (stale)
-   - Addresses in `approved-addresses.json` but missing from config files (not propagated)
+   - Addresses in config files but not in `oma3-internal-addresses.json` (stale)
+   - Addresses in `oma3-internal-addresses.json` but missing from config files (not propagated)
    - Addresses not yet authorized on-chain (pending timelock execution)
    - Addresses that are in sync
