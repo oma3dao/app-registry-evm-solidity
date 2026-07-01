@@ -200,7 +200,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     omachainTestnet: {
-      url: "https://rpc.testnet.chain.oma3.org/",
+      url: "https://rpc.testnet.omachain.org/",
       chainId: 66238,
       accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
       gasPrice: "auto",
@@ -208,8 +208,8 @@ const config: HardhatUserConfig = {
       timeout: 60000
     },
     omachainMainnet: {
-      url: "https://rpc.chain.oma3.org/",
-      chainId: 999999,
+      url: "https://rpc.omachain.org/",
+      chainId: 6623,
       accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
       gasPrice: "auto",
       gas: "auto",
@@ -234,6 +234,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       celoAlfajores: process.env.CELOSCAN_API_KEY || "",
+      omachainMainnet: process.env.OMACHAIN_API_KEY || "",
       omachainTestnet: process.env.OMACHAIN_API_KEY || ""
     },
     customChains: [
@@ -243,6 +244,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.testnet.chain.oma3.org/api",
           browserURL: "https://explorer.testnet.chain.oma3.org/"
+        }
+      },
+      {
+        network: "omachainMainnet",
+        chainId: 6623,
+        urls: {
+          apiURL: "https://explorer.omachain.org/api",
+          browserURL: "https://explorer.omachain.org/"
         }
       }
     ]

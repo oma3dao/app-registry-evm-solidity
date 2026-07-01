@@ -174,7 +174,7 @@ npx hardhat renounce-ownership  # ⚠️ DANGEROUS!
 ## 🚀 Deployment Workflows
 
 See **[tasks/deploy/README.md](deploy/README.md)** for complete step-by-step deployment checklists:
-- OMAchain deployment (full system + EAS + TimelockController + server wallet setup)
+- OMAChain deployment (full system + EAS + TimelockController + server wallet setup)
 - External chain deployment (fee resolver + schemas only)
 
 ---
