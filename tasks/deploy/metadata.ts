@@ -10,10 +10,9 @@ task("deploy-metadata", "Deploy only the OMA3 App Metadata contract")
     const { signer, address: deployerAddress, method } = await getDeployerSigner(hre);
     console.log(`Deployer address: ${deployerAddress} (${method})`);
 
-    // Determine confirmations
+    // OMAChain: no reorg risk (single sequencer), finality from L1 settlement. Default to 1.
     const networkName = hre.network.name;
-    const defaultConfirmations = ["localhost", "hardhat"].includes(networkName) ? 1 : 
-                                 networkName.toLowerCase().includes("testnet") ? 1 : 5;
+    const defaultConfirmations = 1; // Use --confirmations for chains with reorg risk (e.g., L1 Ethereum: 3+)
     const confirmations = taskArgs.confirmations ? parseInt(taskArgs.confirmations) : defaultConfirmations;
     console.log(`Network: ${networkName}, Confirmations: ${confirmations}`);
 

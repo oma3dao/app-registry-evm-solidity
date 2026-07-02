@@ -72,35 +72,28 @@ import "./tasks/metadata/metadata-get-json";
 import "./tasks/resolver";
 
 // Load deployment key from SSH file path.
+// Each network resolves its own key file to avoid cross-contamination.
+//
 // Resolution order:
-//   1. DEPLOYMENT_KEY_PATH env var (explicit override)
+//   1. DEPLOYMENT_KEY_PATH env var (explicit override — same key for all networks)
 //   2. Network-specific default:
-//      - ~/.ssh/mainnet-evm-deployment-key  (if --network contains "mainnet")
+//      - ~/.ssh/mainnet-evm-deployment-key  (mainnet networks)
 //      - ~/.ssh/test-evm-deployment-key     (all other networks)
 //   3. Hard error if the resolved file does not exist (non-local networks only)
-function resolveDeploymentKeyPath(): string {
+
+function resolveKeyPath(networkName: string): string {
   if (process.env.DEPLOYMENT_KEY_PATH) {
     return process.env.DEPLOYMENT_KEY_PATH;
   }
-  // Parse --network from process.argv (Hardhat hasn't parsed it yet at config time)
-  const networkIdx = process.argv.indexOf('--network');
-  const networkName = networkIdx !== -1 ? process.argv[networkIdx + 1] : '';
-
-  // Exact match — no substring inference
   const MAINNET_NETWORKS = ['omachainMainnet'];
-  const isMainnet = MAINNET_NETWORKS.includes(networkName || '');
+  const isMainnet = MAINNET_NETWORKS.includes(networkName);
   const keyFile = isMainnet ? 'mainnet-evm-deployment-key' : 'test-evm-deployment-key';
   return path.join(process.env.HOME || '', '.ssh', keyFile);
 }
 
-const deploymentKeyPath = resolveDeploymentKeyPath();
-
-function loadPrivateKeyFromSshFile(filePath: string): string | undefined {
+function loadPrivateKeyFromFile(filePath: string, networkName: string): string | undefined {
   try {
     if (!fs.existsSync(filePath)) {
-      // For non-local networks, a missing key file is a hard error
-      const networkIdx = process.argv.indexOf('--network');
-      const networkName = networkIdx !== -1 ? process.argv[networkIdx + 1] : '';
       const isLocal = !networkName || networkName === 'hardhat' || networkName === 'localhost';
       if (!isLocal) {
         console.error(`\n❌ Deployment key not found: ${filePath}`);
@@ -125,7 +118,6 @@ function loadPrivateKeyFromSshFile(filePath: string): string | undefined {
       process.exit(1);
     }
 
-    console.log(`Deployment key: ${filePath}`);
     return `0x${key}`;
   } catch (err) {
     console.error(`\n❌ Failed to read deployment key: ${(err as Error).message}`);
@@ -133,10 +125,22 @@ function loadPrivateKeyFromSshFile(filePath: string): string | undefined {
   }
 }
 
-const privateKeyFromSsh = loadPrivateKeyFromSshFile(deploymentKeyPath);
+// Silently load key for a network (used in config object — no logging)
+function loadKeyForNetwork(networkName: string): string[] {
+  const keyPath = resolveKeyPath(networkName);
+  const key = loadPrivateKeyFromFile(keyPath, networkName);
+  return key ? [key] : [];
+}
 
-// Expose for scripts that currently read process.env.PRIVATE_KEY
+// Determine and log the active network's key (runs once at startup)
+const networkIdx = process.argv.indexOf('--network');
+const currentNetwork = networkIdx !== -1 ? process.argv[networkIdx + 1] : '';
+const currentKeyPath = resolveKeyPath(currentNetwork || '');
+const privateKeyFromSsh = loadPrivateKeyFromFile(currentKeyPath, currentNetwork || '');
 if (privateKeyFromSsh) {
+  if (currentNetwork) {
+    console.log(`Deployment key: ${currentKeyPath}`);
+  }
   process.env.PRIVATE_KEY = privateKeyFromSsh;
 }
 
@@ -153,8 +157,8 @@ export const NETWORK_CONTRACTS = {
     registry: "0x", 
     metadata: "0x", 
     resolver: "0x",
-    easSchemaRegistry: "0x",
-    easContract: "0x"
+    easSchemaRegistry: "0x11A3aFa959475397F38b729dA543bdDca7bc7cE1",
+    easContract: "0x00Bd6f0Ee99bD76273B57e6dDEc5B00850c6b76C"
   },
   hardhat: {
     registry: "0x", // Will be set automatically during local deployment
@@ -203,7 +207,7 @@ const config: HardhatUserConfig = {
     omachainTestnet: {
       url: "https://rpc.testnet.omachain.org/",
       chainId: 66238,
-      accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
+      accounts: loadKeyForNetwork('omachainTestnet'),
       gasPrice: "auto",
       gas: "auto",
       timeout: 60000
@@ -211,7 +215,7 @@ const config: HardhatUserConfig = {
     omachainMainnet: {
       url: "https://rpc.omachain.org/",
       chainId: 6623,
-      accounts: privateKeyFromSsh ? [privateKeyFromSsh] : [],
+      accounts: loadKeyForNetwork('omachainMainnet'),
       gasPrice: "auto",
       gas: "auto",
       timeout: 60000
@@ -234,7 +238,6 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      celoAlfajores: process.env.CELOSCAN_API_KEY || "",
       omachainMainnet: process.env.OMACHAIN_API_KEY || "",
       omachainTestnet: process.env.OMACHAIN_API_KEY || ""
     },

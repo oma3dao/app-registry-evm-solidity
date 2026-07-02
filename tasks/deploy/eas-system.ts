@@ -10,10 +10,9 @@ task("deploy-eas-system", "Deploy EAS SchemaRegistry and EAS contracts")
     const { signer, address: deployerAddress, method } = await getDeployerSigner(hre);
     console.log(`Deployer address: ${deployerAddress} (${method})`);
 
-    // Determine confirmations
+    // OMAChain: no reorg risk (single sequencer), finality from L1 settlement. Default to 1.
     const networkName = hre.network.name;
-    const defaultConfirmations = ["localhost", "hardhat"].includes(networkName) ? 1 :
-      networkName.toLowerCase().includes("testnet") ? 1 : 5;
+    const defaultConfirmations = 1; // Use --confirmations for chains with reorg risk (e.g., L1 Ethereum: 3+)
     const confirmations = taskArgs.confirmations ? parseInt(taskArgs.confirmations) : defaultConfirmations;
     console.log(`Network: ${networkName}, Confirmations: ${confirmations}`);
 
@@ -54,9 +53,21 @@ task("deploy-eas-system", "Deploy EAS SchemaRegistry and EAS contracts")
     console.log(`SchemaRegistry: ${schemaRegistryAddress}`);
     console.log(`EAS: ${easAddress}`);
 
-    // Note: EAS contracts are not part of the standard DeploymentRecord
-    // They should be manually added to hardhat.config.ts NETWORK_CONTRACTS
-    console.log("\n📝 Deployment complete - addresses logged above");
+    // Log deployment
+    const chainId = Number((await hre.ethers.provider.getNetwork()).chainId);
+    await logDeployment({
+      network: networkName,
+      chainId,
+      deployer: deployerAddress,
+      easSchemaRegistry: schemaRegistryAddress,
+      easContract: easAddress,
+      timestamp: getTimestamp(),
+      blockConfirmations: confirmations,
+      isSystemDeployment: false,
+      method: 'Hardhat (SSH Key)',
+    });
+
+    console.log("\n📝 Deployment complete.");
 
     console.log("\n⚠️  IMPORTANT: Update contract addresses in THREE locations:");
     console.log("\n1. app-registry-evm-solidity/hardhat.config.ts:");

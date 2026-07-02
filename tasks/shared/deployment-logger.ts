@@ -9,6 +9,9 @@ interface DeploymentRecord {
   metadata?: string;
   resolver?: string;
   timelock?: string;
+  easSchemaRegistry?: string;
+  easContract?: string;
+  feeResolver?: string;
   timestamp: string;
   blockConfirmations: number;
   isSystemDeployment: boolean;
@@ -58,6 +61,8 @@ export async function logDeployment(record: DeploymentRecord): Promise<void> {
   // Determine deployment type
   const deploymentType = record.registry && record.metadata && record.resolver 
     ? 'Full System Deployment' 
+    : record.easSchemaRegistry && record.easContract ? 'EAS System (SchemaRegistry + EAS)'
+    : record.feeResolver ? 'Individual Contract (FeeResolver)'
     : record.registry ? 'Individual Contract (Registry)'
     : record.metadata ? 'Individual Contract (Metadata)'
     : record.resolver ? 'Individual Contract (Resolver)'
@@ -87,6 +92,15 @@ export async function logDeployment(record: DeploymentRecord): Promise<void> {
   }
   if (record.timelock) {
     entry += `  Timelock:  ${record.timelock}\n`;
+  }
+  if (record.easSchemaRegistry) {
+    entry += `  SchemaRegistry: ${record.easSchemaRegistry}\n`;
+  }
+  if (record.easContract) {
+    entry += `  EAS:            ${record.easContract}\n`;
+  }
+  if (record.feeResolver) {
+    entry += `  FeeResolver:   ${record.feeResolver}\n`;
   }
 
   entry += `\nDeployment Details:\n`;

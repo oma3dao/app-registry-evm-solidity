@@ -318,25 +318,18 @@ Current deployments can be found at [contract-addresses.txt](contract-addresses.
 
 ### Setup
 
-1. **Setup environment**:
-   ```bash
-   # Install dependencies
-   npm install
-   
-   # Create private key file for development
-   mkdir -p ~/.ssh
-   echo "PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" > ~/.ssh/test-evm-deployment-key
-   chmod 600 ~/.ssh/test-evm-deployment-key
-   ```
+```bash
+npm install
+npx hardhat compile
+```
 
-2. **Compile contracts**:
-   ```bash
-   npx hardhat compile
-   ```
+### Deploying to a Live Chain (Mainnet, Testnet, Devnet)
 
-### Development Deployment
+If you are deploying to OMAchain mainnet, testnet, devnet, or any external chain, **stop here** and read the [Deployment Guide](tasks/deploy/README.md). It covers deployment key generation, full system deployment (EAS, TimelockController, schemas, identity contracts), external chain deployment, and post-deployment ownership transfer.
 
-Use the Hardhat tasks for local development and testing:
+### Local Development
+
+For local testing on the built-in Hardhat chain:
 
 1. **Start local Hardhat node**:
    ```bash
@@ -345,35 +338,15 @@ Use the Hardhat tasks for local development and testing:
 
 2. **Deploy complete system to localhost**:
    ```bash
-   # Deploy complete system (Registry + Metadata + Resolver) with linking
    npm run deploy:system -- --network localhost
    ```
 
-3. **Run tests against localhost**:
-  ```bash
-  npx hardhat test --network localhost
-  ```
+3. **Run tests**:
+   ```bash
+   npx hardhat test --network localhost
+   ```
 
-  This will test your specific deployed contracts with their actual addresses, rather than creating fresh deployments for each test.
-
-4. **Deploy to testnets**:
-  See [tasks/README.md](tasks/README.md)
-
-### Production Deployment
-
-**⚠️ For production deployments to mainnet or public testnets**, use the secure Thirdweb deployment system with HSM-backed server wallets. See the [Thirdweb Deployment README](scripts/deploy/README.md) for complete instructions.
-
-**🔧 For post-deployment contract management**, use the admin scripts to configure contracts and manage ongoing operations. See the [Admin Scripts README](scripts/admin/README.md) for complete admin documentation.
-
-**📚 For complete task reference**, see the [Hardhat Tasks README](tasks/README.md) which includes:
-- **Deploy tasks**: Deploy complete system or individual contracts
-- **Admin tasks**: Configure contracts, manage permissions, and view attestations
-- **Registry tasks**: Interact with deployed contracts
-- **Usage examples**: Common workflows and command patterns
-
-### Testing Against Your Localhost Deployment
-
-**Important**: By default, `npm test` runs tests against fresh contract deployments in Hardhat's built-in test network, not against your running localhost node.
+No deployment key is needed for localhost — Hardhat provides funded test accounts automatically.
 
 ### What Gets Deployed
 
@@ -643,16 +616,16 @@ const latest = await registry.latestMajor(
 
 ```bash
 # Register a new app
-npx hardhat registerApp --did "did:example:123" --interfaces 1 --dataurl "https://example.com/app" --major 1 --minor 0 --patch 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+npx hardhat registerApp --did "did:example:123" --interfaces 1 --dataurl "https://example.com/app" --major 1 --minor 0 --patch 0 --registry <CONTRACT_ADDRESS> --network omachainTestnet
 
 # Get app details by DID and major version
-npx hardhat getApp --did "did:example:123" --major 1 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+npx hardhat getApp --did "did:example:123" --major 1 --registry <CONTRACT_ADDRESS> --network omachainTestnet
 
 # Get all apps (paginated)  
-npx hardhat getApps --start 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+npx hardhat getApps --start 0 --registry <CONTRACT_ADDRESS> --network omachainTestnet
 
 # Get apps by owner (current NFT owner, not original minter)
-npx hardhat get-apps-by-owner --owner <ADDRESS> --startfrom 0 --registry <CONTRACT_ADDRESS> --network celoAlfajores
+npx hardhat get-apps-by-owner --owner <ADDRESS> --startfrom 0 --registry <CONTRACT_ADDRESS> --network omachainTestnet
 ```
 
 ### Submitting Ownership Attestations
