@@ -1,5 +1,6 @@
 import { task } from "hardhat/config";
 import { getDeployerSigner, verifyBytecode, logTransactionForVerification } from "../shared/signer-utils";
+import { logDeployment, getTimestamp } from "../shared/deployment-logger";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -27,10 +28,9 @@ task("deploy-fee-resolver", "Deploy OMATrustFeeResolver for external chains with
       throw new Error(`Invalid treasury address: ${treasuryAddress}`);
     }
 
-    // Determine confirmations
+    // OMAChain: no reorg risk (single sequencer), finality from L1 settlement. Default to 1.
     const networkName = hre.network.name;
-    const defaultConfirmations = ["localhost", "hardhat"].includes(networkName) ? 1 :
-      networkName.toLowerCase().includes("testnet") ? 1 : 5;
+    const defaultConfirmations = 1; // Use --confirmations for chains with reorg risk (e.g., L1 Ethereum: 3+)
     const confirmations = taskArgs.confirmations ? parseInt(taskArgs.confirmations) : defaultConfirmations;
     
     console.log(`\nNetwork: ${networkName}`);
@@ -61,10 +61,10 @@ task("deploy-fee-resolver", "Deploy OMATrustFeeResolver for external chains with
 
     // Verify deployment by reading back values
     console.log("\n🔍 Verifying deployment...");
-    const deployedFee = await resolver.fee();
-    const deployedRecipient = await resolver.feeRecipient();
-    const resolverName = await resolver.NAME();
-    const resolverVersion = await resolver.VERSION();
+    const deployedFee = await resolver.getFunction("fee")();
+    const deployedRecipient = await resolver.getFunction("feeRecipient")();
+    const resolverName = await resolver.getFunction("NAME")();
+    const resolverVersion = await resolver.getFunction("VERSION")();
     
     console.log(`  NAME: ${resolverName}`);
     console.log(`  VERSION: ${resolverVersion}`);
@@ -78,15 +78,18 @@ task("deploy-fee-resolver", "Deploy OMATrustFeeResolver for external chains with
       console.error("❌ Treasury address mismatch!");
     }
 
-    // Update contract-addresses.txt
-    const addressesFile = path.join(process.cwd(), "contract-addresses.txt");
-    const timestamp = new Date().toISOString();
-    const entry = `\n# OMATrustFeeResolver - ${networkName} - ${timestamp}\n` +
-      `FeeResolver_${networkName}=${resolverAddress}\n` +
-      `# Fee: ${taskArgs.fee} ETH, Treasury: ${treasuryAddress}\n`;
-    
-    fs.appendFileSync(addressesFile, entry);
-    console.log(`\n📝 Address saved to contract-addresses.txt`);
+    // Log deployment
+    const chainId = Number((await hre.ethers.provider.getNetwork()).chainId);
+    await logDeployment({
+      network: networkName,
+      chainId,
+      deployer: deployerAddress,
+      feeResolver: resolverAddress,
+      timestamp: getTimestamp(),
+      blockConfirmations: confirmations,
+      isSystemDeployment: false,
+      method: 'Hardhat (SSH Key)',
+    });
 
     // Summary
     console.log("\n" + "=".repeat(60));

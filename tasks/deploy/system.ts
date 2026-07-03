@@ -13,28 +13,12 @@ interface DeploymentResult {
 }
 
 /**
- * Determine smart default confirmations based on network type
- * - Local networks (hardhat, localhost): 1 confirmation
- * - Testnets (low activity, optimistic rollups): 1 confirmation
- * - Production networks: 5+ confirmations
+ * Determine default confirmations.
+ * Defaults to 1 for all networks. Use --confirmations to increase on chains
+ * with reorg risk (e.g., L1 Ethereum: use 3+).
  */
 function getDefaultConfirmations(networkName: string): number {
-  // Local development
-  if (["localhost", "hardhat"].includes(networkName)) {
-    return 1;
-  }
-  
-  // Testnets (including OMA testnet, optimistic rollups, etc.)
-  const testnetPatterns = [
-    "testnet", "alfajores", "goerli", "sepolia", "mumbai", 
-    "fuji", "optimism-goerli", "arbitrum-goerli", "base-goerli"
-  ];
-  if (testnetPatterns.some(pattern => networkName.toLowerCase().includes(pattern))) {
-    return 1;
-  }
-  
-  // Production networks - higher confirmations for security
-  return 5;
+  return 1;
 }
 
 async function deployRegistry(hre: HardhatRuntimeEnvironment, signer: Signer, confirmations: number): Promise<any> {

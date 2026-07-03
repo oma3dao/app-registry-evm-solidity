@@ -27,9 +27,9 @@ task("deploy-timelock", "Deploy OpenZeppelin TimelockController")
     console.log(`Admin: address(0) — roles managed by timelock itself`);
 
     // Determine confirmations
-    const TESTNET_NETWORKS = ['omachainTestnet'];
-    const defaultConfirmations = ["localhost", "hardhat"].includes(networkName) ? 1 :
-                                 TESTNET_NETWORKS.includes(networkName) ? 1 : 5;
+    // OMAChain only produces blocks on activity and has no reorg risk (single sequencer).
+    // Finality comes from L1 settlement, not block depth. Default to 1 for all OMAChain networks.
+    const defaultConfirmations = 1; // Use --confirmations for chains with reorg risk (e.g., L1 Ethereum: 3+)
     const confirmations = taskArgs.confirmations ? parseInt(taskArgs.confirmations) : defaultConfirmations;
     console.log(`Network: ${networkName}, Confirmations: ${confirmations}`);
 

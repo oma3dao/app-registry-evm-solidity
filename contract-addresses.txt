@@ -1,6 +1,7 @@
 # OMA3 Contract Deployment History
 # Auto-generated deployment tracking for all networks and environments
-# Authorized wallet addresses (issuers, admin wallets) are in oma3-ops/oma3-internal-addresses.json
+# Authorized wallet addresses (issuers, admin wallets) are in oma3-ops/approved-addresses.json (admin/timelock)
+# and omatrust-backend/src/lib/routes/public/trust-anchors.ts (attestation issuers)
 # ============================================================================
 
 ## 📍 Active Deployments
@@ -15,15 +16,16 @@ Resolver:  0xDc120C00E62822329A4d8C7808f5a43C9CbfC1f8
 Deployer:  0xC8cb41dD6F509f28cA4194f8e1574911281354eF
 
 ### Production (omachainMainnet)
-Network: omachainMainnet (Chain ID: TBD)
-Last Updated: Not yet deployed
-Status: PENDING
+Network: omachainMainnet (Chain ID: 6623)
+Last Updated: 2026-07-02 18:54:23 UTC
 
 Registry:  Not yet deployed
 Metadata:  Not yet deployed
 Resolver:  Not yet deployed
-Deployer:  Not yet deployed
-
+Timelock:  0xC1aCf840fa1FCD694aEe1889A5395d278CEDA326
+SchemaRegistry: 0x11A3aFa959475397F38b729dA543bdDca7bc7cE1
+EAS:            0x00Bd6f0Ee99bD76273B57e6dDEc5B00850c6b76C
+Deployer:  0xA70541db676012d9BF682Aa74bBe4bd7B5eE1947
 
 # ============================================================================
 # 📜 DEPLOYMENT HISTORY (newest at bottom)
@@ -347,4 +349,36 @@ Deployment Details:
   Block Confirmations: 1
   OpenZeppelin Contracts: v5.4.0
   Verification Status: Pending
+============================================================================
+
+=== Deployment #20 ===
+Timestamp: 2026-07-02 18:54:23 UTC
+Network: omachainMainnet (Chain ID: 6623)
+Type: Individual Contract (Timelock)
+Method: Hardhat (SSH Key)
+Deployer: 0xA70541db676012d9BF682Aa74bBe4bd7B5eE1947
+
+Deployed Contracts:
+  Timelock:  0xC1aCf840fa1FCD694aEe1889A5395d278CEDA326
+
+Deployment Details:
+  Block Confirmations: 5
+  OpenZeppelin Contracts: v5.4.0
+  Verification Status: Pending (run verify commands if supported by explorer)
+============================================================================
+
+=== Deployment #21 ===
+Timestamp: 2026-07-02 19:30:00 UTC
+Network: omachainMainnet (Chain ID: 6623)
+Type: EAS System (SchemaRegistry + EAS)
+Method: Hardhat (SSH Key)
+Deployer: 0xA70541db676012d9BF682Aa74bBe4bd7B5eE1947
+
+Deployed Contracts:
+  SchemaRegistry: 0x11A3aFa959475397F38b729dA543bdDca7bc7cE1
+  EAS:            0x00Bd6f0Ee99bD76273B57e6dDEc5B00850c6b76C
+
+Deployment Details:
+  Block Confirmations: 1
+  Verification Status: Pending (run verify commands if supported by explorer)
 ============================================================================
